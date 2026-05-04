@@ -1,0 +1,1 @@
+# Query lấy lộ trình, lịch sử.

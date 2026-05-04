@@ -1,0 +1,1 @@
+# File SQL insert sẵn các địa điểm du lịch, user test.

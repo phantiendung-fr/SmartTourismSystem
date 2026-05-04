@@ -1,0 +1,1 @@
+//Ràng buộc điều khoản (check email hợp lệ, pass đủ dài...).
