@@ -1,0 +1,1 @@
+# Định nghĩa các bảng SQL (Users, Locations, Trips,...).

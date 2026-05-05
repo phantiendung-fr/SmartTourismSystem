@@ -1,0 +1,1 @@
+// Phân quyền: Kiểm tra role/token để dẫn đúng luồng.

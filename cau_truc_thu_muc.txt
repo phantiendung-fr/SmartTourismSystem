@@ -1,0 +1,55 @@
+backend/
+│
+├── main.py                 # File chạy chính của server, khởi tạo các route.
+├── database.py             # Logic kết nối SQL (Tìm hiểu cách kết nối db ở đây).
+├── models.py               # Định nghĩa các bảng SQL (Users, Locations, Trips,...).
+├── schemas.py              # Định nghĩa dữ liệu đầu vào/đầu ra (Ràng buộc điều khoản đăng nhập/đăng ký).
+│
+├── api/                    # Chứa các file xử lý API (Controllers)
+│   ├── auth.py             # Xử lý Đăng nhập, Đăng ký, Đăng xuất, Phân quyền.
+│   ├── locations.py        # Chức năng xử lí đầu vào & Gợi ý địa điểm.
+│   └── trips.py            # Chức năng planning, tracking, tối ưu lộ trình, lưu lịch sử.
+│
+├── core/                   # Các logic cốt lõi và bảo mật
+│   ├── security.py         # Mã hóa mật khẩu (bắt buộc nên làm, dùng thư viện passlib/bcrypt), tạo token phân quyền.
+│   └── algorithms.py       # Thuật toán gợi ý địa điểm và tối ưu lộ trình (TSP).
+│
+├── crud/                   # (Create, Read, Update, Delete) - Chứa các câu Query SQL
+│   ├── crud_user.py        # Query lấy thông tin user, kiểm tra đăng nhập.
+│   └── crud_trip.py        # Query lấy lộ trình, lịch sử.
+│
+└── dummy_data/             # Thư mục chứa script tạo dữ liệu mẫu
+    └── init_db.sql         # File SQL insert sẵn các địa điểm du lịch, user test.
+
+
+
+frontend/
+│
+├── App.js                  # File gốc, bọc ứng dụng (Provider) và gọi Navigation.
+│
+├── src/
+│   ├── navigation/         # Quản lý luồng chuyển trang
+│   │   ├── AuthStack.js    # Chứa màn hình Đăng nhập, Đăng ký.
+│   │   ├── AppStack.js     # Chứa màn hình chính (Dành cho user đã login).
+│   │   └── Router.js       # Phân quyền: Kiểm tra role/token để dẫn đúng luồng.
+│   │
+│   ├── screens/            # Giao diện các trang
+│   │   ├── Auth/           
+│   │   │   ├── LoginScreen.js
+│   │   │   └── RegisterScreen.js
+│   │   ├── Home/
+│   │   │   ├── InputPreferenceScreen.js  # Nhập nhu cầu/xử lý đầu vào.
+│   │   │   └── RecommendationScreen.js   # Hiển thị gợi ý địa điểm.
+│   │   └── Trip/
+│   │       ├── PlanningScreen.js         # Lên kế hoạch, sắp xếp lộ trình.
+│   │       ├── TrackingScreen.js         # Theo dõi lộ trình (hiện Map).
+│   │       ├── PostTripScreen.js         # Xử lý sau khi hoàn thành.
+│   │       └── HistoryScreen.js          # Xem lại lịch sử.
+│   │
+│   ├── services/           # Gọi API từ Backend (Thiết kế luồng lấy dữ liệu)
+│   │   ├── api.js          # Cấu hình axios/fetch chung.
+│   │   ├── authService.js  # Gọi API login, register.
+│   │   └── tripService.js  # Gọi API lấy gợi ý, lưu lộ trình.
+│   │
+│   └── utils/              # Các hàm hỗ trợ
+│       └── validations.js  # Ràng buộc điều khoản (check email hợp lệ, pass đủ dài...).

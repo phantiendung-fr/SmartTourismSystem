@@ -1,0 +1,1 @@
+# Mã hóa mật khẩu (bắt buộc nên làm, dùng thư viện passlib/bcrypt), tạo token phân quyền.

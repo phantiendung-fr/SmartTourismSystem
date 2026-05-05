@@ -1,0 +1,1 @@
+# Query lấy thông tin user, kiểm tra đăng nhập.

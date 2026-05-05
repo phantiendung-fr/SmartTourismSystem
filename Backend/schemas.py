@@ -1,0 +1,1 @@
+# Định nghĩa dữ liệu đầu vào/đầu ra (Ràng buộc điều khoản đăng nhập/đăng ký).
