@@ -1,8 +1,18 @@
 # Logic kết nối SQL
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-SQLALCHEMY_DATABASE_URL = "postgresql://postgres.huyalfizralenyrzkpbv:Haru%40btx020306@aws-1-ap-south-1.pooler.supabase.com:5432/postgres"
+from dotenv import load_dotenv
+
+# Tải các biến môi trường từ file .env
+load_dotenv()
+
+# Lấy URL từ file .env, nếu không có thì báo lỗi
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not SQLALCHEMY_DATABASE_URL:
+    raise ValueError("Thiếu DATABASE_URL trong file .env!")
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
