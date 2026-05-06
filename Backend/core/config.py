@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # --- Google Maps API ----------------------------------------------------
+    GOOGLE_MAPS_API_KEY: str = ""          # Dummy key – set in .env for real use
+    DEVIATION_THRESHOLD_METERS: int = 500  # Ngưỡng cảnh báo chệch hướng (m)
+    DEFAULT_CHECKIN_RADIUS_METERS: int = 100
+    AVG_CITY_SPEED_KMH: float = 30.0      # Tốc độ TB ước lượng trong thành phố
+
     # --- Pydantic-settings config -------------------------------------------
     model_config = SettingsConfigDict(
         env_file=".env",

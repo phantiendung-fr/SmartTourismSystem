@@ -51,11 +51,11 @@ app.add_middleware(
 # Routers (add your feature routers here)
 # ============================================================
 
-# Example:
-# from routers import users, locations, itineraries
-# app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
-# app.include_router(locations.router, prefix="/api/v1/locations", tags=["Locations"])
-# app.include_router(itineraries.router, prefix="/api/v1/itineraries", tags=["Itineraries"])
+from api.locations import router as locations_router
+from api.trips import router as trips_router
+
+app.include_router(locations_router, prefix="/api/v1/locations", tags=["Locations"])
+app.include_router(trips_router, prefix="/api/v1/itineraries", tags=["Itineraries"])
 
 
 # ============================================================
