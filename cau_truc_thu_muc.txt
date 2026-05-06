@@ -23,33 +23,41 @@ backend/
 
 
 
-frontend/
+CTFinalProject_Travel/
+├── Backend/
+│   └── main.py                     # File xử lý API chính của Backend
 │
-├── App.js                  # File gốc, bọc ứng dụng (Provider) và gọi Navigation.
+├── Backend_log.md                  # File log/ghi chú tiến độ của Backend
 │
-├── src/
-│   ├── navigation/         # Quản lý luồng chuyển trang
-│   │   ├── AuthStack.js    # Chứa màn hình Đăng nhập, Đăng ký.
-│   │   ├── AppStack.js     # Chứa màn hình chính (Dành cho user đã login).
-│   │   └── Router.js       # Phân quyền: Kiểm tra role/token để dẫn đúng luồng.
-│   │
-│   ├── screens/            # Giao diện các trang
-│   │   ├── Auth/           
-│   │   │   ├── LoginScreen.js
-│   │   │   └── RegisterScreen.js
-│   │   ├── Home/
-│   │   │   ├── InputPreferenceScreen.js  # Nhập nhu cầu/xử lý đầu vào.
-│   │   │   └── RecommendationScreen.js   # Hiển thị gợi ý địa điểm.
-│   │   └── Trip/
-│   │       ├── PlanningScreen.js         # Lên kế hoạch, sắp xếp lộ trình.
-│   │       ├── TrackingScreen.js         # Theo dõi lộ trình (hiện Map).
-│   │       ├── PostTripScreen.js         # Xử lý sau khi hoàn thành.
-│   │       └── HistoryScreen.js          # Xem lại lịch sử.
-│   │
-│   ├── services/           # Gọi API từ Backend (Thiết kế luồng lấy dữ liệu)
-│   │   ├── api.js          # Cấu hình axios/fetch chung.
-│   │   ├── authService.js  # Gọi API login, register.
-│   │   └── tripService.js  # Gọi API lấy gợi ý, lưu lộ trình.
-│   │
-│   └── utils/              # Các hàm hỗ trợ
-│       └── validations.js  # Ràng buộc điều khoản (check email hợp lệ, pass đủ dài...).
+└── Frontend/
+    ├── public/                     # Các tài nguyên tĩnh (index.html, favicon...)
+    ├── package.json                # Cấu hình thư viện (npm) cho Frontend
+    ├── package-lock.json
+    ├── README.md
+    ├── .gitignore
+    │
+    └── src/                        # THƯ MỤC CODE CHÍNH CỦA REACT
+        ├── index.js                # Điểm khởi chạy của React
+        ├── App.js                  # Khung định tuyến và quản lý State tổng (Điều hướng)
+        ├── App.css
+        │
+        ├── components/             # Chứa các thành phần dùng chung (Khối Lego)
+        │   └── TripInput/          # Tính năng Xử lý đầu vào lộ trình 
+        │       ├── TripInputForm.js    
+        │       └── TripInputForm.css   
+        │
+        ├── screens/                # Chứa các màn hình giao diện toàn trang
+        │   ├── Auth/               # Nhóm tính năng Xác thực
+        │   │   ├── LoginScreen.js
+        │   │   ├── LoginScreen.css
+        │   │   └── RegisterScreen.js
+        │   │
+        │   ├── SplashScreen.js     # Màn hình chờ lúc mở app
+        │   ├── SplashScreen.css
+        │   ├── WelcomeScreen.js    # Màn hình chào mừng/Giới thiệu
+        │   ├── WelcomeScreen.css
+        │   ├── Travel_trip.js      # Trang chủ (Danh sách tour, Menu Avatar...)
+        │   └── Travel_trip.css     # CSS cho Trang chủ và Menu Dropdown
+        │
+        └── services/               # Chứa các file kết nối gọi API Backend
+            └── authService.js      # Chứa hàm login, register gọi xuống Backend
