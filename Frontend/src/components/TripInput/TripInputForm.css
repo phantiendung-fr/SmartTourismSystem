@@ -1,0 +1,98 @@
+.wizard-container {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    margin-top: 20px;
+}
+
+.step-indicator {
+    font-size: 14px;
+    color: #0abde3;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.wizard-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #222f3e;
+    margin-bottom: 20px;
+}
+
+.input-group {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.input-group label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #576574;
+    margin-bottom: 8px;
+}
+
+.input-group input, .input-group select {
+    padding: 12px 15px;
+    border: 1.5px solid #c8d6e5;
+    border-radius: 12px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.input-group input:focus, .input-group select:focus {
+    border-color: #0abde3;
+}
+
+/* Các tag sở thích */
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.tag-btn {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1.5px solid #c8d6e5;
+    background: transparent;
+    color: #576574;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tag-btn.selected {
+    background: #0abde3;
+    color: white;
+    border-color: #0abde3;
+}
+
+/* Nút điều hướng */
+.btn-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 25px;
+}
+
+.btn-next {
+    background: #222f3e;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 12px;
+    border: none;
+    font-weight: bold;
+    width: 100%;
+    cursor: pointer;
+}
+
+.btn-back {
+    background: transparent;
+    color: #576574;
+    padding: 12px 24px;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+}

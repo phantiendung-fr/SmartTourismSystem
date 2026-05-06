@@ -1,0 +1,145 @@
+import React, { useState } from 'react';
+import './Travel_trip.css';
+
+const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan}) => {
+
+    const [showMenu, setShowMenu] = useState(false)
+    const getGreeting = () => {
+        const currentHour = new Date().getHours(); // Lấy giờ hiện tại từ 0 đến 23
+
+        if (currentHour < 12) {
+            return 'Chào buổi sáng,';
+        } else if (currentHour < 18) {
+            return 'Chào buổi chiều,';
+        } else {
+            return 'Chào buổi tối,';
+        }
+    };
+
+    // Giả lập dữ liệu các chuyến đi (Sau này bạn sẽ lấy từ API Backend)
+    const featuredTours = [
+        {
+            id: 1,
+            title: "Vịnh Hạ Long",
+            location: "Quảng Ninh, Việt Nam",
+            price: "$120",
+            rating: "⭐ 4.8",
+            image: "https://images.unsplash.com/photo-1528127269322-539801943592?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
+        },
+        {
+            id: 2,
+            title: "Ruộng Bậc Thang",
+            location: "Mù Cang Chải",
+            price: "$85",
+            rating: "⭐ 4.9",
+            image: "https://images.unsplash.com/photo-1576485290814-1c72aa4bbb8e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
+        },
+        {
+            id: 3,
+            title: "Phố Cổ Hội An",
+            location: "Quảng Nam, Việt Nam",
+            price: "$50",
+            rating: "⭐ 4.7",
+            image: "https://images.unsplash.com/photo-1555921015-5532091f6026?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
+        }
+    ];
+
+    return (
+        <div className="home-container" style={{ position: 'relative' }}>
+            <div className="header">
+                <div className="greeting">
+                    <p>{isGuest ? 'Chào bạn mới,' : getGreeting()}</p>
+                    <h2>{isGuest ? 'Khách du lịch 🎒' : `${user?.full_name || 'Bạn'} 🎒`}</h2>
+                </div>
+                
+                <div style={{ position: 'relative' }}> {/* Bọc ảnh để làm menu tuyệt đối */}
+                    {isGuest ? (
+                        <button onClick={onRequireLogin} className="login-btn-guest">Đăng nhập</button>
+                    ) : (
+                        <img 
+                            src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150" 
+                            alt="Avatar" 
+                            className="avatar" 
+                            onClick={() => setShowMenu(!showMenu)} // 2. Nhấp vào để bật/tắt menu
+                            style={{ cursor: 'pointer' }}
+                        />
+                    )}
+
+                    {/* 3. Khung Menu Tác vụ */}
+                    {showMenu && !isGuest && (
+                        <div className="user-menu">
+                            <button className="menu-btn">
+                                <span>⚙️</span> Cài đặt quyền riêng tư
+                            </button>
+                            <button className="menu-btn">
+                                <span>❓</span> Trợ giúp và hỗ trợ
+                            </button>
+                            <button className="menu-btn">
+                                <span>💬</span> Đóng góp ý kiến
+                            </button>
+                            
+                            {/* Nút Đăng xuất nổi bật */}
+                            <button 
+                                className="menu-btn logout-btn" 
+                                onClick={onLogout}
+                            >
+                                <span>🚪</span> Đăng xuất
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Thanh Tìm Kiếm */}
+            <div className="search-bar">
+                <span>🔍</span>
+                <input type="text" placeholder="Bạn muốn đi đâu hôm nay?" />
+            </div>
+
+<div style={{ 
+                background: 'linear-gradient(135deg, #0abde3 0%, #22a6b3 100%)', 
+                padding: '20px', 
+                borderRadius: '20px', 
+                color: 'white', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                marginBottom: '25px',
+                boxShadow: '0 8px 20px rgba(10, 189, 227, 0.3)'
+            }}>
+                <div>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Chưa biết đi đâu?</h3>
+                    <p style={{ margin: '5px 0 0', fontSize: '14px', opacity: 0.9 }}>Để hệ thống tạo lộ trình riêng</p>
+                </div>
+                <button 
+                    onClick={onOpenPlan} // Khi bấm sẽ gọi lệnh chuyển trang
+                    style={{ background: 'white', color: '#0abde3', border: 'none', padding: '12px 18px', borderRadius: '14px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}
+                >
+                    Bắt đầu 🚀
+                </button>
+            </div>
+            
+            {/* Danh sách Tour Phổ Biến */}
+            <div className="section-title">
+                Khám phá địa điểm <span>Xem tất cả</span>
+            </div>
+
+            <div className="card-scroller">
+                {featuredTours.map((tour) => (
+                    <div className="tour-card" key={tour.id}>
+                        <img src={tour.image} alt={tour.title} className="tour-image" />
+                        <h3 className="tour-title">{tour.title}</h3>
+                        <p className="tour-location">📍 {tour.location}</p>
+                        
+                        <div className="tour-footer">
+                            <div className="tour-price">{tour.price} <span>/người</span></div>
+                            <div className="tour-rating">{tour.rating}</div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+export default HomeTravel;
