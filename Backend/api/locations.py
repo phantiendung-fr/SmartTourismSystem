@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from database import get_db
+from database import get_session
 from schemas import SuggestionRequest, SuggestionResponse, LocationOut
 from crud.crud_location import get_locations_by_city
 from core.algorithms import score_location
@@ -9,7 +9,7 @@ from core.algorithms import score_location
 router = APIRouter(prefix="/api/suggestions", tags=["Suggestion - Gợi ý địa điểm"])
 
 @router.post("/recommend", response_model=SuggestionResponse, summary="Gợi ý địa điểm phù hợp")
-def recommend_locations(request: SuggestionRequest, db: Session = Depends(get_db)):
+def recommend_locations(request: SuggestionRequest, db: Session = Depends(get_session)):
     # 1. Lấy tất cả địa điểm của thành phố
     locations = get_locations_by_city(db, request.city_id)
 

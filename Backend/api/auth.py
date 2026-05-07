@@ -1,7 +1,7 @@
 # Xử lý Đăng nhập, Đăng ký, Đăng xuất, Phân quyền
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
-from database import get_db
+from database import get_session
 
 import crud.crud_user as crud_user
 import schemas
@@ -10,7 +10,7 @@ import core.security as security
 router = APIRouter()
 
 @router.post("/register")
-def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
+def register(user_data: schemas.UserCreate, db: Session = Depends(get_session)):
     # Kiểm tra email trùng lặp
     existing_user = crud_user.get_user_by_email(db, email=user_data.email)
     if existing_user:
@@ -20,7 +20,7 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
     return {"message": "Đăng ký thành công", "email": new_user.email}
 
 @router.post("/login", response_model=schemas.TokenResponse)
-def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
+def login(credentials: schemas.UserLogin, db: Session = Depends(get_session)):
     user = crud_user.get_user_by_email(db, email=credentials.email)
     if not user or user.status != "ACTIVE":
         raise HTTPException(status_code=401, detail="Tài khoản không tồn tại hoặc bị khóa")
@@ -42,7 +42,7 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
     }
 
 @router.post("/logout")
-def logout(refresh_token: str = Header(..., alias="Authorization-Refresh"), db: Session = Depends(get_db)):
+def logout(refresh_token: str = Header(..., alias="Authorization-Refresh"), db: Session = Depends(get_session)):
     success = crud_user.revoke_session(db, refresh_token=refresh_token)
     if not success:
         raise HTTPException(status_code=400, detail="Phiên không hợp lệ hoặc đã đăng xuất")

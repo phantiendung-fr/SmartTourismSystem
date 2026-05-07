@@ -2,15 +2,20 @@
 # crud/crud_trip.py  –  Itinerary / Trip CRUD operations
 # ============================================================
 
-from typing import Optional, Sequence
+from typing import Optional, Sequence, List
 from uuid import UUID
-
+from datetime import datetime
 from sqlmodel import Session, select
 
 from models import (
     Itineraries,
     ItineraryDays,
+    ItineraryStops,
     ItineraryStatus,
+    StopStatus,
+    CheckinProgress,
+    GpsTrackingLogs,
+    DeviationLogs,
     CurrencyEnum,
 )
 from schemas import ItineraryCreate
@@ -102,6 +107,87 @@ def create_itinerary_with_days(
         db.rollback()
         raise
 
+# --- Bổ sung các hàm Create lẻ để linh hoạt hơn ---
+
+def create_itinerary(db: Session, user_id: UUID, name: str, total_travel_time: int) -> Itineraries:
+    db_itinerary = Itineraries(
+        user_id=user_id,
+        name=name,
+        total_travel_time=total_travel_time,
+        total_distance=0,
+        total_budget=0,
+        status=ItineraryStatus.DRAFT
+    )
+    db.add(db_itinerary)
+    db.commit()
+    db.refresh(db_itinerary)
+    return db_itinerary
+
+def create_itinerary_day(db: Session, itinerary_id: UUID, day_order: int, travel_date: str, total_time: int) -> ItineraryDays:
+    db_day = ItineraryDays(
+        itinerary_id=itinerary_id,
+        day_order=day_order,
+        travel_date=datetime.strptime(travel_date, "%Y-%m-%d").date(),
+        estimated_budget=0,
+        total_time=total_time
+    )
+    db.add(db_day)
+    db.commit()
+    db.refresh(db_day)
+    return db_day
+
+def create_itinerary_stop(db: Session, day_id: int, location_id: UUID, stop_order: int, arrival_time=None, departure_time=None) -> ItineraryStops:
+    db_stop = ItineraryStops(
+        day_id=day_id,
+        location_id=location_id,
+        stop_order=stop_order,
+        arrival_time=arrival_time or "08:00:00",
+        departure_time=departure_time or "09:30:00",
+        status=StopStatus.PENDING
+    )
+    db.add(db_stop)
+    db.commit()
+    db.refresh(db_stop)
+    return db_stop
+
+def create_itinerary_route(db: Session, from_stop_id: int, to_stop_id: int, travel_time: int, distance: float, polyline: str) -> ItineraryRoutes:
+    db_route = ItineraryRoutes(
+        from_stop_id=from_stop_id,
+        to_stop_id=to_stop_id,
+        travel_time=travel_time,
+        distance=distance,
+        polyline_data=polyline
+    )
+    db.add(db_route)
+    db.commit()
+    db.refresh(db_route)
+    return db_route
+
+# --- Tracking & Check-in Logic ---
+
+def get_itinerary_stop(db: Session, stop_id: int) -> Optional[ItineraryStops]:
+    return db.get(ItineraryStops, stop_id)
+
+def mark_stop_completed(db: Session, user_id: UUID, stop_id: int, lat: float, lng: float) -> CheckinProgress:
+    # 1. Update status của Stop
+    db_stop = db.get(ItineraryStops, stop_id)
+    if db_stop:
+        db_stop.status = StopStatus.COMPLETED
+        db.add(db_stop)
+    
+    # 2. Tạo bản ghi CheckinProgress
+    progress = CheckinProgress(
+        user_id=user_id,
+        stop_id=stop_id,
+        is_completed=True,
+        latitude=lat,
+        longitude=lng,
+        checkin_time=datetime.utcnow()
+    )
+    db.add(progress)
+    db.commit()
+    db.refresh(progress)
+    return progress
 
 # ---------------------------------------------------------------------------
 # Read

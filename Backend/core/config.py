@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # --- External APIs & Logics ---------------------------------------------
+    GOOGLE_MAPS_API_KEY: str = "dummy_key"
+    AVG_CITY_SPEED_KMH: float = 40.0
+
     # --- Pydantic-settings config -------------------------------------------
     model_config = SettingsConfigDict(
         env_file=".env",

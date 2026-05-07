@@ -1,31 +1,18 @@
 import math
 from typing import List, Tuple, Optional
+from core.google_maps import get_full_distance_matrix, haversine_distance, estimate_travel_time_fallback
+
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """
     Tính khoảng cách đường chim bay giữa 2 điểm (km) bằng công thức Haversine.
     """
-    R = 6371.0  # Bán kính Trái Đất (km)
-    
-    phi1 = math.radians(lat1)
-    phi2 = math.radians(lat2)
-    delta_phi = math.radians(lat2 - lat1)
-    delta_lambda = math.radians(lon2 - lon1)
 
-    a = math.sin(delta_phi / 2.0) ** 2 + \
-        math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0) ** 2
-    
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    distance = R * c
-    return distance
+    return haversine_distance(lat1, lon1, lat2, lon2)
 
 def estimate_travel_time(lat1: float, lon1: float, lat2: float, lon2: float, speed_kmh: float = 40.0) -> int:
-    """
-    Ước lượng thời gian di chuyển (phút).
-    """
-    distance = haversine(lat1, lon1, lat2, lon2)
-    # distance (km) / speed (km/h) = hours -> * 60 = minutes
-    return int((distance / speed_kmh) * 60)
+    dist = haversine_distance(lat1, lon1, lat2, lon2)
+    return estimate_travel_time_fallback(dist)
 
 def check_within_radius(user_lat: float, user_lon: float, target_lat: float, target_lon: float, radius_m: int) -> Tuple[bool, float]:
     """
@@ -79,6 +66,8 @@ def score_location(
     final_score = tag_score + bonus
     return final_score
 
+
+
 def tsp_dp_bitmask(locations: List[Tuple]) -> Tuple[List, float]:
     """
     Tìm đường đi ngắn nhất qua tất cả các địa điểm (path, không cần quay về).
@@ -97,15 +86,8 @@ def tsp_dp_bitmask(locations: List[Tuple]) -> Tuple[List, float]:
     ids = [loc[0] for loc in locations]
     coords = [(loc[1], loc[2]) for loc in locations]
 
-    # Ma trận khoảng cách
-    dist = [[0.0] * n for _ in range(n)]
-    for i in range(n):
-        for j in range(n):
-            if i != j:
-                dist[i][j] = haversine(
-                    coords[i][0], coords[i][1],
-                    coords[j][0], coords[j][1]
-                )
+    # Lấy ma trận 1 lần duy nhất bằng Google Maps API
+    dist = get_full_distance_matrix(coords)
 
     # dp[mask][u] = khoảng cách nhỏ nhất để đến u với tập mask
     dp = [[float("inf")] * n for _ in range(1 << n)]

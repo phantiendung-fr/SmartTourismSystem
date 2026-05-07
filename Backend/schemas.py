@@ -151,3 +151,47 @@ class ItineraryResponse(BaseModel):
 class MessageResponse(BaseModel):
     """Generic API message (e.g. for delete / status endpoints)."""
     detail: str
+
+# ============================================================
+# SUGGESTION SCHEMAS (Phục vụ Gợi ý địa điểm)
+# ============================================================
+
+class SuggestionRequest(BaseModel):
+    """Payload for requesting location recommendations."""
+    city_id: int
+    budget: Decimal = Field(gt=0)
+    preferred_tags: list[str] = []
+    max_results: int = Field(default=10, le=50)
+
+class LocationOut(BaseModel):
+    """Location data returned for suggestions."""
+    location_id: UUID
+    location_name: str
+    latitude: Decimal
+    longitude: Decimal
+    min_price: Decimal
+    max_price: Decimal
+    score: Optional[float] = None
+    tags: list[str] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+class SuggestionResponse(BaseModel):
+    total: int
+    locations: list[LocationOut]
+
+
+# ============================================================
+# TRACKING SCHEMAS
+# ============================================================
+
+class TrackingRequest(BaseModel):
+    itinerary_id: UUID
+    current_stop_id: int
+    latitude: float
+    longitude: float
+
+class DeviationAlert(BaseModel):
+    is_deviated: bool
+    distance_to_target: float # mét
+    message: str
