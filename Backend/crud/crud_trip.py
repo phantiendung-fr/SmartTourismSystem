@@ -11,6 +11,7 @@ from models import (
     Itineraries,
     ItineraryDays,
     ItineraryStops,
+    ItineraryRoutes,
     ItineraryStatus,
     StopStatus,
     CheckinProgress,
