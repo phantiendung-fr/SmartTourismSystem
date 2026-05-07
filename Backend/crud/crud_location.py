@@ -96,7 +96,7 @@ def get_location_tags(db: Session, location_id: UUID) -> list:
 #       (SELECT locations WHERE location_id IN (?))
 # ---------------------------------------------------------------------------
 
-def get_location_by_ids(db: Session, location_ids: list[UUID]) -> list[Locations]:
+def get_locations_by_ids(db: Session, location_ids: list[UUID]) -> list[Locations]:
     """
     Lấy thông tin chi tiết của các địa điểm trong *location_ids*.
 
@@ -105,17 +105,7 @@ def get_location_by_ids(db: Session, location_ids: list[UUID]) -> list[Locations
         open_time, close_time, min_price, max_price, currency.
     """
     statement = (
-        select(
-            Locations.location_id,
-            Locations.location_name,
-            Locations.latitude,
-            Locations.longitude,
-            Locations.open_time,
-            Locations.close_time,
-            Locations.min_price,
-            Locations.max_price,
-            Locations.currency,
-        )
+        select(Locations)
         .where(Locations.location_id.in_(location_ids))
     )
     return db.exec(statement).all()
@@ -210,3 +200,21 @@ def get_location_stats(db: Session, location_id: UUID) -> Optional[LocationStats
     """
     statement = select(LocationStats).where(LocationStats.location_id == location_id)
     return db.exec(statement).first()
+
+
+
+
+
+
+# bổ sung
+# ---------------------------------------------------------------------------
+# Q1 – Lấy địa điểm theo thành phố 
+#       (SELECT locations JOIN location_categories JOIN cities WHERE ...)
+# ---------------------------------------------------------------------------
+
+def get_locations_by_city(db: Session, city_id: int) -> list[Locations]:
+    """
+    Lấy toàn bộ địa điểm của một thành phố theo city_id (dùng cho Suggestion).
+    """
+    statement = select(Locations).join(Cities, Locations.city_id == Cities.city_id).where(Locations.city_id == city_id)
+    return db.exec(statement).all()
