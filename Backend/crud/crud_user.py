@@ -61,6 +61,7 @@ def get_user_by_email(db: Session, email: str) -> Optional[Users]:
         select(
             Users.user_id,
             Users.email,
+            Users.full_name,
             Users.passwordhash,
             Users.role,
             Users.status,
