@@ -85,6 +85,8 @@ def update_checkin_status(
     db: Session,
     progress_id: int,
     stop_id: int,
+    latitude: Optional[Decimal] = None,
+    longitude: Optional[Decimal] = None,
 ) -> tuple[Optional[CheckinProgress], Optional[ItineraryStops]]:
     """
     Đánh dấu check-in hoàn thành và cập nhật trạng thái stop sang COMPLETED.
@@ -104,6 +106,10 @@ def update_checkin_status(
     ).first()
     if progress is not None:
         progress.is_completed = True
+        if latitude is not None:
+            progress.latitude = latitude
+        if longitude is not None:
+            progress.longitude = longitude
         db.add(progress)
 
     # 2. Cập nhật itinerary_stops
@@ -291,3 +297,29 @@ def get_stop_with_radius(db: Session, stop_id: int):
         .where(ItineraryStops.stop_id == stop_id)
     )
     return db.exec(statement).first()
+
+
+# ---------------------------------------------------------------------------
+# Q8 – Kiểm tra quyền sở hữu trạm (Anti IDOR)
+# ---------------------------------------------------------------------------
+
+def verify_stop_ownership(
+    db: Session,
+    user_id: UUID,
+    stop_id: int,
+) -> bool:
+    """
+    Kiểm tra xem *stop_id* có thuộc về một itinerary do *user_id* tạo ra hay không.
+    Dùng để chặn IDOR trong quá trình check-in.
+    """
+    statement = (
+        select(ItineraryStops.stop_id)
+        .join(ItineraryDays, ItineraryStops.day_id == ItineraryDays.day_id)
+        .join(Itineraries, ItineraryDays.itinerary_id == Itineraries.itinerary_id)
+        .where(
+            Itineraries.user_id == user_id,
+            ItineraryStops.stop_id == stop_id,
+        )
+    )
+    result = db.exec(statement).first()
+    return result is not None

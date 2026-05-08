@@ -110,8 +110,9 @@ def create_itinerary_with_days(
 
 # --- Bổ sung các hàm Create lẻ để linh hoạt hơn ---
 
-def create_itinerary(db: Session, user_id: UUID, name: str, total_travel_time: int) -> Itineraries:
+def create_itinerary(db: Session, session_id: UUID, user_id: UUID, name: str, total_travel_time: int, commit: bool = True) -> Itineraries:
     db_itinerary = Itineraries(
+        session_id=session_id,
         user_id=user_id,
         name=name,
         total_travel_time=total_travel_time,
@@ -120,11 +121,14 @@ def create_itinerary(db: Session, user_id: UUID, name: str, total_travel_time: i
         status=ItineraryStatus.DRAFT
     )
     db.add(db_itinerary)
-    db.commit()
-    db.refresh(db_itinerary)
+    if commit:
+        db.commit()
+        db.refresh(db_itinerary)
+    else:
+        db.flush()
     return db_itinerary
 
-def create_itinerary_day(db: Session, itinerary_id: UUID, day_order: int, travel_date: str, total_time: int) -> ItineraryDays:
+def create_itinerary_day(db: Session, itinerary_id: UUID, day_order: int, travel_date: str, total_time: int, commit: bool = True) -> ItineraryDays:
     db_day = ItineraryDays(
         itinerary_id=itinerary_id,
         day_order=day_order,
@@ -133,11 +137,14 @@ def create_itinerary_day(db: Session, itinerary_id: UUID, day_order: int, travel
         total_time=total_time
     )
     db.add(db_day)
-    db.commit()
-    db.refresh(db_day)
+    if commit:
+        db.commit()
+        db.refresh(db_day)
+    else:
+        db.flush()
     return db_day
 
-def create_itinerary_stop(db: Session, day_id: int, location_id: UUID, stop_order: int, arrival_time=None, departure_time=None) -> ItineraryStops:
+def create_itinerary_stop(db: Session, day_id: int, location_id: UUID, stop_order: int, arrival_time=None, departure_time=None, commit: bool = True) -> ItineraryStops:
     db_stop = ItineraryStops(
         day_id=day_id,
         location_id=location_id,
@@ -147,11 +154,14 @@ def create_itinerary_stop(db: Session, day_id: int, location_id: UUID, stop_orde
         status=StopStatus.PENDING
     )
     db.add(db_stop)
-    db.commit()
-    db.refresh(db_stop)
+    if commit:
+        db.commit()
+        db.refresh(db_stop)
+    else:
+        db.flush()
     return db_stop
 
-def create_itinerary_route(db: Session, from_stop_id: int, to_stop_id: int, travel_time: int, distance: float, polyline: str) -> ItineraryRoutes:
+def create_itinerary_route(db: Session, from_stop_id: int, to_stop_id: int, travel_time: int, distance: float, polyline: str, commit: bool = True) -> ItineraryRoutes:
     db_route = ItineraryRoutes(
         from_stop_id=from_stop_id,
         to_stop_id=to_stop_id,
@@ -160,8 +170,11 @@ def create_itinerary_route(db: Session, from_stop_id: int, to_stop_id: int, trav
         polyline_data=polyline
     )
     db.add(db_route)
-    db.commit()
-    db.refresh(db_route)
+    if commit:
+        db.commit()
+        db.refresh(db_route)
+    else:
+        db.flush()
     return db_route
 
 # --- Tracking & Check-in Logic ---

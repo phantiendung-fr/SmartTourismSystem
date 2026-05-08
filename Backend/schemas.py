@@ -118,6 +118,7 @@ class PlanningSessionResponse(BaseModel):
 # ============================================================
 
 class CreateItineraryRequest(BaseModel):
+    session_id: UUID
     name: Optional[str] = None
     start_date: date
     end_date: Optional[date] = None
