@@ -6,7 +6,7 @@ from uuid import UUID
 from database import get_session
 import core.security as security
 import crud.crud_user as crud_user
-from crud.crud_planning import create_planning_session
+from crud.crud_planning import create_planning_session, create_session_preferences
 from schemas import PlanningSessionCreate, PlanningSessionResponse
 
 router = APIRouter(prefix="/api/planning", tags=["Planning - Lên kế hoạch"])
@@ -24,7 +24,7 @@ def create_planning(
     request: PlanningSessionCreate, 
     db: Session = Depends(get_session),
     # Giả định bạn có hàm get_current_user hoặc verify_token để lấy payload
-    current_user: dict = Depends(security.decode_access_token) 
+    current_user: dict = Depends(security.verify_token)
 ):
     """
     Nhận dữ liệu từ TripInputForm (React) và lưu thành một Planning Session.
@@ -43,6 +43,9 @@ def create_planning(
         start_day=request.start_day,
         end_day=request.end_day
     )
+    # 2. Lưu danh sách tag sở thích (nếu user có chọn)
+    if request.preferred_tags:
+        create_session_preferences(db, session_plan.session_id, request.preferred_tags)
     
-    # 2. Trả về thông tin phiên (bao gồm session_id) để Frontend đi tiếp sang bước Gợi ý
+    # 3. Trả về thông tin phiên (bao gồm session_id) để Frontend đi tiếp sang bước Gợi ý
     return PlanningSessionResponse.model_validate(session_plan)

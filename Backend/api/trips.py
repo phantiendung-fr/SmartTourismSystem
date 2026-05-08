@@ -14,7 +14,11 @@ from schemas import (
 from crud.crud_location import get_locations_by_ids
 from crud.crud_trip import (
     create_itinerary, create_itinerary_day, create_itinerary_stop, create_itinerary_route,
-    get_itinerary_by_id, get_itinerary_stop, mark_stop_completed
+    get_itinerary_by_id
+)
+from crud.crud_tracking import (
+    get_stop_with_radius, get_checkin_by_stop, create_checkin_progress, 
+    update_checkin_status, create_deviation_log
 )
 from crud.crud_itinerary import update_itinerary_status
 from models import Locations
@@ -149,33 +153,35 @@ def checkin_stop(
 ):
     user_id = get_current_user_id(db, current_user)
     
-    stop = get_itinerary_stop(db, stop_id)
-    if not stop:
+    stop_data = get_stop_with_radius(db, stop_id)
+    if not stop_data:
         raise HTTPException(status_code=404, detail="Không tìm thấy trạm dừng")
         
-    if stop.status == "COMPLETED":
-        raise HTTPException(status_code=400, detail="Trạm này đã được check-in trước đó")
+    # Lớp 2: Kiểm tra lịch sử check-in tránh click đúp hoặc fake API
+    existing_checkin = get_checkin_by_stop(db, user_id, stop_id)
+    if existing_checkin and existing_checkin.is_completed:
+        raise HTTPException(status_code=409, detail="Bạn đã check-in trạm này rồi!")
     # Query thêm location vì models.py chưa setup Relationship
-    location = db.get(Locations, stop.location_id)
-    # Kiểm tra bán kính
+    # Lớp 3: Kiểm tra không gian (bán kính)
     is_within, distance = check_within_radius(
         request.latitude, request.longitude,
-        float(location.latitude), float(location.longitude),
-        radius_m=stop.checkin_radius
+        float(stop_data.latitude), float(stop_data.longitude),
+        radius_m=stop_data.checkin_radius
     )
 
     if not is_within:
         raise HTTPException(
             status_code=400,
-            detail=f"Bạn cách trạm {distance:.0f}m. Cần ở trong phạm vi {stop.checkin_radius}m để check-in."
+            detail=f"Bạn cách trạm {distance:.0f}m. Cần ở trong phạm vi {stop_data.checkin_radius}m để check-in."
         )
 
-    # Lưu log
-    progress = mark_stop_completed(db, user_id, stop_id, request.latitude, request.longitude)
+    # Xử lý check-in (Tạo progress -> Đổi trạng thái)
+    progress = create_checkin_progress(db, user_id=user_id, stop_id=stop_id, latitude=request.latitude, longitude=request.longitude)
+    update_checkin_status(db, progress_id=progress.progress_id, stop_id=stop_id)
 
     return CheckInResponse(
         success=True,
-        message=f"✅ Check-in thành công tại '{location.location_name}'!",
+        message=f"✅ Check-in thành công tại '{stop_data.location_name}'!",
         stop_id=stop_id,
         progress_id=progress.progress_id
     )
@@ -192,21 +198,28 @@ def track_user_location(
     Nếu User cách xa đường đi mặc định > 1km -> Trả về cảnh báo chệch hướng.
     """
     # 1. Lấy thông tin Stop hiện tại User đang hướng tới
-    stop = get_itinerary_stop(db, request.current_stop_id)
-    if not stop:
+    stop_data = get_stop_with_radius(db, request.current_stop_id)
+    if not stop_data:
         raise HTTPException(status_code=404, detail="Không tìm thấy trạm dừng")
     
-    location = db.get(Locations, stop.location_id)
 
     # 2. Tính khoảng cách tới trạm đó
     from core.algorithms import haversine
     dist_km = haversine(
         request.latitude, request.longitude,
-        float(location.latitude), float(location.longitude)
+        float(stop_data.latitude), float(stop_data.longitude)
     )
 
     # Logic cảnh báo: Nếu cách trạm > 5km (tùy chỉnh) khi đang trong hành trình
-    is_deviated = dist_km > 5.0 
+    is_deviated = dist_km > 5.0
+    # Ghi log lịch sử nếu bị lệch để sau này admin/hệ thống phân tích
+    if is_deviated:
+        create_deviation_log(
+            db, 
+            itinerary_id=request.itinerary_id, 
+            latitude=request.latitude, 
+            longitude=request.longitude
+        ) 
     
     return DeviationAlert(
         is_deviated=is_deviated,

@@ -93,6 +93,7 @@ class PlanningSessionCreate(BaseModel):
     currency: CurrencyEnum = CurrencyEnum.VND
     pax_adult: int = Field(default=1, gt=0)
     pax_children: int = Field(default=0, ge=0)
+    preferred_tags: list[int] = []  # Bổ sung để user chọn tag sở thích lúc lên kế hoạch
 
 
 class PlanningSessionResponse(BaseModel):
@@ -195,3 +196,13 @@ class DeviationAlert(BaseModel):
     is_deviated: bool
     distance_to_target: float # mét
     message: str
+
+class CheckInRequest(BaseModel):
+    latitude: float
+    longitude: float
+
+class CheckInResponse(BaseModel):
+    success: bool
+    message: str
+    stop_id: int
+    progress_id: int
