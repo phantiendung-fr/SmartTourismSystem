@@ -27,7 +27,7 @@ def recommend_locations(request: SuggestionRequest, db: Session = Depends(get_se
             location_min_price=float(loc.min_price),
             location_max_price=float(loc.max_price),
             location_tags=loc_tags,
-            user_budget=request.budget,
+            user_budget=float(request.budget),
             user_preferred_tags=request.preferred_tags,
         )
 

@@ -8,8 +8,8 @@ from database import get_session
 import core.security as security
 import crud.crud_user as crud_user
 from schemas import (
-    CreateItineraryRequest, ItineraryOut, TrackingRequest,
-    CheckInRequest, CheckInResponse, TripProgressResponse, DeviationAlert
+    CreateItineraryRequest, ItineraryResponse, TrackingRequest,
+    CheckInRequest, CheckInResponse, DeviationAlert
 )
 from crud.crud_location import get_locations_by_ids
 from crud.crud_trip import (
@@ -37,7 +37,7 @@ def get_current_user_id(db: Session, current_user_dict: dict) -> str:
     return user.user_id
 
 
-@router.post("/create", response_model=ItineraryOut, summary="Tạo lộ trình mới")
+@router.post("/create", response_model=ItineraryResponse, summary="Tạo lộ trình mới")
 def create_new_itinerary(
     request: CreateItineraryRequest, 
     db: Session = Depends(get_session),
@@ -133,15 +133,15 @@ def create_new_itinerary(
 
     # Reload
     full_trip = get_itinerary_by_id(db, trip.itinerary_id)
-    return ItineraryOut.model_validate(full_trip)
+    return ItineraryResponse.model_validate(full_trip)
 
 
-@router.get("/{itinerary_id}", response_model=ItineraryOut, summary="Xem chi tiết lộ trình")
+@router.get("/{itinerary_id}", response_model=ItineraryResponse, summary="Xem chi tiết lộ trình")
 def get_trip_detail(itinerary_id: str, db: Session = Depends(get_session)):
     trip = get_itinerary_by_id(db, itinerary_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi")
-    return ItineraryOut.model_validate(trip)
+    return ItineraryResponse.model_validate(trip)
 
 
 @router.post("/{stop_id}/checkin", response_model=CheckInResponse, summary="Check-in tại trạm")

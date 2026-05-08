@@ -86,7 +86,12 @@ from schemas import UserCreate
 
 @app.post("/test-create-user", tags=["Test"])
 def test_db(user: UserCreate, db: Session = Depends(get_session)):
-    return create_user(db=db, user_in=user)
+    return create_user(
+        db=db,
+        full_name=user.full_name,
+        email=user.email,
+        password=user.password
+    )
 # ============================================================
 # Run locally: uvicorn main:app --reload
 # ============================================================

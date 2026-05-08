@@ -117,6 +117,12 @@ class PlanningSessionResponse(BaseModel):
 # ITINERARY SCHEMAS
 # ============================================================
 
+class CreateItineraryRequest(BaseModel):
+    name: Optional[str] = None
+    start_date: date
+    end_date: Optional[date] = None
+    location_ids: list[UUID]
+
 class ItineraryCreate(BaseModel):
     """
     Minimal payload to kick‑off itinerary generation.
