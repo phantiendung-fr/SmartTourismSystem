@@ -71,6 +71,7 @@ def create_new_itinerary(
         chunks = [request.location_ids[i:i + chunk_size] for i in range(0, len(request.location_ids), chunk_size)]
 
         global_total_time = 0
+        global_total_distance = 0.0
 
         # 4. Tối ưu TSP & Tính thời gian từng ngày
         for day_index, chunk_ids in enumerate(chunks):
@@ -135,6 +136,7 @@ def create_new_itinerary(
                         db, from_stop_id=prev_stop_id, to_stop_id=new_stop.stop_id,
                         travel_time=route_info.travel_time_min, distance=route_info.distance_km, polyline=route_info.polyline_data, commit=False
                     )
+                    global_total_distance += route_info.distance_km
                     
                 prev_stop_id = new_stop.stop_id
 
@@ -142,6 +144,7 @@ def create_new_itinerary(
 
         # 5. Cập nhật tổng thời gian chuyến đi
         trip.total_travel_time = global_total_time
+        trip.total_distance = round(global_total_distance, 2)
         db.add(trip)
         
         # 6. Commit toàn bộ Transaction
