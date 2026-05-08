@@ -31,8 +31,18 @@ def create_planning(
     """
     user_id = get_current_user_id(db, current_user)
     
-    # 1. Lưu phiên xuống Database
-    session_plan = create_planning_session(db, user_id, request)
+    # 1. Lưu phiên xuống Database (truyền rã tham số thay vì cả object request)
+    session_plan = create_planning_session(
+        db=db, 
+        user_id=user_id,
+        city_id=request.city_id,
+        pax_adult=request.pax_adult,
+        pax_children=request.pax_children,
+        budget=request.budget,
+        currency=request.currency,
+        start_day=request.start_day,
+        end_day=request.end_day
+    )
     
     # 2. Trả về thông tin phiên (bao gồm session_id) để Frontend đi tiếp sang bước Gợi ý
     return PlanningSessionResponse.model_validate(session_plan)

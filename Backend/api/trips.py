@@ -14,8 +14,10 @@ from schemas import (
 from crud.crud_location import get_locations_by_ids
 from crud.crud_trip import (
     create_itinerary, create_itinerary_day, create_itinerary_stop, create_itinerary_route,
-    get_itinerary, update_itinerary_status, get_itinerary_stop, mark_stop_completed
+    get_itinerary_by_id, get_itinerary_stop, mark_stop_completed
 )
+from crud.crud_itinerary import update_itinerary_status
+from models import Locations
 
 from core.algorithms import check_within_radius, tsp_dp_bitmask
 from core.google_maps import get_route_polyline
@@ -126,13 +128,13 @@ def create_new_itinerary(
         # update_itinerary_total_time(db, trip.itinerary_id, global_total_time)
 
     # Reload
-    full_trip = get_itinerary(db, trip.itinerary_id)
+    full_trip = get_itinerary_by_id(db, trip.itinerary_id)
     return ItineraryOut.model_validate(full_trip)
 
 
 @router.get("/{itinerary_id}", response_model=ItineraryOut, summary="Xem chi tiết lộ trình")
 def get_trip_detail(itinerary_id: str, db: Session = Depends(get_session)):
-    trip = get_itinerary(db, itinerary_id)
+    trip = get_itinerary_by_id(db, itinerary_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi")
     return ItineraryOut.model_validate(trip)
@@ -153,11 +155,12 @@ def checkin_stop(
         
     if stop.status == "COMPLETED":
         raise HTTPException(status_code=400, detail="Trạm này đã được check-in trước đó")
-
+    # Query thêm location vì models.py chưa setup Relationship
+    location = db.get(Locations, stop.location_id)
     # Kiểm tra bán kính
     is_within, distance = check_within_radius(
         request.latitude, request.longitude,
-        float(stop.location.latitude), float(stop.location.longitude),
+        float(location.latitude), float(location.longitude),
         radius_m=stop.checkin_radius
     )
 
@@ -172,7 +175,7 @@ def checkin_stop(
 
     return CheckInResponse(
         success=True,
-        message=f"✅ Check-in thành công tại '{stop.location.location_name}'!",
+        message=f"✅ Check-in thành công tại '{location.location_name}'!",
         stop_id=stop_id,
         progress_id=progress.progress_id
     )
@@ -192,12 +195,14 @@ def track_user_location(
     stop = get_itinerary_stop(db, request.current_stop_id)
     if not stop:
         raise HTTPException(status_code=404, detail="Không tìm thấy trạm dừng")
+    
+    location = db.get(Locations, stop.location_id)
 
     # 2. Tính khoảng cách tới trạm đó
     from core.algorithms import haversine
     dist_km = haversine(
         request.latitude, request.longitude,
-        float(stop.location.latitude), float(stop.location.longitude)
+        float(location.latitude), float(location.longitude)
     )
 
     # Logic cảnh báo: Nếu cách trạm > 5km (tùy chỉnh) khi đang trong hành trình

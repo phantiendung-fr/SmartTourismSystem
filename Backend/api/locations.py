@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from database import get_session
 from schemas import SuggestionRequest, SuggestionResponse, LocationOut
-from crud.crud_location import get_locations_by_city
+from crud.crud_location import get_locations_by_city, get_location_tags
 from core.algorithms import score_location
 
 router = APIRouter(prefix="/api/suggestions", tags=["Suggestion - Gợi ý địa điểm"])
@@ -19,8 +19,9 @@ def recommend_locations(request: SuggestionRequest, db: Session = Depends(get_se
     # 2 & 3. Chấm điểm từng địa điểm
     scored_locations = []
     for loc in locations:
-        # Lấy danh sách tên tag từ bảng trung gian
-        loc_tags = [lt.tag.tag_name for lt in loc.tags if lt.tag]
+        # Gọi DB để lấy tag thay vì dùng property (vì models.py chưa khai báo Relationship)
+        tags_db = get_location_tags(db, loc.location_id)
+        loc_tags = [t.tag_name for t in tags_db]
 
         score = score_location(
             location_min_price=float(loc.min_price),
