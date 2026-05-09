@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './Travel_trip.css';
 
-const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan, onOpenLocationRegister}) => {
+const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan, onOpenLocationRegister, onOpenProfileEdit}) => {
 
     const [showMenu, setShowMenu] = useState(false)
     const getGreeting = () => {
@@ -85,7 +85,14 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan, onOp
                         {/* Khung Menu Tác vụ */}
                         {showMenu && !isGuest && (
                             <div className="user-menu">
-                                <button className="menu-btn">
+                                <button className="menu-btn" onClick={() => {
+                                    if (onOpenProfileEdit) {
+                                        onOpenProfileEdit(); // Nếu có hàm thì chạy
+                                    } else {
+                                        alert("❌ Lỗi: File MainTabs chưa truyền onOpenProfileEdit sang cho Travel_trip!");
+                                    }
+                                }}
+                                >
                                     <span>⚙️</span> Cài đặt quyền riêng tư
                                 </button>
                                 <button className="menu-btn">

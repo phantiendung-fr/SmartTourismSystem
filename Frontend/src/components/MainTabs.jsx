@@ -5,7 +5,7 @@ import './MainTabs.css';
 // Tạm thời import file trang chủ cũ của bạn vào Tab 1
 import Traveltrip from '../screens/Travel_trip'; 
 
-const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenLocationRegister }) => {
+const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenLocationRegister, onOpenProfileEdit }) => {
     // State quản lý tab đang hiển thị
     const [activeTab, setActiveTab] = useState('home');
 
@@ -13,6 +13,26 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
     const LocationScreen = () => <div style={{padding: '20px'}}><h2>📍 Vị trí / Lịch trình</h2><p>Bản đồ và tọa độ hiển thị tại đây...</p></div>;
     const FriendsScreen = () => <div style={{padding: '20px'}}><h2>👥 Bạn bè & Cộng đồng</h2><p>Ghép đôi và danh sách bạn bè...</p></div>;
     const FavoritesScreen = () => <div style={{padding: '20px'}}><h2>❤️ Yêu thích</h2><p>Các địa điểm, bài đăng đã lưu...</p></div>;
+    const GuestPlaceholder = ({ title, icon }) => (
+        <div style={{ padding: '40px 20px', textAlign: 'center', marginTop: '10vh' }}>
+            <div style={{ fontSize: '60px', marginBottom: '20px' }}>{icon}</div>
+            <h2 style={{ color: '#2f3542', marginBottom: '10px' }}>{title}</h2>
+            <p style={{ color: '#747d8c', marginBottom: '30px', lineHeight: '1.6' }}>
+                Tính năng này yêu cầu đăng nhập. Hãy tạo tài khoản để lưu lại hành trình của riêng bạn nhé!
+            </p>
+            <button 
+                onClick={onRequireLogin} // Gọi hàm quay về trang đăng nhập
+                style={{ 
+                    background: 'linear-gradient(135deg, #0abde3 0%, #22a6b3 100%)', 
+                    color: 'white', padding: '14px 30px', borderRadius: '16px', 
+                    border: 'none', fontWeight: 'bold', fontSize: '16px', 
+                    cursor: 'pointer', boxShadow: '0 8px 20px rgba(10, 189, 227, 0.3)' 
+                }}
+            >
+                Đăng nhập ngay 🚀
+            </button>
+        </div>
+    );
     const menuBtnStyle = {
         display: 'flex',
         alignItems: 'center',
@@ -49,9 +69,11 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
 
             {/* Danh sách các nút chức năng y hệt ảnh thiết kế */}
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <button style={menuBtnStyle}>
-                    <span style={{ fontSize: '20px' }}>⚙️</span> 
-                    <span style={{ fontSize: '16px', fontWeight: '500', color: '#4b4b4b' }}>Cài đặt quyền riêng tư</span>
+                <button 
+                    className="menu-btn" 
+                    onClick={onOpenProfileEdit} // Khi nhấn sẽ đổi currentScreen sang 'profile_edit'
+                >
+                    <span style={{ color: '#a29bfe' }}>⚙️</span> Cài đặt quyền riêng tư
                 </button>
                 
                 <button style={menuBtnStyle}>
@@ -88,12 +110,22 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                             user={user} isGuest={isGuest} 
                             onLogout={onLogout} onRequireLogin={onRequireLogin}
                             onOpenPlan={onOpenPlan} onOpenLocationRegister={onOpenLocationRegister}
+                            onOpenProfileEdit={onOpenProfileEdit}
                         />;
-            case 'location': return <LocationScreen />;
-            case 'friends': return <FriendsScreen />;
-            case 'favorites': return <FavoritesScreen />;
-            case 'profile': return <ProfileScreen />;
-            default: return <Traveltrip />;
+            case 'location': 
+                return isGuest ? <GuestPlaceholder title="Bản đồ & Lịch trình" icon="📍" /> : <LocationScreen />;
+                
+            case 'friends': 
+                return isGuest ? <GuestPlaceholder title="Cộng đồng Du lịch" icon="👥" /> : <FriendsScreen />;
+                
+            case 'favorites': 
+                return isGuest ? <GuestPlaceholder title="Địa điểm Yêu thích" icon="❤️" /> : <FavoritesScreen />;
+                
+            case 'profile': 
+                return isGuest ? <GuestPlaceholder title="Hồ sơ Cá nhân" icon="👤" /> : <ProfileScreen />;
+                
+            default: 
+                return <Traveltrip />;
         }
     };
 

@@ -1,10 +1,12 @@
+import random
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, timezone # Thêm các thư viện xử lý thời gian
+from datetime import datetime, timedelta, timezone 
+from pydantic import BaseModel # Thêm thư viện này để tạo form nhận OTP
 
 from database import get_session
 import crud.crud_user as crud_user
-import crud.crud_auth as crud_auth # THÊM IMPORT NÀY
+import crud.crud_auth as crud_auth 
 import schemas
 import core.security as security
 from google.oauth2 import id_token
@@ -15,28 +17,45 @@ GOOGLE_CLIENT_ID = "(Thay thế bằng Client ID của nhóm)"
 
 router = APIRouter()
 
+# ===========================================================================
+# 1. CÁC CLASS NHẬN DỮ LIỆU TỪ FRONTEND CHO CHỨC NĂNG OTP
+# ===========================================================================
+class ForgotPasswordReq(BaseModel):
+    email: str
+
+class ResetPasswordReq(BaseModel):
+    email: str
+    otp: str
+    new_password: str
+
+# BỘ NHỚ TẠM ĐỂ LƯU OTP (Hết hạn sau 5 phút)
+otp_storage = {}
+
+# ===========================================================================
+# 2. CÁC API XỬ LÝ AUTHENTICATION
+# ===========================================================================
+
 @router.post("/register")
 def register(user_data: schemas.UserCreate, db: Session = Depends(get_session)):
-    # 1. Kiểm tra user tồn tại (giữ nguyên)
+    # 1. Kiểm tra user tồn tại
     existing_user = crud_auth.get_user_by_email(db, email=user_data.email)
     if existing_user:
         raise HTTPException(status_code=400, detail="Email này đã được đăng ký")
     
-    # 2. Sửa đoạn này: Truyền thêm register_type và ép status thành "ACTIVE"
+    # 2. Tạo user
     new_user = crud_user.create_user(
         db, 
         full_name=user_data.full_name, 
         email=user_data.email, 
         password=user_data.password,
-        register_type=user_data.register_type, # Lấy từ Frontend gửi lên (EMAIL)
+        register_type=user_data.register_type, 
         role=user_data.role,
-        status="ACTIVE"                        # Đổi từ PENDING thành ACTIVE để login được ngay
+        status="ACTIVE" 
     )
     return {"message": "Đăng ký thành công", "email": new_user.email}
 
 @router.post("/login", response_model=schemas.TokenResponse)
 def login(credentials: schemas.UserLogin, db: Session = Depends(get_session)):
-    # 1. Dùng crud_auth thay vì crud_user
     user = crud_auth.get_user_by_email(db, email=credentials.email)
     if not user or user.status != "ACTIVE":
         raise HTTPException(status_code=401, detail="Tài khoản không tồn tại hoặc bị khóa")
@@ -44,18 +63,14 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_session)):
     if not security.verify_password(credentials.password, user.passwordhash):
         raise HTTPException(status_code=401, detail="Mật khẩu không chính xác")
 
-    # 2. Sửa "sub" thành string của user_id (để chuẩn với TokenPayload trong schemas)
     access_token = security.create_access_token(data={"sub": str(user.user_id), "role": user.role})
     refresh_token = security.create_refresh_token(data={"sub": str(user.user_id)})
-
-    # 3. Tính toán expires_at cho refresh_token (Ví dụ: 7 ngày)
     expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=7)
 
-    # 4. Sửa thành crud_auth và thêm các biến còn thiếu
     crud_auth.create_user_session(
         db=db, 
         user_id=user.user_id, 
-        device_id="web-browser", # Gán cứng tạm thời vì Schema chưa có trường này
+        device_id="web-browser", 
         refresh_token_hash=refresh_token,
         expires_at=expires_at
     )
@@ -68,33 +83,25 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_session)):
         "full_name": user.full_name or "User"
     }
 
-# ---------------------------------------------------------------------------
-# Đăng nhập bằng Google
-# ---------------------------------------------------------------------------
 @router.post("/google-login")
 def google_login(token_data: dict, db: Session = Depends(get_session)):
     token = token_data.get("token")
     device_id = token_data.get("device_id", "Web-Browser")
     try:
-        # Xác minh token với Google
         idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
         email = idinfo['email']
         full_name = idinfo.get('name', 'Google User')
         social_id = idinfo['sub']
 
-        # Kiểm tra user
         user = crud_user.get_user_by_email(db, email=email)
         if not user:
             user = crud_user.create_social_user(db, full_name, email, social_id, "GOOGLE")
         
-        # Lấy giá trị chuỗi của role (VD: từ UserRole.USER thành "USER")
         user_role_str = getattr(user.role, 'value', user.role)
 
-        # Tạo Token của hệ thống
         access_token = security.create_access_token(data={"sub": user.email, "role": user_role_str})
         refresh_token = security.create_refresh_token(data={"sub": user.email})
         
-        # Lưu session
         crud_user.create_user_session(db, user.user_id, device_id, refresh_token)
 
         return {
@@ -107,15 +114,13 @@ def google_login(token_data: dict, db: Session = Depends(get_session)):
     except ValueError:
         raise HTTPException(status_code=401, detail="Xác thực Google thất bại")
 
-
 @router.post("/logout")
-def logout(refresh_token: str = Header(..., alias="Authorization-Refresh"), db: Session = Depends(get_session)): # <--- SỬA get_db THÀNH get_session Ở ĐÂY
+def logout(refresh_token: str = Header(..., alias="Authorization-Refresh"), db: Session = Depends(get_session)):
     success = crud_user.revoke_session(db, refresh_token=refresh_token)
     if not success:
         raise HTTPException(status_code=400, detail="Phiên không hợp lệ hoặc đã đăng xuất")
     return {"message": "Đăng xuất thành công"}
 
-# API test hệ thống phân quyền (Chỉ user đã đăng nhập mới gọi được)
 @router.get("/me")
 def get_my_profile(current_user: dict = Depends(security.verify_token)):
     return {
@@ -123,3 +128,86 @@ def get_my_profile(current_user: dict = Depends(security.verify_token)):
         "user_email": current_user.get("sub"),
         "role": current_user.get("role")
     }
+
+@router.put("/update-profile")
+def update_profile(
+    data: dict, 
+    current_user: dict = Depends(security.verify_token), 
+    db: Session = Depends(get_session)
+):
+    user_id = current_user.get("sub")
+    role = current_user.get("role") # Lấy role từ Token (USER hay ENTERPRISE)
+    
+    if "user_id" in data:
+        del data["user_id"]
+        
+    # 🌟 "KẺ CHUYỂN MẠCH" Ở ĐÂY:
+    if role == "ENTERPRISE":
+        # Cập nhật vào bảng Doanh nghiệp
+        updated_user = crud_user.update_enterprise_profile(db=db, user_id=user_id, **data)
+    else:
+        # Cập nhật vào bảng Cá nhân mặc định
+        updated_user = crud_user.update_user_profile(db=db, user_id=user_id, **data)
+    
+    if not updated_user:
+        raise HTTPException(status_code=404, detail="Không tìm thấy hồ sơ")
+        
+    return {"message": "Cập nhật hồ sơ thành công!", "user": updated_user}
+# ===========================================================================
+# 3. CHỨC NĂNG QUÊN MẬT KHẨU (GỬI OTP VÀ ĐỔI PASS MỚI)
+# ===========================================================================
+
+@router.post("/forgot-password")
+def forgot_password(req: ForgotPasswordReq, db: Session = Depends(get_session)):
+    # 1. Kiểm tra email có tồn tại không
+    user = crud_auth.get_user_by_email(db, email=req.email)
+    if not user:
+        raise HTTPException(status_code=404, detail="Email này chưa được đăng ký!")
+
+    # 2. Sinh mã OTP ngẫu nhiên (6 chữ số)
+    otp_code = str(random.randint(100000, 999999))
+
+    # 3. Lưu OTP và thời gian hết hạn (5 phút) vào bộ nhớ tạm
+    expire_time = datetime.now(timezone.utc) + timedelta(minutes=5)
+    otp_storage[req.email] = {"otp": otp_code, "expire_time": expire_time}
+
+    # 4. In ra Terminal thay vì gửi Email thật để sinh viên dễ test
+    print("\n" + "="*55)
+    print(f"🚀 [HỆ THỐNG EMAIL TỰ ĐỘNG - DEMO]")
+    print(f"📧 Đã gửi thư khôi phục đến: {req.email}")
+    print(f"🔑 MÃ OTP CỦA BẠN LÀ: {otp_code}")
+    print("="*55 + "\n")
+
+    return {"message": "Mã OTP đã được tạo! Vui lòng mở Terminal Backend để lấy mã."}
+
+@router.post("/reset-password")
+def reset_password(req: ResetPasswordReq, db: Session = Depends(get_session)):
+    # 1. Kiểm tra xem email này có đang yêu cầu OTP không
+    record = otp_storage.get(req.email)
+    if not record:
+        raise HTTPException(status_code=400, detail="Chưa gửi yêu cầu hoặc phiên đã bị hủy!")
+
+    # 2. Kiểm tra mã OTP gửi lên có khớp không
+    if record["otp"] != req.otp:
+        raise HTTPException(status_code=400, detail="Mã OTP không chính xác!")
+
+    # 3. Kiểm tra xem OTP có bị quá hạn 5 phút không
+    if datetime.now(timezone.utc) > record["expire_time"]:
+        del otp_storage[req.email]
+        raise HTTPException(status_code=400, detail="Mã OTP đã hết hạn!")
+
+    # 4. Tìm User trong CSDL
+    user = crud_auth.get_user_by_email(db, email=req.email)
+    if not user:
+        raise HTTPException(status_code=404, detail="Người dùng không tồn tại!")
+
+    # 5. Cập nhật mật khẩu mới (Băm mật khẩu trước khi lưu)
+    user.passwordhash = security.get_password_hash(req.new_password)
+    user.update_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    db.add(user)
+    db.commit()
+
+    # 6. Xóa OTP sau khi dùng thành công
+    del otp_storage[req.email]
+
+    return {"message": "Đổi mật khẩu thành công! Bạn có thể đăng nhập ngay bây giờ."}
