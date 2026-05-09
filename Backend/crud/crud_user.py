@@ -412,31 +412,58 @@ def update_user_profile(
     return row
 
 
-# ---------------------------------------------------------------------------
-# Q12 – Cập nhật kyc_status  (UPDATE user_profiles SET kyc_status WHERE user_id = ?)
-# ---------------------------------------------------------------------------
+    # --- (ĐOẠN CỦA ĐỒNG ĐỘI BỊ KẸP GIỮA) ---
+    # Thụt lề 4 khoảng trắng vì đoạn này nối tiếp hàm xử lý session ở ngay bên trên file
+    if session:
+        session.is_revoked = True
+        db.commit()
+        return True
+    return False
 
-def update_user_kyc_status(
-    db: Session,
-    user_id: UUID,
-    new_kyc_status: KycStatus,
-) -> Optional[UserProfiles]:
-    """
-    Cập nhật ``kyc_status`` của profile người dùng.
 
-    Luồng thông thường: UNVERIFIED → PENDING (khi user nộp giấy tờ)
-    → APPROVED hoặc REJECTED (sau khi admin xét duyệt).
+    # ---------------------------------------------------------------------------
+    # Q12 – Cập nhật kyc_status  (UPDATE user_profiles SET kyc_status WHERE user_id = ?)
+    # ---------------------------------------------------------------------------
+    def update_user_kyc_status(
+        db: Session,
+        user_id: UUID,
+        new_kyc_status: KycStatus,
+    ) -> Optional[UserProfiles]:
+        """
+        Cập nhật ``kyc_status`` của profile người dùng.
 
-    Trả về bản ghi sau cập nhật, hoặc ``None`` nếu không tìm thấy.
-    """
-    row = db.exec(
-        select(UserProfiles).where(UserProfiles.user_id == user_id)
-    ).first()
-    if row is None:
-        return None
-    row.kyc_status = new_kyc_status
-    row.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-    return row
+        Luồng thông thường: UNVERIFIED → PENDING (khi user nộp giấy tờ)
+        → APPROVED hoặc REJECTED (sau khi admin xét duyệt).
+
+        Trả về bản ghi sau cập nhật, hoặc ``None`` nếu không tìm thấy.
+        """
+        row = db.exec(
+            select(UserProfiles).where(UserProfiles.user_id == user_id)
+        ).first()
+        if row is None:
+            return None
+        row.kyc_status = new_kyc_status
+        row.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        return row
+
+
+    # ---------------------------------------------------------------------------
+    # Tạo User từ Đăng nhập Google/Facebook (Code của đồng đội - Đã chuẩn hóa)
+    # ---------------------------------------------------------------------------
+    def create_social_user(db: Session, full_name: str, email: str, social_id: str, register_type: str):
+        # Đã sửa models.User thành models.Users và chuẩn hóa Enum
+        new_user = models.Users(
+            full_name=full_name,
+            email=email,
+            social_id=social_id,
+            register_type=register_type,
+            role=UserRole.USER,        # Dùng Enum chuẩn của bạn thay vì chuỗi "USER"
+            status=UserStatus.ACTIVE   # Dùng Enum chuẩn của bạn thay vì chuỗi "ACTIVE"
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return new_user

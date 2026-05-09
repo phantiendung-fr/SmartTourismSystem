@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { authService } from '../../services/authService';
+import { GoogleLogin } from '@react-oauth/google';
 import './LoginScreen.css'; 
 
 // Thêm các hàm điều hướng vào tham số
@@ -16,6 +17,15 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onLoginSuccess }) => {
             
             // Gửi cục data đó lên cho App.js
             onLoginSuccess(userData); 
+        } catch (err) {
+            setError("❌ " + err.message);
+        }
+    };
+
+    const handleGoogleSuccess = async (credentialResponse) => {
+        try {
+            const userData = await authService.loginWithGoogle(credentialResponse.credential);
+            onLoginSuccess(userData);
         } catch (err) {
             setError("❌ " + err.message);
         }
@@ -45,6 +55,16 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onLoginSuccess }) => {
                 />
                 <button className="login-button" type="submit">Khởi hành</button>
                 
+                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+                    <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={() => setError("❌ Đăng nhập Google thất bại")}
+                        theme="filled_blue"
+                        shape="pill"
+                        text="continue_with"
+                    />
+                </div>
+
                 {/* Hiển thị lỗi nếu sai pass */}
                 {error && <p className="error-msg">{error}</p>}
 
