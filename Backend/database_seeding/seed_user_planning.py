@@ -5,8 +5,8 @@ from datetime import timedelta, date, time
 from faker import Faker
 from supabase import create_client, Client
 
-url: str = "https://huyalfizralenyrzkpbv.supabase.co"
-key: str = "sb_secret_API_KEY" # Điền secret API Key của database để chạy script, không public vì lí do bảo mật
+url: str = "YOUR_URL"
+key: str = "YOUR_KEY"
 supabase: Client = create_client(url, key)
 fake = Faker('vi_VN')
 

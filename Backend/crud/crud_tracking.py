@@ -297,8 +297,6 @@ def get_stop_with_radius(db: Session, stop_id: int):
         .where(ItineraryStops.stop_id == stop_id)
     )
     return db.exec(statement).first()
-
-
 # ---------------------------------------------------------------------------
 # Q8 – Kiểm tra quyền sở hữu trạm (Anti IDOR)
 # ---------------------------------------------------------------------------

@@ -7,8 +7,8 @@ from datetime import time
 from supabase import create_client, Client
 
 # --- THIẾT LẬP KẾT NỐI ---
-url: str = "https://huyalfizralenyrzkpbv.supabase.co"
-key: str = "sb_secret_API_KEY" # Điền secret API Key của database để chạy script, không public vì lí do bảo mật
+url: str = "YOUR_URL"
+key: str = "YOUR_KEY"
 supabase: Client = create_client(url, key)
 
 # Tọa độ trung tâm (Mock) của các thành phố trong file JSON
