@@ -13,8 +13,13 @@ router = APIRouter(prefix="/api/planning", tags=["Planning - Lên kế hoạch"]
 
 def get_current_user_id(db: Session, current_user_dict: dict) -> UUID:
     """Helper: Lấy user_id thực tế từ Token."""
-    email = current_user_dict.get("sub")
-    user = crud_user.get_user_by_email(db, email=email)
+    user_id_str = current_user_dict.get("sub")
+    try:
+        user_id = UUID(user_id_str)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token không hợp lệ")
+        
+    user = db.get(crud_user.Users, user_id)
     if not user:
         raise HTTPException(status_code=401, detail="Tài khoản không tồn tại")
     return user.user_id
@@ -44,8 +49,8 @@ def create_planning(
         end_day=request.end_day
     )
     # 2. Lưu danh sách tag sở thích (nếu user có chọn)
-    if request.preferred_tags:
-        create_session_preferences(db, session_plan.session_id, request.preferred_tags)
+    if request.tag_ids:
+        create_session_preferences(db, session_plan.session_id, request.tag_ids)
     
     # 3. Trả về thông tin phiên (bao gồm session_id) để Frontend đi tiếp sang bước Gợi ý
     return PlanningSessionResponse.model_validate(session_plan)

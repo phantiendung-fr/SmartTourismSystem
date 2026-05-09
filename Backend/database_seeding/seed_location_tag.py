@@ -7,16 +7,8 @@ from datetime import time
 from supabase import create_client, Client
 
 # --- THIẾT LẬP KẾT NỐI ---
-import os
-from dotenv import load_dotenv
-
-# Tự động tìm file .env ở thư mục Backend
-script_dir = os.path.dirname(os.path.abspath(__file__))
-dotenv_path = os.path.join(script_dir, '..', '.env')
-load_dotenv(dotenv_path)
-
-url: str = os.getenv("SUPABASE_URL", "YOUR_SUPABASE_URL")
-key: str = os.getenv("SUPABASE_KEY", "YOUR_SUPABASE_KEY")
+url: str = "https://huyalfizralenyrzkpbv.supabase.co"
+key: str = "sb_secret_API_KEY" # Điền secret API Key của database để chạy script, không public vì lí do bảo mật
 supabase: Client = create_client(url, key)
 
 # Tọa độ trung tâm (Mock) của các thành phố trong file JSON

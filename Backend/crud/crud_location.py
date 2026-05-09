@@ -8,21 +8,31 @@
  Q2  SELECT  TAGS, LOCATION_TAGS                             get_location_tags
  Q3  SELECT  LOCATIONS                                       get_location_by_ids
  Q4  SELECT  LOCATIONS_IMAGE                                 get_location_images
+ Q5  UPDATE  LOCATION_STATS                                  increment_location_view_count
+ Q6  UPDATE  LOCATION_STATS                                  increment_location_checkin_count
+ Q7  SELECT  LOCATION_STATS                                  get_location_stats
+ Q8  SELECT  LOCATIONS                                       check_location_exists
+ Q9  INSERT  LOCATIONS                                       create_location
+ Q10 INSERT  BUSINESS_LOCATION                               create_business_location
+ Q11 INSERT  LOCATION_CATEGORIES                             create_location_categories
+ Q12 INSERT  LOCATION_TAGS                                   create_location_tags
 ================================================================================
 """
 
+from decimal import Decimal
 from uuid import UUID
 
 from sqlmodel import Session, select
 
 from models import (
+    BusinessLocation,
+    Cities,
+    LocationCategories,
     Locations,
     LocationsImage,
-    LocationTags,
-    LocationCategories,
-    Cities,
-    Tags,
     LocationStats,
+    LocationTags,
+    Tags,
 )
 
 from typing import Optional
@@ -96,7 +106,7 @@ def get_location_tags(db: Session, location_id: UUID) -> list:
 #       (SELECT locations WHERE location_id IN (?))
 # ---------------------------------------------------------------------------
 
-def get_locations_by_ids(db: Session, location_ids: list[UUID]) -> list[Locations]:
+def get_location_by_ids(db: Session, location_ids: list[UUID]) -> list[Locations]:
     """
     Lấy thông tin chi tiết của các địa điểm trong *location_ids*.
 
@@ -202,10 +212,6 @@ def get_location_stats(db: Session, location_id: UUID) -> Optional[LocationStats
     return db.exec(statement).first()
 
 
-
-
-
-
 # bổ sung
 # ---------------------------------------------------------------------------
 # Q1 – Lấy địa điểm theo thành phố 
@@ -218,3 +224,151 @@ def get_locations_by_city(db: Session, city_id: int) -> list[Locations]:
     """
     statement = select(Locations).join(Cities, Locations.city_id == Cities.city_id).where(Locations.city_id == city_id)
     return db.exec(statement).all()
+
+# ---------------------------------------------------------------------------
+# Q8 – Kiểm tra địa điểm trùng tên trong cùng thành phố
+#       (SELECT locations WHERE location_name = ? AND city_id = ?)
+# ---------------------------------------------------------------------------
+
+def check_location_exists(
+    db: Session,
+    location_name: str,
+    city_id: int,
+) -> Optional[Locations]:
+    """
+    Kiểm tra xem đã tồn tại địa điểm có cùng ``location_name`` và ``city_id`` chưa.
+
+    Trả về bản ghi ``Locations`` nếu đã tồn tại, ``None`` nếu chưa.
+    Dùng cho service layer để validate trước khi INSERT.
+    """
+    statement = select(Locations).where(
+        Locations.location_name == location_name,
+        Locations.city_id == city_id,
+    )
+    return db.exec(statement).first()
+
+
+# ---------------------------------------------------------------------------
+# Q9 – Tạo địa điểm mới  (INSERT INTO locations)
+# ---------------------------------------------------------------------------
+
+def create_location(
+    db: Session,
+    *,
+    location_name: str,
+    latitude: Decimal,
+    longitude: Decimal,
+    city_id: int,
+    open_time,
+    close_time,
+    min_price: Decimal,
+    max_price: Decimal,
+    currency,
+    address: str,
+) -> Locations:
+    """
+    INSERT một bản ghi mới vào bảng ``locations``.
+
+    **Không tự commit** — gọi hàm này trong block ``with session.begin()``
+    ở service layer để đảm bảo rollback khi lỗi.
+
+    ``status`` luôn là ``PENDING`` (chờ Admin duyệt).
+    ``address`` được lưu vào field ``location_name`` mở rộng để tham chiếu sau.
+
+    Parameters
+    ----------
+    latitude, longitude : Decimal
+        Tọa độ lấy từ Google Maps Geocoding API.
+    """
+    from uuid import uuid4
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    location = Locations(
+        location_id=uuid4(),
+        location_name=location_name,
+        latitude=latitude,
+        longitude=longitude,
+        city_id=city_id,
+        open_time=open_time,
+        close_time=close_time,
+        min_price=min_price,
+        max_price=max_price,
+        currency=currency,
+        create_at=now,
+        update_at=now,
+    )
+    db.add(location)
+    db.flush()          # lấy location_id trước khi commit (vẫn trong transaction)
+    return location
+
+
+# ---------------------------------------------------------------------------
+# Q10 – Liên kết địa điểm với doanh nghiệp  (INSERT INTO business_location)
+# ---------------------------------------------------------------------------
+
+def create_business_location(
+    db: Session,
+    *,
+    business_id: UUID,
+    location_id: UUID,
+) -> BusinessLocation:
+    """
+    INSERT bản ghi liên kết giữa ``enterprise_profiles`` và ``locations``.
+
+    **Không tự commit** — phải gọi trong cùng transaction với create_location().
+    """
+    record = BusinessLocation(business_id=business_id, location_id=location_id)
+    db.add(record)
+    db.flush()
+    return record
+
+
+# ---------------------------------------------------------------------------
+# Q11 – Gán danh mục cho địa điểm  (INSERT INTO location_categories)
+# ---------------------------------------------------------------------------
+
+def create_location_categories(
+    db: Session,
+    *,
+    location_id: UUID,
+    category_ids: list[int],
+) -> list[LocationCategories]:
+    """
+    INSERT nhiều bản ghi vào ``location_categories`` (một bản ghi / category_id).
+
+    **Không tự commit** — phải gọi trong cùng transaction với create_location().
+    """
+    records = [
+        LocationCategories(location_id=location_id, category_id=cat_id)
+        for cat_id in category_ids
+    ]
+    for r in records:
+        db.add(r)
+    db.flush()
+    return records
+
+
+# ---------------------------------------------------------------------------
+# Q12 – Gán thẻ tag cho địa điểm  (INSERT INTO location_tags)
+# ---------------------------------------------------------------------------
+
+def create_location_tags(
+    db: Session,
+    *,
+    location_id: UUID,
+    tag_ids: list[int],
+) -> list[LocationTags]:
+    """
+    INSERT nhiều bản ghi vào ``location_tags`` (một bản ghi / tag_id).
+
+    **Không tự commit** — phải gọi trong cùng transaction với create_location().
+    """
+    records = [
+        LocationTags(location_id=location_id, tag_id=tag_id)
+        for tag_id in tag_ids
+    ]
+    for r in records:
+        db.add(r)
+    db.flush()
+    return records

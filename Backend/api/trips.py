@@ -12,7 +12,7 @@ from schemas import (
     CheckInRequest, CheckInResponse, DeviationAlert, ItineraryDetailResponse,
     ItineraryHistoryItem, MessageResponse
 )
-from crud.crud_location import get_locations_by_ids, increment_location_checkin_count
+from crud.crud_location import get_location_by_ids, increment_location_checkin_count
 from crud.crud_trip import (
     create_itinerary, create_itinerary_day, create_itinerary_stop, create_itinerary_route,
     get_itinerary_by_id
@@ -29,10 +29,15 @@ from core.google_maps import get_route_polyline
 
 router = APIRouter(prefix="/api/trips", tags=["Trips - Lộ trình & Theo dõi"])
 
-def get_current_user_id(db: Session, current_user_dict: dict) -> str:
-    """Lấy user_id thực tế từ database dựa trên email trong token."""
-    email = current_user_dict.get("sub")
-    user = crud_user.get_user_by_email(db, email=email)
+def get_current_user_id(db: Session, current_user_dict: dict) -> UUID:
+    """Lấy user_id thực tế từ database dựa trên token sub."""
+    user_id_str = current_user_dict.get("sub")
+    try:
+        user_id = UUID(user_id_str)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token không hợp lệ")
+        
+    user = db.get(crud_user.Users, user_id)
     if not user:
         raise HTTPException(status_code=401, detail="User không tồn tại")
     return user.user_id
@@ -77,7 +82,7 @@ def create_new_itinerary(
     if not request.location_ids:
         raise HTTPException(status_code=400, detail="Vui lòng chọn ít nhất 1 địa điểm để tạo lộ trình.")
 
-    locations = get_locations_by_ids(db, request.location_ids)
+    locations = get_location_by_ids(db, request.location_ids)
     found_ids = {loc.location_id for loc in locations}
     missing = [lid for lid in request.location_ids if lid not in found_ids]
     if missing:
@@ -194,25 +199,37 @@ def get_trip_detail(itinerary_id: UUID, db: Session = Depends(get_session)):
     if not trip:
         raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi")
     
-    # 1. Viết câu SQL nối bảng (JOIN) để gom toàn bộ Stops của Lộ trình này
+    # 1. Viết câu SQL nối bảng (JOIN) để gom toàn bộ Stops, Days và Locations của Lộ trình này
     statement = (
-        select(ItineraryStops)
+        select(ItineraryStops, ItineraryDays, Locations)
         .join(ItineraryDays, ItineraryStops.day_id == ItineraryDays.day_id)
+        .join(Locations, ItineraryStops.location_id == Locations.location_id)
         .where(ItineraryDays.itinerary_id == itinerary_id)
         .order_by(ItineraryDays.day_order, ItineraryStops.stop_order) # Sắp xếp theo thứ tự đi
     )
     
-    stops = db.exec(statement).all()
+    stops_data = db.exec(statement).all()
     
-    # 1. Biến SQLModel object thành Dictionary
+    # 2. Biến SQLModel object thành Dictionary
     trip_data = trip.model_dump() 
     
-    # 2. Nhét thêm danh sách stops vào dictionary (cần chuyển SQLModel object sang dict)
-    # Đồng thời đánh số thứ tự (stop_order) tăng dần từ 1 cho toàn bộ chuyến đi thay vì reset mỗi ngày
+    # 3. Nhét thêm danh sách stops vào dictionary
     stop_dicts = []
-    for idx, stop in enumerate(stops, start=1):
+    for idx, (stop, day, loc) in enumerate(stops_data, start=1):
         stop_dict = stop.model_dump()
         stop_dict["stop_order"] = idx
+        
+        # Bổ sung thông tin từ bảng ItineraryDays
+        stop_dict["day_order"] = day.day_order
+        stop_dict["travel_date"] = day.travel_date
+        
+        # Bổ sung thông tin từ bảng Locations
+        stop_dict["location_name"] = loc.location_name
+        stop_dict["latitude"] = loc.latitude
+        stop_dict["longitude"] = loc.longitude
+        stop_dict["open_time"] = loc.open_time
+        stop_dict["close_time"] = loc.close_time
+        
         stop_dicts.append(stop_dict)
         
     trip_data["stops"] = stop_dicts
