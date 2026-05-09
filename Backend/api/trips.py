@@ -3,13 +3,13 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, time
 import math
 from uuid import UUID
-
+from sqlmodel import select
 from database import get_session
 import core.security as security
 import crud.crud_user as crud_user
 from schemas import (
     CreateItineraryRequest, ItineraryResponse, TrackingRequest,
-    CheckInRequest, CheckInResponse, DeviationAlert
+    CheckInRequest, CheckInResponse, DeviationAlert, ItineraryDetailResponse
 )
 from crud.crud_location import get_locations_by_ids, increment_location_checkin_count
 from crud.crud_trip import (
@@ -21,7 +21,7 @@ from crud.crud_tracking import (
     update_checkin_status, create_deviation_log, verify_stop_ownership, verify_stop_in_itinerary, create_gps_log
 )
 from crud.crud_itinerary import update_itinerary_status
-from models import Locations
+from models import Locations, ItineraryDays, ItineraryStops
 
 from core.algorithms import check_within_radius, tsp_dp_bitmask
 from core.google_maps import get_route_polyline
@@ -160,12 +160,37 @@ def create_new_itinerary(
         raise HTTPException(status_code=500, detail=f"Lỗi hệ thống khi tạo lộ trình: {str(e)}")
 
 
-@router.get("/{itinerary_id}", response_model=ItineraryResponse, summary="Xem chi tiết lộ trình")
+@router.get("/{itinerary_id}", response_model=ItineraryDetailResponse, summary="Xem chi tiết lộ trình")
 def get_trip_detail(itinerary_id: UUID, db: Session = Depends(get_session)):
     trip = get_itinerary_by_id(db, itinerary_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi")
-    return ItineraryResponse.model_validate(trip)
+    
+    # 1. Viết câu SQL nối bảng (JOIN) để gom toàn bộ Stops của Lộ trình này
+    statement = (
+        select(ItineraryStops)
+        .join(ItineraryDays, ItineraryStops.day_id == ItineraryDays.day_id)
+        .where(ItineraryDays.itinerary_id == itinerary_id)
+        .order_by(ItineraryDays.day_order, ItineraryStops.stop_order) # Sắp xếp theo thứ tự đi
+    )
+    
+    stops = db.exec(statement).all()
+    
+    # 1. Biến SQLModel object thành Dictionary
+    trip_data = trip.model_dump() 
+    
+    # 2. Nhét thêm danh sách stops vào dictionary (cần chuyển SQLModel object sang dict)
+    # Đồng thời đánh số thứ tự (stop_order) tăng dần từ 1 cho toàn bộ chuyến đi thay vì reset mỗi ngày
+    stop_dicts = []
+    for idx, stop in enumerate(stops, start=1):
+        stop_dict = stop.model_dump()
+        stop_dict["stop_order"] = idx
+        stop_dicts.append(stop_dict)
+        
+    trip_data["stops"] = stop_dicts
+    
+    # 3. Đưa dictionary vào khuôn Pydantic
+    return ItineraryDetailResponse(**trip_data)
 
 
 @router.post("/{stop_id}/checkin", response_model=CheckInResponse, summary="Check-in tại trạm")

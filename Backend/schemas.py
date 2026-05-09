@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
@@ -196,8 +196,8 @@ class SuggestionResponse(BaseModel):
 class TrackingRequest(BaseModel):
     itinerary_id: UUID
     current_stop_id: int
-    latitude: float
-    longitude: float
+    latitude: float = Field(ge=-90, le=90, description="Vĩ độ phải nằm trong khoảng -90 đến 90")
+    longitude: float = Field(ge=-180, le=180, description="Kinh độ phải nằm trong khoảng -180 đến 180")
 
 class DeviationAlert(BaseModel):
     is_deviated: bool
@@ -205,11 +205,25 @@ class DeviationAlert(BaseModel):
     message: str
 
 class CheckInRequest(BaseModel):
-    latitude: float
-    longitude: float
+    latitude: float = Field(ge=-90, le=90, description="Vĩ độ phải nằm trong khoảng -90 đến 90")
+    longitude: float = Field(ge=-180, le=180, description="Kinh độ phải nằm trong khoảng -180 đến 180")
 
 class CheckInResponse(BaseModel):
     success: bool
     message: str
     stop_id: int
     progress_id: int
+
+
+class ItineraryStopResponse(BaseModel):
+    stop_id: int
+    location_id: UUID
+    arrival_time: time
+    departure_time: time
+    stop_order: int
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class ItineraryDetailResponse(ItineraryResponse):
+    """Schema chi tiết lộ trình bao gồm các trạm dừng"""
+    stops: list[ItineraryStopResponse] = []
