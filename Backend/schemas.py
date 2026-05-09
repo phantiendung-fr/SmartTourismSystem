@@ -282,11 +282,7 @@ class CreateItineraryRequest(BaseModel):
     end_date: Optional[date] = None
     location_ids: list[UUID]
 
-class ItineraryCreate(BaseModel):
-    """
-    Minimal payload to kick‑off itinerary generation.
-    The heavy lifting (stops, routes) is handled server‑side.
-    """
+
 # LOCATION SCHEMAS
 # ============================================================
 class LocationCreate(BaseModel):
@@ -353,9 +349,7 @@ class ItineraryCreate(BaseModel):
     """
     Minimal payload to kick-off itinerary generation.
     The heavy lifting (stops, routes) is handled server-side.
-
-# ITINERARY SCHEMAS
-# =====================================================    """
+    """
     city_id: int
     start_day: date
     end_day: date
@@ -399,26 +393,53 @@ class SuggestionRequest(BaseModel):
 
 class LocationOut(BaseModel):
     """Location data returned for suggestions."""
+    location_id: UUID
+    location_name: str
+    latitude: Decimal
+    longitude: Decimal
+    min_price: Decimal
+    max_price: Decimal
+    score: Optional[float] = None
+    tags: list[str] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+class SuggestionResponse(BaseModel):
+    total: int
+    locations: list[LocationOut]
+
 class ItineraryStopResponse(BaseModel):
-    """
-    Một trạm dừng kèm thông tin địa điểm.
-    Dùng cho crud_itinerary.get_itinerary_stops_with_locations() (UC7).
-    """
-    day_id: int
-    day_order: int
-    travel_date: date
+    """Một trạm dừng kèm thông tin địa điểm."""
+    day_id: Optional[int] = None
+    day_order: Optional[int] = None
+    travel_date: Optional[date] = None
     stop_id: int
     stop_order: int
     arrival_time: time
     departure_time: time
-    checkin_radius: int
-    status: StopStatus
+    checkin_radius: Optional[int] = None
+    status: Optional[StopStatus] = None
+    location_id: UUID
+    location_name: Optional[str] = None
+    latitude: Optional[Decimal] = None
+    longitude: Optional[Decimal] = None
+    open_time: Optional[time] = None
+    close_time: Optional[time] = None
 
-# =====================================================    location_id: UUID
-    location_name: str
-    latitude: Decimal
-    longitude: Decimal
-# TRACKING SCHEMAS
+    model_config = ConfigDict(from_attributes=True)
+
+class ItineraryDetailResponse(ItineraryResponse):
+    """Schema chi tiết lộ trình bao gồm các trạm dừng"""
+    stops: list[ItineraryStopResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ItineraryStatusUpdate(BaseModel):
+    """Payload để cập nhật trạng thái lộ trình."""
+    status: ItineraryStatus
+
+# ============================================================
+# TRACKING & CHECK-IN SCHEMAS
 # ============================================================
 
 class TrackingRequest(BaseModel):
@@ -442,34 +463,6 @@ class CheckInResponse(BaseModel):
     stop_id: int
     progress_id: int
 
-
-class ItineraryStopResponse(BaseModel):
-    stop_id: int
-    location_id: UUID
-    arrival_time: time
-    departure_time: time
-    stop_order: int
-    
-    model_config = ConfigDict(from_attributes=True)
-
-class ItineraryDetailResponse(ItineraryResponse):
-    """Schema chi tiết lộ trình bao gồm các trạm dừng"""
-    stops: list[ItineraryStopResponse] = []
-    open_time: time
-    close_time: time
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class ItineraryStatusUpdate(BaseModel):
-    """Payload để cập nhật trạng thái lộ trình."""
-    status: ItineraryStatus
-
-
-# ============================================================
-# TRACKING & CHECK-IN SCHEMAS
-# ============================================================
-
 class CheckinCreate(BaseModel):
     """
     Payload khi user bắt đầu check-in tại một trạm dừng.
@@ -478,7 +471,6 @@ class CheckinCreate(BaseModel):
     stop_id: int
     latitude: Decimal = Field(decimal_places=6)
     longitude: Decimal = Field(decimal_places=6)
-
 
 class CheckinResponse(BaseModel):
     """Kết quả check-in trả về cho client."""
@@ -492,7 +484,6 @@ class CheckinResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-
 class GpsLogCreate(BaseModel):
     """
     Payload ghi nhận tọa độ GPS real-time trong quá trình di chuyển.
@@ -502,7 +493,6 @@ class GpsLogCreate(BaseModel):
     latitude: Decimal = Field(decimal_places=6)
     longitude: Decimal = Field(decimal_places=6)
 
-
 class DeviationLogCreate(BaseModel):
     """
     Payload ghi nhận cảnh báo lệch lộ trình.
@@ -511,17 +501,3 @@ class DeviationLogCreate(BaseModel):
     itinerary_id: UUID
     latitude: Decimal = Field(decimal_places=6)
     longitude: Decimal = Field(decimal_places=6)
-
-    min_price: Decimal
-    max_price: Decimal
-    score: Optional[float] = None
-    tags: list[str] = []
-
-    model_config = ConfigDict(from_attributes=True)
-
-class SuggestionResponse(BaseModel):
-    total: int
-    locations: list[LocationOut]
-
-
-# =====================================================
