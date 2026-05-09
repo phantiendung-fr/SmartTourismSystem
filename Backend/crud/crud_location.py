@@ -106,7 +106,7 @@ def get_location_tags(db: Session, location_id: UUID) -> list:
 #       (SELECT locations WHERE location_id IN (?))
 # ---------------------------------------------------------------------------
 
-def get_locations_by_ids(db: Session, location_ids: list[UUID]) -> list[Locations]:
+def get_location_by_ids(db: Session, location_ids: list[UUID]) -> list[Locations]:
     """
     Lấy thông tin chi tiết của các địa điểm trong *location_ids*.
 

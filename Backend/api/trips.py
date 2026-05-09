@@ -11,7 +11,7 @@ from schemas import (
     CreateItineraryRequest, ItineraryResponse, TrackingRequest,
     CheckInRequest, CheckInResponse, DeviationAlert, ItineraryDetailResponse
 )
-from crud.crud_location import get_locations_by_ids, increment_location_checkin_count
+from crud.crud_location import get_location_by_ids, increment_location_checkin_count
 from crud.crud_trip import (
     create_itinerary, create_itinerary_day, create_itinerary_stop, create_itinerary_route,
     get_itinerary_by_id
@@ -54,7 +54,7 @@ def create_new_itinerary(
     if not request.location_ids:
         raise HTTPException(status_code=400, detail="Vui lòng chọn ít nhất 1 địa điểm để tạo lộ trình.")
 
-    locations = get_locations_by_ids(db, request.location_ids)
+    locations = get_location_by_ids(db, request.location_ids)
     found_ids = {loc.location_id for loc in locations}
     missing = [lid for lid in request.location_ids if lid not in found_ids]
     if missing:
