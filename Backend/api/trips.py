@@ -9,7 +9,8 @@ import core.security as security
 import crud.crud_user as crud_user
 from schemas import (
     CreateItineraryRequest, ItineraryResponse, TrackingRequest,
-    CheckInRequest, CheckInResponse, DeviationAlert, ItineraryDetailResponse
+    CheckInRequest, CheckInResponse, DeviationAlert, ItineraryDetailResponse,
+    ItineraryHistoryItem, MessageResponse
 )
 from crud.crud_location import get_locations_by_ids, increment_location_checkin_count
 from crud.crud_trip import (
@@ -20,8 +21,8 @@ from crud.crud_tracking import (
     get_stop_with_radius, get_checkin_by_stop, create_checkin_progress, 
     update_checkin_status, create_deviation_log, verify_stop_ownership, verify_stop_in_itinerary, create_gps_log
 )
-from crud.crud_itinerary import update_itinerary_status
-from models import Locations, ItineraryDays, ItineraryStops
+from crud.crud_itinerary import update_itinerary_status, get_itinerary_history
+from models import Locations, ItineraryDays, ItineraryStops, ItineraryStatus
 
 from core.algorithms import check_within_radius, tsp_dp_bitmask
 from core.google_maps import get_route_polyline
@@ -36,6 +37,33 @@ def get_current_user_id(db: Session, current_user_dict: dict) -> str:
         raise HTTPException(status_code=401, detail="User không tồn tại")
     return user.user_id
 
+@router.get("/history", response_model=list[ItineraryHistoryItem], summary="Xem lịch sử chuyến đi")
+def get_trip_history(
+    db: Session = Depends(get_session),
+    current_user: dict = Depends(security.verify_token)
+):
+    user_id = get_current_user_id(db, current_user)
+    history = get_itinerary_history(db, user_id=user_id)
+    return history
+
+@router.put("/{itinerary_id}/complete", response_model=MessageResponse, summary="Hoàn thành chuyến đi")
+def complete_trip(
+    itinerary_id: UUID,
+    db: Session = Depends(get_session),
+    current_user: dict = Depends(security.verify_token)
+):
+    user_id = get_current_user_id(db, current_user)
+    
+    trip = get_itinerary_by_id(db, itinerary_id)
+    if not trip or trip.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Lộ trình không tồn tại hoặc không thuộc về bạn")
+        
+    if trip.status == ItineraryStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="Chuyến đi này đã được hoàn thành")
+        
+    update_itinerary_status(db, itinerary_id=itinerary_id, new_status=ItineraryStatus.COMPLETED)
+    
+    return MessageResponse(detail="Chúc mừng bạn đã hoàn thành chuyến đi!")
 
 @router.post("/create", response_model=ItineraryResponse, summary="Tạo lộ trình mới")
 def create_new_itinerary(

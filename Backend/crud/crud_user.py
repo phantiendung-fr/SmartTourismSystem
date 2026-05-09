@@ -57,17 +57,7 @@ def get_user_by_email(db: Session, email: str) -> Optional[Users]:
     Trả về ``None`` nếu không tìm thấy.
     Columns trả về: user_id, email, passwordhash, role, status.
     """
-    statement = (
-        select(
-            Users.user_id,
-            Users.email,
-            Users.full_name,
-            Users.passwordhash,
-            Users.role,
-            Users.status,
-        )
-        .where(Users.email == email)
-    )
+    statement = select(Users).where(Users.email == email)
     return db.exec(statement).first()
 
 

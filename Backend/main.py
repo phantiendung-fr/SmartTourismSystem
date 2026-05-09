@@ -17,11 +17,14 @@ from database import create_db_and_tables
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Run startup tasks before accepting requests."""
-    # NOTE: On Supabase production, tables are managed via schema.sql.
-    # Calling create_db_and_tables() is safe for local dev only.
-    create_db_and_tables()
+    try:
+        print("🔍 Đang kiểm tra kết nối Database...")
+        create_db_and_tables()
+        print("✅ Kết nối Database và khởi tạo bảng thành công!")
+    except Exception as e:
+        print(f"❌ LỖI KẾT NỐI DATABASE: {str(e)}")
+        print("⚠️ Cảnh báo: Server vẫn chạy nhưng các chức năng liên quan đến DB sẽ lỗi.")
     yield
-    # Shutdown logic (e.g., close background tasks) goes here
 
 
 # ============================================================
@@ -41,8 +44,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # TODO: restrict in production
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

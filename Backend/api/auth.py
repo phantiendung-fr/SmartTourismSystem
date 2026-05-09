@@ -22,7 +22,8 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_session)):
         db=db, 
         full_name=user_data.full_name, 
         email=user_data.email, 
-        password=user_data.password
+        password=user_data.password,
+        status=models.UserStatus.ACTIVE
     )
     return {"message": "Đăng ký thành công", "email": new_user.email}
 

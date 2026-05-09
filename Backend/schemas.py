@@ -151,6 +151,16 @@ class ItineraryResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class ItineraryHistoryItem(BaseModel):
+    """Lịch sử chuyến đi của user"""
+    itinerary_id: UUID
+    name: Optional[str] = None
+    status: ItineraryStatus
+    total_budget: Decimal
+    total_distance: Decimal
+    create_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
 
 # ============================================================
 # GENERIC MESSAGE SCHEMA

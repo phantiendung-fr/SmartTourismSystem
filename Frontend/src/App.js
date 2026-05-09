@@ -6,6 +6,7 @@ import LoginScreen from './screens/Auth/LoginScreen';
 import Traveltrip from './screens/Travel_trip'; 
 
 import TripInputForm from './components/TripInput/TripInputForm';
+import HistoryScreen from './screens/Trip/HistoryScreen';
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState('splash'); 
@@ -72,6 +73,13 @@ function App() {
                 onRequireLogin={() => setCurrentScreen('login')} 
                 onLogout={handleLogout}
                 onOpenPlan={() => setCurrentScreen('plan')}
+                onOpenHistory={() => setCurrentScreen('history')}
+            />
+        )}
+
+        {currentScreen === 'history' && (
+            <HistoryScreen 
+                onBack={() => setCurrentScreen('home')}
             />
         )}
         

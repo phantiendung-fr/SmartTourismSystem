@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './Travel_trip.css';
 
-const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan}) => {
+const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan, onOpenHistory}) => {
 
     const [showMenu, setShowMenu] = useState(false)
     const getGreeting = () => {
@@ -68,6 +68,9 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan}) => 
                     {/* 3. Khung Menu Tác vụ */}
                     {showMenu && !isGuest && (
                         <div className="user-menu">
+                            <button className="menu-btn" onClick={onOpenHistory}>
+                                <span>📜</span> Lịch sử chuyến đi
+                            </button>
                             <button className="menu-btn">
                                 <span>⚙️</span> Cài đặt quyền riêng tư
                             </button>
