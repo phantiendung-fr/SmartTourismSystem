@@ -45,3 +45,17 @@ def revoke_session(db: Session, refresh_token: str):
         db.commit()
         return True
     return False
+
+def create_social_user(db: Session, full_name: str, email: str, social_id: str, register_type: str):
+    new_user = models.User(
+        full_name=full_name,
+        email=email,
+        social_id=social_id,
+        register_type=register_type,
+        role="USER",
+        status="ACTIVE"
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user

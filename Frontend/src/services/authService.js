@@ -67,5 +67,27 @@ export const authService = {
             return null;
         }
         return await response.json();
+    },
+
+    // 5. Đăng nhập Google
+    loginWithGoogle: async (googleToken) => {
+        const response = await fetch(`${API_URL}/google-login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                token: googleToken,
+                device_id: navigator.userAgent 
+            })
+        });
+
+        if (!response.ok) throw new Error('Đăng nhập Google thất bại');
+        
+        const data = await response.json();
+        
+        // Lưu vé vào LocalStorage
+        localStorage.setItem('access_token', data.access_token);
+        localStorage.setItem('refresh_token', data.refresh_token);
+        
+        return data;
     }
 };

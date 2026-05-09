@@ -8,7 +8,7 @@ class User(Base):
 
     user_id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String(255))
-    passwordhash = Column(String(255), nullable=False) 
+    passwordhash = Column(String(255), nullable=True) 
     email = Column(String(255), unique=True, index=True, nullable=False)
     social_id = Column(String(255), nullable=True)
     register_type = Column(String(50), default="EMAIL")
