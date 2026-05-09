@@ -275,6 +275,32 @@ class PlanningSessionResponse(BaseModel):
 # ============================================================
 # LOCATION SCHEMAS
 # ============================================================
+class LocationCreate(BaseModel):
+    """
+    Payload để doanh nghiệp đăng ký địa điểm kinh doanh mới.
+    ``address`` được dùng để gọi Google Maps Geocoding API lấy latitude/longitude.
+    Dùng cho services/location_service.register_location().
+    """
+    location_name: str = Field(max_length=255, description="Tên địa điểm kinh doanh")
+    address: str = Field(description="Địa chỉ đầy đủ — dùng để Geocode tọa độ qua Google Maps API")
+    city_id: int = Field(description="ID thành phố thuộc hệ thống")
+    open_time: time = Field(description="Giờ mở cửa (HH:MM:SS)")
+    close_time: time = Field(description="Giờ đóng cửa (HH:MM:SS) — phải sau open_time")
+    min_price: Decimal = Field(ge=0, decimal_places=2, description="Giá tối thiểu (>= 0)")
+    max_price: Decimal = Field(ge=0, decimal_places=2, description="Giá tối đa (>= min_price)")
+    currency: CurrencyEnum = Field(default=CurrencyEnum.VND)
+    category_ids: list[int] = Field(default_factory=list, description="Danh sách category_id")
+    tag_ids: list[int] = Field(default_factory=list, description="Danh sách tag_id")
+
+class LocationRegisterResponse(BaseModel):
+    """
+    Phản hồi sau khi doanh nghiệp đăng ký địa điểm thành công.
+    Bao gồm thông tin địa điểm vừa tạo kèm thông báo chờ duyệt.
+    """
+    location: LocationResponse
+    message: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 class LocationResponse(BaseModel):
     """
@@ -285,6 +311,7 @@ class LocationResponse(BaseModel):
     location_name: str
     latitude: Decimal
     longitude: Decimal
+    city_id: int
     min_price: Decimal
     max_price: Decimal
     currency: CurrencyEnum
