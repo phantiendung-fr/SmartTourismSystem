@@ -3,11 +3,11 @@ const API_URL = 'http://127.0.0.1:8000/api/auth';
 
 export const authService = {
     // 1. Đăng ký
-    register: async (fullName, email, password) => {
+    register: async (fullName, email, password, role) => {
         const response = await fetch(`${API_URL}/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ full_name: fullName, email: email, password: password })
+            body: JSON.stringify({ full_name: fullName, email: email, password: password, register_type: "EMAIL", role })
         });
         if (!response.ok) throw new Error('Đăng ký thất bại hoặc email đã tồn tại');
         return await response.json();

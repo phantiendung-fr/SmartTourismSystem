@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import './Travel_trip.css';
 
-const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan}) => {
+const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan, onOpenLocationRegister}) => {
 
     const [showMenu, setShowMenu] = useState(false)
     const getGreeting = () => {
-        const currentHour = new Date().getHours(); // Lấy giờ hiện tại từ 0 đến 23
+        const currentHour = new Date().getHours(); 
 
         if (currentHour < 12) {
             return 'Chào buổi sáng,';
@@ -16,7 +16,7 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan}) => 
         }
     };
 
-    // Giả lập dữ liệu các chuyến đi (Sau này bạn sẽ lấy từ API Backend)
+    // Giả lập dữ liệu các chuyến đi
     const featuredTours = [
         {
             id: 1,
@@ -46,97 +46,146 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan}) => 
 
     return (
         <div className="home-container" style={{ position: 'relative' }}>
-            <div className="header">
-                <div className="greeting">
-                    <p>{isGuest ? 'Chào bạn mới,' : getGreeting()}</p>
-                    <h2>{isGuest ? 'Khách du lịch 🎒' : `${user?.full_name || 'Bạn'} 🎒`}</h2>
-                </div>
-                
-                <div style={{ position: 'relative' }}> {/* Bọc ảnh để làm menu tuyệt đối */}
-                    {isGuest ? (
-                        <button onClick={onRequireLogin} className="login-btn-guest">Đăng nhập</button>
-                    ) : (
-                        <img 
-                            src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150" 
-                            alt="Avatar" 
-                            className="avatar" 
-                            onClick={() => setShowMenu(!showMenu)} // 2. Nhấp vào để bật/tắt menu
-                            style={{ cursor: 'pointer' }}
-                        />
-                    )}
-
-                    {/* 3. Khung Menu Tác vụ */}
-                    {showMenu && !isGuest && (
-                        <div className="user-menu">
-                            <button className="menu-btn">
-                                <span>⚙️</span> Cài đặt quyền riêng tư
-                            </button>
-                            <button className="menu-btn">
-                                <span>❓</span> Trợ giúp và hỗ trợ
-                            </button>
-                            <button className="menu-btn">
-                                <span>💬</span> Đóng góp ý kiến
-                            </button>
-                            
-                            {/* Nút Đăng xuất nổi bật */}
-                            <button 
-                                className="menu-btn logout-btn" 
-                                onClick={onLogout}
-                            >
-                                <span>🚪</span> Đăng xuất
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Thanh Tìm Kiếm */}
-            <div className="search-bar">
-                <span>🔍</span>
-                <input type="text" placeholder="Bạn muốn đi đâu hôm nay?" />
-            </div>
-
-<div style={{ 
-                background: 'linear-gradient(135deg, #0abde3 0%, #22a6b3 100%)', 
-                padding: '20px', 
-                borderRadius: '20px', 
-                color: 'white', 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                marginBottom: '25px',
-                boxShadow: '0 8px 20px rgba(10, 189, 227, 0.3)'
-            }}>
-                <div>
-                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Chưa biết đi đâu?</h3>
-                    <p style={{ margin: '5px 0 0', fontSize: '14px', opacity: 0.9 }}>Để hệ thống tạo lộ trình riêng</p>
-                </div>
-                <button 
-                    onClick={onOpenPlan} // Khi bấm sẽ gọi lệnh chuyển trang
-                    style={{ background: 'white', color: '#0abde3', border: 'none', padding: '12px 18px', borderRadius: '14px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}
-                >
-                    Bắt đầu 🚀
-                </button>
-            </div>
             
-            {/* Danh sách Tour Phổ Biến */}
-            <div className="section-title">
-                Khám phá địa điểm <span>Xem tất cả</span>
-            </div>
-
-            <div className="card-scroller">
-                {featuredTours.map((tour) => (
-                    <div className="tour-card" key={tour.id}>
-                        <img src={tour.image} alt={tour.title} className="tour-image" />
-                        <h3 className="tour-title">{tour.title}</h3>
-                        <p className="tour-location">📍 {tour.location}</p>
-                        
-                        <div className="tour-footer">
-                            <div className="tour-price">{tour.price} <span>/người</span></div>
-                            <div className="tour-rating">{tour.rating}</div>
-                        </div>
+            {/* =========================================================
+                KHU VỰC ĐƯỢC GHIM CỐ ĐỊNH Ở TRÊN CÙNG (STICKY HEADER) 
+            ============================================================= */}
+            <div style={{
+                position: 'sticky',
+                top: 0,
+                zIndex: 100,
+                backgroundColor: '#ffffff', // Nền trắng để che nội dung cuộn bên dưới
+                paddingTop: '20px',
+                paddingBottom: '2px',
+                marginTop: '-20px',      // Bù trừ khoảng cách để tràn viền sát góc trên
+                marginLeft: '-20px',
+                marginRight: '-20px',
+                paddingLeft: '20px',
+                paddingRight: '10px',
+            }}>
+                <div className="header">
+                    <div className="greeting">
+                        <p>{isGuest ? 'Chào bạn mới,' : getGreeting()}</p>
+                        <h2>{isGuest ? 'Khách du lịch 🎒' : `${user?.full_name || 'Bạn'} 🎒`}</h2>
                     </div>
-                ))}
+                    
+                    <div style={{ position: 'relative' }}>
+                        {isGuest ? (
+                            <button onClick={onRequireLogin} className="login-btn-guest">Đăng nhập</button>
+                        ) : (
+                            <img 
+                                src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150" 
+                                alt="Avatar" 
+                                className="avatar" 
+                                onClick={() => setShowMenu(!showMenu)} 
+                                style={{ cursor: 'pointer' }}
+                            />
+                        )}
+
+                        {/* Khung Menu Tác vụ */}
+                        {showMenu && !isGuest && (
+                            <div className="user-menu">
+                                <button className="menu-btn">
+                                    <span>⚙️</span> Cài đặt quyền riêng tư
+                                </button>
+                                <button className="menu-btn">
+                                    <span>❓</span> Trợ giúp và hỗ trợ
+                                </button>
+                                <button className="menu-btn">
+                                    <span>💬</span> Đóng góp ý kiến
+                                </button>
+                                
+                                <button 
+                                    className="menu-btn logout-btn" 
+                                    onClick={onLogout}
+                                >
+                                    <span>🚪</span> Đăng xuất
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Thanh Tìm Kiếm */}
+                <div className="search-bar" style={{ marginTop: '1px' }}>
+                    <span>🔍</span>
+                    <input type="text" placeholder="Bạn muốn đi đâu hôm nay?" style={{ backgroundColor: '#f1f2f6' }} />
+                </div>
+            </div>
+            {/* ============ KẾT THÚC KHU VỰC GHIM CỐ ĐỊNH ============ */}
+
+            
+            {/* CÁC PHẦN BÊN DƯỚI NÀY SẼ TỰ DO CUỘN (SCROLL) */}
+            <div style={{ paddingTop: '10px' }}>
+                {/* Banner tạo lộ trình */}
+                <div style={{ 
+                    background: 'linear-gradient(135deg, #0abde3 0%, #22a6b3 100%)', 
+                    padding: '20px', 
+                    borderRadius: '20px', 
+                    color: 'white', 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    marginBottom: '20px',
+                    boxShadow: '0 8px 20px rgba(10, 189, 227, 0.3)'
+                }}>
+                    <div>
+                        <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Chưa biết đi đâu?</h3>
+                        <p style={{ margin: '5px 0 0', fontSize: '14px', opacity: 0.9 }}>Để hệ thống tạo lộ trình riêng</p>
+                    </div>
+                    <button 
+                        onClick={onOpenPlan} 
+                        style={{ background: 'white', color: '#0abde3', border: 'none', padding: '12px 18px', borderRadius: '14px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}
+                    >
+                        Bắt đầu 🚀
+                    </button>
+                </div>
+
+                {/* Banner dành riêng cho Doanh Nghiệp (Chỉ hiện khi role là ENTERPRISE) */}
+                {!isGuest && user?.role === 'ENTERPRISE' && (
+                    <div style={{ 
+                        background: 'linear-gradient(135deg, #f0932b 0%, #ffbe76 100%)', 
+                        padding: '20px', 
+                        borderRadius: '20px', 
+                        color: 'white', 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        marginBottom: '25px',
+                        boxShadow: '0 8px 20px rgba(240, 147, 43, 0.3)'
+                    }}>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Kênh Doanh Nghiệp</h3>
+                            <p style={{ margin: '5px 0 0', fontSize: '14px', opacity: 0.9 }}>Thêm địa điểm kinh doanh mới</p>
+                        </div>
+                        <button 
+                            onClick={onOpenLocationRegister} 
+                            style={{ background: 'white', color: '#f0932b', border: 'none', padding: '12px 18px', borderRadius: '14px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}
+                        >
+                            + Thêm Mới
+                        </button>
+                    </div>
+                )}
+                
+                {/* Danh sách Tour Phổ Biến */}
+                <div className="section-title">
+                    Khám phá địa điểm <span>Xem tất cả</span>
+                </div>
+
+                <div className="card-scroller">
+                    {featuredTours.map((tour) => (
+                        <div className="tour-card" key={tour.id}>
+                            <img src={tour.image} alt={tour.title} className="tour-image" />
+                            <h3 className="tour-title">{tour.title}</h3>
+                            <p className="tour-location">📍 {tour.location}</p>
+                            
+                            <div className="tour-footer">
+                                <div className="tour-price">{tour.price} <span>/người</span></div>
+                                <div className="tour-rating">{tour.rating}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );

@@ -3,9 +3,11 @@ import SplashScreen from './screens/SplashScreen';
 import WelcomeScreen from './screens/WelcomeScreen';
 import RegisterScreen from './screens/Auth/RegisterScreen'; 
 import LoginScreen from './screens/Auth/LoginScreen';
-import Traveltrip from './screens/Travel_trip'; 
+// import Traveltrip from './screens/Travel_trip'; 
 
 import TripInputForm from './components/TripInput/TripInputForm';
+import LocationRegister from './components/LocationRegister/LocationRegister';
+import MainTabs from './components/MainTabs';
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState('splash'); 
@@ -28,7 +30,19 @@ function App() {
 
   return (
     <div style={{ backgroundColor: '#e4e5e6', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      <div style={{ width: '390px', height: '844px', backgroundColor: '#fff', borderRadius: '40px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', overflow: 'hidden', position: 'relative', overflowY: 'auto' }}>
+      <div style={{
+        width: '390px', 
+        height: '844px', 
+        backgroundColor: '#fff', 
+        borderRadius: '40px', 
+        boxShadow: '0 20px 40px rgba(0,0,0,0.2)', 
+        overflow: 'hidden', 
+        position: 'relative', 
+        overflowY: 'auto',
+        transform: 'scale(0.8)', 
+        transformOrigin: 'center',
+        msOverflowStyle: 'none', scrollbarWidth: 'none'
+        }}>
         
         {currentScreen === 'splash' && <SplashScreen onFinish={() => setCurrentScreen('welcome')} />}
 
@@ -38,7 +52,7 @@ function App() {
                 onCreateAccount={() => setCurrentScreen('register')}
                 onSkip={() => {
                     setIsGuest(true); // Bấm Skip thì đánh dấu là Khách
-                    setCurrentScreen('home');
+                    setCurrentScreen('main');
                 }} 
             />
         )}
@@ -52,7 +66,7 @@ function App() {
                 onLoginSuccess={(userData) => {
                     setIsGuest(false);
                     setCurrentUser(userData); // Cất vào hộp
-                    setCurrentScreen('home');
+                    setCurrentScreen('main');
                 }}
             />
         )}
@@ -65,13 +79,14 @@ function App() {
             />
         )}
 
-        {currentScreen === 'home' && (
-            <Traveltrip 
-                isGuest={isGuest} 
-                user={currentUser} // 3. Giao cái hộp đó cho Trang chủ
-                onRequireLogin={() => setCurrentScreen('login')} 
+        {currentScreen === 'main' && (
+            <MainTabs 
+                user={currentUser} 
+                isGuest={isGuest}
+                onRequireLogin={() => setCurrentScreen('login')}
                 onLogout={handleLogout}
                 onOpenPlan={() => setCurrentScreen('plan')}
+                onOpenLocationRegister={() => setCurrentScreen('register_location')}
             />
         )}
         
@@ -87,6 +102,14 @@ function App() {
                 }}
             />
         )}
+
+        {currentScreen === 'register_location' && (
+            <LocationRegister 
+                // Truyền hàm onBack để form có nút quay lại trang chủ
+                onBack={() => setCurrentScreen('home')} 
+            />
+        )}
+
       </div>
     </div>
   );

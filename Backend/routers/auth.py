@@ -12,17 +12,20 @@ router = APIRouter()
 
 @router.post("/register")
 def register(user_data: schemas.UserCreate, db: Session = Depends(get_session)):
-    # Dùng crud_auth để tìm user (vì hàm này nằm trong crud_auth.py)
+    # 1. Kiểm tra user tồn tại (giữ nguyên)
     existing_user = crud_auth.get_user_by_email(db, email=user_data.email)
     if existing_user:
         raise HTTPException(status_code=400, detail="Email này đã được đăng ký")
     
-    # crud_user chứa hàm tạo user mới
+    # 2. Sửa đoạn này: Truyền thêm register_type và ép status thành "ACTIVE"
     new_user = crud_user.create_user(
         db, 
         full_name=user_data.full_name, 
         email=user_data.email, 
-        password=user_data.password
+        password=user_data.password,
+        register_type=user_data.register_type, # Lấy từ Frontend gửi lên (EMAIL)
+        role=user_data.role,
+        status="ACTIVE"                        # Đổi từ PENDING thành ACTIVE để login được ngay
     )
     return {"message": "Đăng ký thành công", "email": new_user.email}
 

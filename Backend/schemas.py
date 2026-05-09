@@ -48,6 +48,7 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=8, description="Mật khẩu tối thiểu 8 ký tự")
     full_name: str = Field(max_length=100)
     register_type: RegisterType = RegisterType.EMAIL
+    role: str = "USER"
 
 
 class UserLogin(BaseModel):

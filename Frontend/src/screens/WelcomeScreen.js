@@ -8,8 +8,8 @@ const WelcomeScreen = ({ onSignIn, onCreateAccount, onSkip }) => {
 
             {/* Khối hình ảnh ghép */}
             <div className="collage">
-                <img src="https://images.unsplash.com/photo-1501555088652-021faa106b81?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="Hiker" className="img-1" />
-                <img src="https://images.unsplash.com/photo-1506744626753-dba37c152cfd?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="Lake" className="img-2" />
+                <img src="https://images.unsplash.com/photo-1551632811-561732d1e306?w=400" alt="Hiker" className="img-1" />
+                <img src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=400" alt="Lake" className="img-2" />
                 <img src="https://images.unsplash.com/photo-1518684079-3c830dcef090?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" alt="City" className="img-3" />
             </div>
 

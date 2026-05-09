@@ -1,0 +1,58 @@
+/* src/components/MainTabs.css */
+.main-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+    background-color: #f8f9fa; /* Màu nền app hơi xám nhẹ để nổi bật nội dung trắng */
+}
+
+.content-area {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 80px; /* Chừa khoảng trống cho thanh menu không đè lên nội dung */
+}
+
+.bottom-nav {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 70px;
+    background: #ffffff;
+    border-top: 1px solid #f1f2f6;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+    border-radius: 0 0 40px 40px; /* Bo góc khớp với khung điện thoại của bạn */
+    z-index: 1000;
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 20%;
+    color: #a4b0be; /* Màu xám cho tab chưa chọn */
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.nav-item:hover {
+    color: #7bed9f;
+}
+
+.nav-item.active {
+    color: #00a8ff; /* Màu Xanh dương chủ đạo cho tab đang chọn */
+    transform: translateY(-2px); /* Hiệu ứng nảy nhẹ lên */
+}
+
+.nav-icon {
+    margin-bottom: 4px;
+}
+
+.nav-label {
+    font-size: 10px;
+    font-weight: 700;
+}
