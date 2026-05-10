@@ -82,6 +82,7 @@ def create_session_preferences(
 ) -> list[TravelRequestPreferences]:
     """
     Lưu danh sách tag sở thích cho một phiên lập kế hoạch.
+    Tự động bỏ qua các tag_id không tồn tại trong bảng tags.
 
     Parameters
     ----------
@@ -93,12 +94,21 @@ def create_session_preferences(
     list[TravelRequestPreferences]
         Các bản ghi vừa được tạo.
     """
+    from models import Tags
+
+    # Validate: only keep tag_ids that actually exist in the tags table
+    existing_tags = db.exec(select(Tags.tag_id).where(Tags.tag_id.in_(tag_ids))).all()
+    valid_tag_ids = set(existing_tags)
+
     rows: list[TravelRequestPreferences] = []
     for tag_id in tag_ids:
+        if tag_id not in valid_tag_ids:
+            continue  # Skip invalid tag_id silently
         row = TravelRequestPreferences(session_id=session_id, tag_id=tag_id)
         db.add(row)
         rows.append(row)
-    db.commit()
+    if rows:
+        db.commit()
     return rows
 
 

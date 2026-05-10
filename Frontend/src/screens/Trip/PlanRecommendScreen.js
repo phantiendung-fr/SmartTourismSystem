@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { createPlanningSession, getRecommendations } from '../../services/planService';
 import { createTrip } from '../../services/tripService';
-import './PlanRecommendScreen.css'; // We'll create a basic CSS file
+import './PlanRecommendScreen.css';
 
-const MOCK_TAGS_MAP = {
-    1: 'Biển', 2: 'Núi', 3: 'Ẩm thực', 4: 'Sống ảo', 5: 'Nghỉ dưỡng', 6: 'Mạo hiểm'
-};
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated }) => {
     const [loading, setLoading] = useState(true);
@@ -25,8 +23,17 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated }) => {
                 const sessionRes = await createPlanningSession(planPayload, token);
                 setSessionData(sessionRes);
 
-                // 2. Lấy gợi ý
-                const preferred_tags = planPayload.tag_ids.map(id => MOCK_TAGS_MAP[id]).filter(Boolean);
+                // 2. Lấy tag names từ backend để map tag_ids -> tag_names
+                let preferred_tags = [];
+                try {
+                    const tagsRes = await fetch(`${API_BASE}/api/reference/tags`);
+                    const tagsData = await tagsRes.json();
+                    const tagMap = {};
+                    tagsData.forEach(t => { tagMap[t.tag_id] = t.tag_name; });
+                    preferred_tags = planPayload.tag_ids.map(id => tagMap[id]).filter(Boolean);
+                } catch (e) {
+                    console.warn("Không thể lấy danh sách tags, bỏ qua preferred_tags");
+                }
                 const suggestPayload = {
                     city_id: planPayload.city_id,
                     budget: planPayload.budget,

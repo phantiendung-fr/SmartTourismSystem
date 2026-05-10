@@ -22,7 +22,7 @@ from crud.crud_tracking import (
     update_checkin_status, create_deviation_log, verify_stop_ownership, verify_stop_in_itinerary, create_gps_log
 )
 from crud.crud_itinerary import update_itinerary_status, get_itinerary_history
-from models import Locations, ItineraryDays, ItineraryStops, ItineraryStatus
+from models import Locations, ItineraryDays, ItineraryStops, ItineraryStatus, DeviationLogs
 
 from core.algorithms import check_within_radius, tsp_dp_bitmask
 from core.google_maps import get_route_polyline
@@ -69,6 +69,38 @@ def complete_trip(
     update_itinerary_status(db, itinerary_id=itinerary_id, new_status=ItineraryStatus.COMPLETED)
     
     return MessageResponse(detail="Chúc mừng bạn đã hoàn thành chuyến đi!")
+
+@router.get("/{itinerary_id}/deviation-status", response_model=DeviationAlert, summary="Kiểm tra trạng thái lệch hướng")
+def get_deviation_status(
+    itinerary_id: UUID,
+    db: Session = Depends(get_session),
+):
+    """
+    Kiểm tra xem lộ trình có bản ghi lệch hướng gần đây (trong 5 phút) không.
+    Frontend gọi endpoint này khi nhấn Refresh.
+    """
+    from datetime import timezone
+    five_min_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=5)
+    
+    statement = (
+        select(DeviationLogs)
+        .where(DeviationLogs.itinerary_id == itinerary_id)
+        .where(DeviationLogs.alert_time >= five_min_ago)
+        .order_by(DeviationLogs.alert_time.desc())
+    )
+    recent = db.exec(statement).first()
+    
+    if recent:
+        return DeviationAlert(
+            is_deviated=True,
+            distance_to_target=0,
+            message="Cảnh báo: Bạn đang đi lệch khỏi lộ trình!"
+        )
+    return DeviationAlert(
+        is_deviated=False,
+        distance_to_target=0,
+        message="Bạn đang đi đúng hướng"
+    )
 
 @router.post("/create", response_model=ItineraryResponse, summary="Tạo lộ trình mới")
 def create_new_itinerary(

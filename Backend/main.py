@@ -63,7 +63,7 @@ app.add_middleware(
 # app.include_router(itineraries.router, prefix="/api/v1/itineraries", tags=["Itineraries"])
 
 from routers import auth, enterprise, location_router
-from api import planning, locations, trips
+from api import planning, locations, trips, reference
 
 app.include_router(auth.router, prefix="/api/auth")
 app.include_router(enterprise.router, prefix="/api")
@@ -71,6 +71,7 @@ app.include_router(location_router.router, prefix="/api/v1")
 app.include_router(planning.router)
 app.include_router(locations.router)
 app.include_router(trips.router)
+app.include_router(reference.router)
 
 # ============================================================
 # Health check

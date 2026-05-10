@@ -1,32 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './TripInputForm.css';
 
-const MOCK_CITIES = [
-    { id: 1, name: 'Hà Nội' },
-    { id: 2, name: 'Thành phố Hồ Chí Minh' },
-    { id: 3, name: 'Thừa Thiên Huế' },
-    { id: 4, name: 'Hội An' },
-    { id: 5, name: 'Đà Lạt' },
-    { id: 6, name: 'Đà Nẵng' },
-    { id: 7, name: 'Nha Trang' },
-    { id: 8, name: 'Hạ Long' },
-    { id: 9, name: 'Ninh Bình' },
-    { id: 10, name: 'Phú Quốc' }
-];
-
-const MOCK_TAGS = [
-    { id: 1, name: 'Biển' },
-    { id: 2, name: 'Núi' },
-    { id: 3, name: 'Ẩm thực' },
-    { id: 4, name: 'Sống ảo' },
-    { id: 5, name: 'Nghỉ dưỡng' },
-    { id: 6, name: 'Mạo hiểm' }
-];
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 // Nhận vào hàm onSubmit từ component cha 
 const TripInputForm = ({ onSubmitPlan }) => {
     // State quản lý bước hiện tại 
     const [step, setStep] = useState(1);
+
+    // Fetched from backend
+    const [cities, setCities] = useState([]);
+    const [tags, setTags] = useState([]);
+
+    useEffect(() => {
+        // Fetch cities
+        fetch(`${API_BASE}/api/reference/cities`)
+            .then(res => res.json())
+            .then(data => {
+                setCities(data);
+                // Set default city_id to first city if available
+                if (data.length > 0) {
+                    setTripData(prev => ({ ...prev, city_id: data[0].city_id }));
+                }
+            })
+            .catch(err => console.error("Lỗi khi lấy danh sách thành phố:", err));
+
+        // Fetch tags
+        fetch(`${API_BASE}/api/reference/tags`)
+            .then(res => res.json())
+            .then(data => setTags(data))
+            .catch(err => console.error("Lỗi khi lấy danh sách tag:", err));
+    }, []);
 
     const getTodayStr = () => {
         const today = new Date();
@@ -35,7 +39,7 @@ const TripInputForm = ({ onSubmitPlan }) => {
 
     // State tổng chứa toàn bộ DỮ LIỆU ĐẦU VÀO để giao cho Backend
     const [tripData, setTripData] = useState({
-        city_id: 1, // Default to Ha Noi
+        city_id: '', // Will be set after cities are fetched
         start_day: getTodayStr(),
         days: 1, // Will be used to calculate end_day
         pax_adult: 1,
@@ -96,8 +100,9 @@ const TripInputForm = ({ onSubmitPlan }) => {
                             onChange={(e) => handleChange('city_id', parseInt(e.target.value))}
                             style={{ padding: '12px', borderRadius: '8px', border: '1px solid #ccc', fontSize: '16px' }}
                         >
-                            {MOCK_CITIES.map(city => (
-                                <option key={city.id} value={city.id}>{city.name}</option>
+                            {cities.length === 0 && <option value="">Đang tải...</option>}
+                            {cities.map(city => (
+                                <option key={city.city_id} value={city.city_id}>{city.city_name}</option>
                             ))}
                         </select>
                     </div>
@@ -162,13 +167,14 @@ const TripInputForm = ({ onSubmitPlan }) => {
                 <div className="step-content">
                     <h3 className="wizard-title">Phong cách du lịch</h3>
                     <div className="tags-container">
-                        {MOCK_TAGS.map(tag => (
+                        {tags.length === 0 && <p style={{color: '#636e72', fontSize: '14px'}}>Chưa có tag nào trong hệ thống.</p>}
+                        {tags.map(tag => (
                             <button 
-                                key={tag.id}
-                                className={`tag-btn ${tripData.tag_ids.includes(tag.id) ? 'selected' : ''}`}
-                                onClick={() => togglePreference(tag.id)}
+                                key={tag.tag_id}
+                                className={`tag-btn ${tripData.tag_ids.includes(tag.tag_id) ? 'selected' : ''}`}
+                                onClick={() => togglePreference(tag.tag_id)}
                             >
-                                {tag.name}
+                                {tag.tag_name}
                             </button>
                         ))}
                     </div>

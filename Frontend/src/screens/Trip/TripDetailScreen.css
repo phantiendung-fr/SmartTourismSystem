@@ -17,6 +17,7 @@
     margin: 0;
     font-size: 22px;
     color: #2d3436;
+    flex: 1;
 }
 
 .btn-back-icon {
@@ -27,13 +28,76 @@
     padding: 5px;
 }
 
+.btn-refresh {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 5px;
+    transition: transform 0.3s;
+}
+
+.btn-refresh:hover {
+    transform: rotate(180deg);
+}
+
+/* Deviation Status Badge */
+.deviation-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 700;
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+.deviation-badge.on-track {
+    background: #e8f8f5;
+    color: #00b894;
+    border: 1.5px solid #00b894;
+}
+
+.deviation-badge.deviated {
+    background: #ffeaea;
+    color: #e74c3c;
+    border: 1.5px solid #e74c3c;
+    animation: pulse-red 1.5s infinite;
+}
+
+.badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.on-track .badge-dot {
+    background: #00b894;
+    box-shadow: 0 0 6px rgba(0, 184, 148, 0.5);
+}
+
+.deviated .badge-dot {
+    background: #e74c3c;
+    box-shadow: 0 0 6px rgba(231, 76, 60, 0.5);
+}
+
+@keyframes pulse-red {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.2); }
+    50% { box-shadow: 0 0 0 6px rgba(231, 76, 60, 0); }
+}
+
+/* Trip Summary */
 .trip-summary {
     display: flex;
     justify-content: space-between;
     background: white;
     padding: 15px;
     border-radius: 12px;
-    margin-bottom: 25px;
+    margin-bottom: 15px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.05);
 }
 
@@ -65,6 +129,110 @@
     font-size: 14px;
 }
 
+/* Color Legend */
+.color-legend {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 10px 15px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #636e72;
+}
+
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.legend-blue { background: #0abde3; }
+.legend-orange { background: #f39c12; }
+.legend-green { background: #00b894; }
+
+/* Check-in Section */
+.checkin-section {
+    background: white;
+    border-radius: 12px;
+    padding: 12px 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-left: 4px solid #f39c12;
+}
+
+.checkin-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.checkin-info span {
+    font-size: 22px;
+}
+
+.checkin-info small {
+    font-size: 10px;
+    color: #636e72;
+    display: block;
+}
+
+.checkin-info strong {
+    font-size: 14px;
+    color: #2d3436;
+}
+
+.btn-checkin-main {
+    background: linear-gradient(135deg, #00b894, #55efc4);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform 0.2s;
+}
+
+.btn-checkin-main:hover:not(:disabled) {
+    transform: scale(1.05);
+}
+
+.btn-checkin-main:disabled {
+    background: #b2bec3;
+    cursor: not-allowed;
+}
+
+.checkin-toast {
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    animation: fadeSlide 0.3s ease;
+}
+
+@keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Itinerary */
 .trip-itinerary h3 {
     margin-bottom: 15px;
     color: #2d3436;
@@ -134,12 +302,26 @@
     padding-bottom: 15px;
 }
 
+/* Stop Card — default (blue) */
 .stop-card {
     background: white;
     padding: 12px 15px;
     border-radius: 10px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.03);
     border-left: 4px solid #0abde3;
+    transition: all 0.3s ease;
+}
+
+/* Next stop — orange */
+.stop-card.stop-next {
+    border-left-color: #f39c12;
+    background: #fef9e7;
+}
+
+/* Checked in — green */
+.stop-card.stop-completed {
+    border-left-color: #00b894;
+    background: #e8f8f5;
 }
 
 .stop-card h4 {
@@ -154,6 +336,14 @@
     color: #636e72;
 }
 
+.stop-id-label {
+    margin-top: 4px !important;
+    font-size: 10px !important;
+    color: #b2bec3 !important;
+    font-family: monospace;
+}
+
+/* Loading / Error */
 .loading, .error {
     display: flex;
     flex-direction: column;
