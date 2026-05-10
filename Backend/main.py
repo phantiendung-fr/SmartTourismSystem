@@ -41,7 +41,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # TODO: restrict in production
+    # Sửa ["*"] thành đích danh cổng 3000 và 3001
+    allow_origins=["http://localhost:3000", "http://localhost:3001"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -58,7 +59,6 @@ app.add_middleware(
 # app.include_router(itineraries.router, prefix="/api/v1/itineraries", tags=["Itineraries"])
 from routers import auth, enterprise # Import router vừa tạo
 
-app = FastAPI()
 
 app.include_router(auth.router, prefix="/api/auth")
 app.include_router(enterprise.router, prefix="/api")
