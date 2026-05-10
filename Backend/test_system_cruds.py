@@ -176,21 +176,22 @@ def run():
             print("\n--- TEST SYSTEM (Settings & Export) ---")
             
             # Test Settings
+            unique_key = f"TEST_MAX_API_LIMIT_{uuid4().hex[:6]}"
             test_setting = SystemSettings(
-                config_key="TEST_MAX_API_LIMIT",
+                config_key=unique_key,
                 config_value="1000",
                 updated_by=test_user.user_id
             )
             db.add(test_setting)
             db.commit()
-            cleanup_ids["setting_key"] = "TEST_MAX_API_LIMIT"
+            cleanup_ids["setting_key"] = unique_key
             
-            fetched_setting = get_system_setting(db, "TEST_MAX_API_LIMIT")
+            fetched_setting = get_system_setting(db, unique_key)
             if fetched_setting:
                 print(f"✅ get_system_setting: key = {fetched_setting.config_key}, value = {fetched_setting.config_value}")
             
             # Test Export Histories
-            export_log = create_export_history(db, test_user.user_id, ExportFormat.PDF, "https://s3.example.com/file.pdf")
+            export_log = create_export_history(db, test_user.user_id, ExportFormat.pdf, "https://s3.example.com/file.pdf")
             cleanup_ids["export_id"] = export_log.export_id
             print(f"✅ create_export_history: export_id = {export_log.export_id}, status = {export_log.status}")
             

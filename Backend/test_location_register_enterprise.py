@@ -7,7 +7,8 @@ import httpx, json, sys
 
 BASE_URL = "http://127.0.0.1:8000"
 ENDPOINT = f"{BASE_URL}/api/v1/locations/register"
-TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjYmU4MmZhZC0wYTFiLTRlZDctODE2ZC1hYTZiMjY4YmM1NzgiLCJyb2xlIjoiRU5URVJQUklTRSIsImV4cCI6MTc3ODMwMzUwOX0.vE-iJrJswHyMxRWEpO3bsD9j7d273wG1FPQUkgq8-T8"
+from core.security import create_access_token
+TOKEN = create_access_token({"sub": "cbe82fad-0a1b-4ed7-816d-aa6b268bc578", "role": "ENTERPRISE"})
 HEADERS = {"Authorization": f"Bearer {TOKEN}"}
 GREEN, RED, CYAN, RESET, BOLD = "\033[92m", "\033[91m", "\033[96m", "\033[0m", "\033[1m"
 passed = failed = 0
