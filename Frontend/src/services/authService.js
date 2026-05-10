@@ -5,11 +5,11 @@ const API_URL = `${API_BASE}/api/auth`;
 
 export const authService = {
     // 1. Đăng ký
-    register: async (fullName, email, password) => {
+    register: async (fullName, email, password, role) => {
         const response = await fetch(`${API_URL}/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ full_name: fullName, email: email, password: password })
+            body: JSON.stringify({ full_name: fullName, email: email, password: password, register_type: "EMAIL", role })
         });
         if (!response.ok) throw new Error('Đăng ký thất bại hoặc email đã tồn tại');
         return await response.json();
@@ -69,5 +69,27 @@ export const authService = {
             return null;
         }
         return await response.json();
+    },
+
+    // 5. Đăng nhập Google
+    loginWithGoogle: async (googleToken) => {
+        const response = await fetch(`${API_URL}/google-login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                token: googleToken,
+                device_id: navigator.userAgent 
+            })
+        });
+
+        if (!response.ok) throw new Error('Đăng nhập Google thất bại');
+        
+        const data = await response.json();
+        
+        // Lưu vé vào LocalStorage
+        localStorage.setItem('access_token', data.access_token);
+        localStorage.setItem('refresh_token', data.refresh_token);
+        
+        return data;
     }
 };

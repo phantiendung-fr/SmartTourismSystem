@@ -118,12 +118,15 @@ class Users(SQLModel, table=True):
 
     user_id: UUID = Field(default_factory=uuid4, primary_key=True)
     full_name: str = Field(max_length=100)
-    passwordhash: str = Field(max_length=255)
+    
+    # Đã sửa thành Optional để hỗ trợ Đăng nhập Google không cần mật khẩu
+    passwordhash: Optional[str] = Field(default=None, max_length=255) 
+    
     email: str = Field(max_length=255, unique=True, index=True)
     social_id: Optional[str] = Field(default=None, max_length=255)
     register_type: RegisterType
     role: UserRole = Field(default=UserRole.USER)
-    status: UserStatus = Field(default=UserStatus.PENDING)
+    status: UserStatus = Field(default=UserStatus.PENDING) # Hoặc đổi thành ACTIVE tùy logic của bạn
     create_at: datetime = Field(default_factory=datetime.utcnow)
     update_at: datetime = Field(default_factory=datetime.utcnow)
 

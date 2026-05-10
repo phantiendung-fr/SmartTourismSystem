@@ -1,0 +1,98 @@
+/* src/components/LocationRegister.css */
+
+.register-container {
+    max-width: 48rem; /* ~768px */
+    margin: 2.5rem auto;
+    padding: 2rem;
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+}
+
+.register-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-align: center;
+    color: #2563eb; /* Màu xanh blue-600 */
+    margin-bottom: 1.5rem;
+}
+
+.alert-message {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 0.375rem;
+}
+
+.alert-success {
+    background-color: #d1fae5;
+    color: #047857;
+}
+
+.alert-error {
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+
+.form-section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.25rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    box-sizing: border-box; /* Đảm bảo input không bị tràn viền */
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 1px #3b82f6;
+}
+
+/* Chia 2 cột cho phần thời gian/giá */
+.grid-2-cols {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    color: white;
+    font-weight: bold;
+    border-radius: 0.375rem;
+    border: none;
+    cursor: pointer;
+    background-color: #2563eb;
+    transition: background-color 0.2s;
+    margin-top: 1.5rem;
+}
+
+.submit-btn:hover {
+    background-color: #1d4ed8;
+}
+
+.submit-btn:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+}

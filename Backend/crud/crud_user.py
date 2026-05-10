@@ -45,7 +45,7 @@ from models import (
 )
 from schemas import UserCreate
 
-
+from models import EnterpriseProfiles
 # ---------------------------------------------------------------------------
 # Q1 – Tìm user theo email  (SELECT users WHERE email = ?)
 # ---------------------------------------------------------------------------
@@ -287,7 +287,6 @@ def update_user_status(
 # ---------------------------------------------------------------------------
 # Q9 – Tạo bản ghi profile trống  (INSERT INTO user_profiles)
 # ---------------------------------------------------------------------------
-
 def create_user_profile(
     db: Session,
     *,
@@ -303,9 +302,7 @@ def create_user_profile(
 ) -> UserProfiles:
     """
     Tạo bản ghi ``user_profiles`` ngay sau khi user đăng ký thành công.
-
-    Các trường KYC (identity_doc_url, selfie_url, kyc_status) mặc định là
-    ``None`` / ``UNVERIFIED`` và sẽ được điền sau.
+    Các trường KYC mặc định là None / UNVERIFIED.
     """
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     profile = UserProfiles(
@@ -329,17 +326,11 @@ def create_user_profile(
 # ---------------------------------------------------------------------------
 # Q10 – Nâng cấp role user  (UPDATE users SET role WHERE user_id = ?)
 # ---------------------------------------------------------------------------
-
 def update_user_role(
     db: Session,
     user_id: UUID,
     new_role: UserRole,
 ) -> Optional[Users]:
-    """
-    Nâng cấp ``role`` của user (ví dụ USER → ENTERPRISE sau khi duyệt hồ sơ DN).
-
-    Trả về bản ghi sau cập nhật, hoặc ``None`` nếu không tìm thấy.
-    """
     row = db.exec(select(Users).where(Users.user_id == user_id)).first()
     if row is None:
         return None
@@ -354,72 +345,53 @@ def update_user_role(
 # ---------------------------------------------------------------------------
 # Q11 – Cập nhật thông tin profile  (UPDATE user_profiles WHERE user_id = ?)
 # ---------------------------------------------------------------------------
-
 def update_user_profile(
     db: Session,
     user_id: UUID,
-    *,
-    avatar_url: Optional[str] = None,
-    bio: Optional[str] = None,
-    base_location: Optional[str] = None,
-    travel_style: Optional[TravelStyle] = None,
-    privacy_status: Optional[PrivacyStatus] = None,
-    identity_doc_url: Optional[str] = None,
-    selfie_url: Optional[str] = None,
+    **kwargs
 ) -> Optional[UserProfiles]:
     """
-    Cập nhật thông tin profile của user — chỉ ghi đè các field được truyền vào
-    (truthy check; ``None`` nghĩa là "không thay đổi field đó").
-
-    Columns có thể cập nhật:
-        avatar_url, bio, base_location, travel_style, privacy_status,
-        identity_doc_url, selfie_url.
+    Cập nhật bản ghi user_profiles. Nếu user chưa có profile (do lỗi lúc đăng ký
+    hoặc đăng nhập bằng Google), tự động tạo một profile mới (Upsert).
     """
-    row = db.exec(
-        select(UserProfiles).where(UserProfiles.user_id == user_id)
-    ).first()
-    if row is None:
-        return None
-
-    if avatar_url is not None:
-        row.avatar_url = avatar_url
-    if bio is not None:
-        row.bio = bio
-    if base_location is not None:
-        row.base_location = base_location
-    if travel_style is not None:
-        row.travel_style = travel_style
-    if privacy_status is not None:
-        row.privacy_status = privacy_status
-    if identity_doc_url is not None:
-        row.identity_doc_url = identity_doc_url
-    if selfie_url is not None:
-        row.selfie_url = selfie_url
-
-    row.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
-    db.add(row)
+    # Dùng db.exec thay vì db.query cho đúng chuẩn SQLModel của dự án bạn
+    profile = db.exec(select(UserProfiles).where(UserProfiles.user_id == user_id)).first()
+    
+    # KẾ HOẠCH TỐI THƯỢNG: Nếu chưa có profile, tạo mới luôn!
+    if not profile:
+        profile = UserProfiles(user_id=user_id)
+        db.add(profile) # Thêm vào db (chưa commit vội)
+        
+    # Ghi đè các dữ liệu Frontend gửi lên vào profile
+    for key, value in kwargs.items():
+        if value is not None and hasattr(profile, key):
+            setattr(profile, key, value)
+            
+    # Cập nhật giờ sửa đổi
+    profile.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    
+    # Lưu chính thức vào database
+    db.add(profile)
     db.commit()
-    db.refresh(row)
-    return row
+    db.refresh(profile)
+    
+    return profile
+
+# ---------------------------------------------------------------------------
+# LƯU Ý: Đoạn code "xử lý session" của đồng đội (is_revoked) đã bị dời đi
+# vì nó không thuộc file CRUD User. Bạn cần báo đồng đội chuyển nó vào 
+# file quản lý Token/Auth nhé.
+# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------
 # Q12 – Cập nhật kyc_status  (UPDATE user_profiles SET kyc_status WHERE user_id = ?)
 # ---------------------------------------------------------------------------
-
 def update_user_kyc_status(
     db: Session,
     user_id: UUID,
     new_kyc_status: KycStatus,
 ) -> Optional[UserProfiles]:
-    """
-    Cập nhật ``kyc_status`` của profile người dùng.
-
-    Luồng thông thường: UNVERIFIED → PENDING (khi user nộp giấy tờ)
-    → APPROVED hoặc REJECTED (sau khi admin xét duyệt).
-
-    Trả về bản ghi sau cập nhật, hoặc ``None`` nếu không tìm thấy.
-    """
     row = db.exec(
         select(UserProfiles).where(UserProfiles.user_id == user_id)
     ).first()
@@ -482,3 +454,54 @@ def revoke_session(db: Session, user_id: UUID, refresh_token: str) -> bool:
             return True
             
     return False
+
+# ---------------------------------------------------------------------------
+# Tạo User từ Đăng nhập Google/Facebook 
+# ---------------------------------------------------------------------------
+def create_social_user(db: Session, full_name: str, email: str, social_id: str, register_type: str):
+    new_user = Users(
+        full_name=full_name,
+        email=email,
+        social_id=social_id,
+        register_type=register_type,
+        role=UserRole.USER,        
+        status=UserStatus.ACTIVE   
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+def update_enterprise_profile(
+    db: Session,
+    user_id: UUID,
+    **kwargs
+) -> Optional[EnterpriseProfiles]:
+    """
+    Cập nhật hoặc Tạo mới (Upsert) hồ sơ doanh nghiệp.
+    """
+    profile = db.exec(select(EnterpriseProfiles).where(EnterpriseProfiles.user_id == user_id)).first()
+    
+    # Nếu doanh nghiệp chưa có hồ sơ (vừa đăng ký xong), tạo mới
+    if not profile:
+        # Tạm thời điền các trường bắt buộc (NOT NULL) bằng chuỗi rỗng nếu Frontend chưa gửi
+        profile = EnterpriseProfiles(
+            user_id=user_id,
+            business_name=kwargs.get("business_name", ""),
+            contact_person=kwargs.get("contact_person", ""),
+            contact_email=kwargs.get("contact_email", ""),
+            contact_phone=kwargs.get("contact_phone", "")
+        )
+        db.add(profile)
+        
+    # Cập nhật các trường gửi lên
+    for key, value in kwargs.items():
+        if value is not None and hasattr(profile, key):
+            setattr(profile, key, value)
+            
+    profile.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+    return profile
