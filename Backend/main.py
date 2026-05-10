@@ -59,11 +59,12 @@ app.add_middleware(
 # app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
 # app.include_router(locations.router, prefix="/api/v1/locations", tags=["Locations"])
 # app.include_router(itineraries.router, prefix="/api/v1/itineraries", tags=["Itineraries"])
-from routers import auth, enterprise
+from routers import auth, enterprise, location_router
 from api import planning, locations, trips
 
 app.include_router(auth.router, prefix="/api/auth")
 app.include_router(enterprise.router, prefix="/api")
+app.include_router(location_router.router, prefix="/api/v1")
 app.include_router(planning.router)
 app.include_router(locations.router)
 app.include_router(trips.router)
