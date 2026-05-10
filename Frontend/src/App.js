@@ -13,6 +13,8 @@ import MainTabs from './components/MainTabs';
 import Userprofile from './screens/UserProfile';
 
 import HistoryScreen from './screens/Trip/HistoryScreen';
+import PlanRecommendScreen from './screens/Trip/PlanRecommendScreen';
+import TripDetailScreen from './screens/Trip/TripDetailScreen';
 
 
 function App() {
@@ -20,6 +22,8 @@ function App() {
   const [isGuest, setIsGuest] = useState(false); // Thêm biến theo dõi Chế độ khách
 
   const [currentUser, setCurrentUser] = useState(null);
+  const [planPayload, setPlanPayload] = useState(null);
+  const [currentItineraryId, setCurrentItineraryId] = useState(null);
 
   const handleLogout = () => {
     // Xóa token trong localStorage (nếu có lưu)
@@ -108,7 +112,7 @@ function App() {
 
         {currentScreen === 'history' && (
             <HistoryScreen 
-                onBack={() => setCurrentScreen('home')}
+                onBack={() => setCurrentScreen('main')}
             />
         )}
         
@@ -122,13 +126,27 @@ function App() {
         {currentScreen === 'plan' && (
             <TripInputForm 
                 onSubmitPlan={(collectedData) => {
-                    // Khi hoàn thành Bước 3 của Form, cục data sẽ chạy về đây!
-                    console.log("✈️ DỮ LIỆU ĐẦU VÀO ĐÃ THU THẬP:", collectedData);
-                    alert("Đã gom xong tham số chuyến đi! Mở F12 (Console) để xem nhé.");
-                    
-                    // Thu thập xong thì đẩy người dùng về lại màn hình chính 
-                    setCurrentScreen('main'); 
+                    setPlanPayload(collectedData);
+                    setCurrentScreen('plan_recommend');
                 }}
+            />
+        )}
+
+        {currentScreen === 'plan_recommend' && (
+            <PlanRecommendScreen 
+                planPayload={planPayload}
+                onBack={() => setCurrentScreen('plan')}
+                onTripCreated={(itineraryId) => {
+                    setCurrentItineraryId(itineraryId);
+                    setCurrentScreen('trip_detail');
+                }}
+            />
+        )}
+
+        {currentScreen === 'trip_detail' && (
+            <TripDetailScreen 
+                itineraryId={currentItineraryId}
+                onBack={() => setCurrentScreen('main')}
             />
         )}
 

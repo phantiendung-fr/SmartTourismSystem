@@ -1,0 +1,139 @@
+.recommend-screen {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-sizing: border-box;
+    background: #f8f9fa;
+}
+
+.recommend-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.recommend-header h2 {
+    margin: 0;
+    font-size: 22px;
+    color: #2d3436;
+}
+
+.btn-back-icon {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.recommend-subtitle {
+    color: #636e72;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.loading-state, .error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+}
+
+.locations-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding-bottom: 20px;
+}
+
+.location-card {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.location-card.selected {
+    border-color: #0abde3;
+    background: #f0faff;
+}
+
+.loc-info h4 {
+    margin: 0 0 5px 0;
+    color: #2d3436;
+    font-size: 16px;
+}
+
+.loc-tags {
+    margin: 0 0 5px 0;
+    font-size: 12px;
+    color: #0abde3;
+    font-weight: 500;
+}
+
+.loc-price {
+    margin: 0 0 5px 0;
+    font-size: 13px;
+    color: #636e72;
+}
+
+.loc-score {
+    font-size: 12px;
+    background: #ffd32a;
+    color: #806500;
+    padding: 3px 8px;
+    border-radius: 20px;
+    display: inline-block;
+    font-weight: bold;
+}
+
+.loc-checkbox {
+    font-size: 24px;
+}
+
+.recommend-footer {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.selected-count {
+    text-align: center;
+    color: #2d3436;
+}
+
+.btn-create-trip {
+    background: #0abde3;
+    color: white;
+    border: none;
+    padding: 15px;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(10, 189, 227, 0.3);
+    transition: background 0.2s;
+}
+
+.btn-create-trip:disabled {
+    background: #b2bec3;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.btn-create-trip:hover:not(:disabled) {
+    background: #09a1c1;
+}
