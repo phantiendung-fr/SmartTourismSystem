@@ -12,6 +12,9 @@ import MainTabs from './components/MainTabs';
 
 import Userprofile from './screens/UserProfile';
 
+import HistoryScreen from './screens/Trip/HistoryScreen';
+
+
 function App() {
   const [currentScreen, setCurrentScreen] = useState('splash'); 
   const [isGuest, setIsGuest] = useState(false); // Thêm biến theo dõi Chế độ khách
@@ -96,8 +99,16 @@ function App() {
                 onRequireLogin={() => setCurrentScreen('login')}
                 onLogout={handleLogout}
                 onOpenPlan={() => setCurrentScreen('plan')}
+
                 onOpenLocationRegister={() => setCurrentScreen('register_location')}
                 onOpenProfileEdit={() => setCurrentScreen('profile_edit')}
+                onOpenHistory={() => setCurrentScreen('history')}
+            />
+        )}
+
+        {currentScreen === 'history' && (
+            <HistoryScreen 
+                onBack={() => setCurrentScreen('home')}
             />
         )}
         

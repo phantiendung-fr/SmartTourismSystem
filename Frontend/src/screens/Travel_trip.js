@@ -1,45 +1,28 @@
 import React, { useState } from 'react';
 import './Travel_trip.css';
 
-const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan, onOpenLocationRegister, onOpenProfileEdit}) => {
+const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan, onOpenLocationRegister, onOpenProfileEdit, onOpenHistory}) => {
 
-    const [showMenu, setShowMenu] = useState(false)
+    const [showMenu, setShowMenu] = useState(false);
+
     const getGreeting = () => {
         const currentHour = new Date().getHours(); 
-
-        if (currentHour < 12) {
-            return 'Chào buổi sáng,';
-        } else if (currentHour < 18) {
-            return 'Chào buổi chiều,';
-        } else {
-            return 'Chào buổi tối,';
-        }
+        if (currentHour < 12) return 'Chào buổi sáng,';
+        if (currentHour < 18) return 'Chào buổi chiều,';
+        return 'Chào buổi tối,';
     };
 
-    // Giả lập dữ liệu các chuyến đi
     const featuredTours = [
         {
-            id: 1,
-            title: "Vịnh Hạ Long",
-            location: "Quảng Ninh, Việt Nam",
-            price: "$120",
-            rating: "⭐ 4.8",
+            id: 1, title: "Vịnh Hạ Long", location: "Quảng Ninh, Việt Nam", price: "$120", rating: "⭐ 4.8",
             image: "https://images.unsplash.com/photo-1528127269322-539801943592?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
         },
         {
-            id: 2,
-            title: "Ruộng Bậc Thang",
-            location: "Mù Cang Chải",
-            price: "$85",
-            rating: "⭐ 4.9",
+            id: 2, title: "Ruộng Bậc Thang", location: "Mù Cang Chải", price: "$85", rating: "⭐ 4.9",
             image: "https://images.unsplash.com/photo-1576485290814-1c72aa4bbb8e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
         },
         {
-            id: 3,
-            title: "Phố Cổ Hội An",
-            location: "Quảng Nam, Việt Nam",
-            price: "$50",
-            rating: "⭐ 4.7",
+            id: 3, title: "Phố Cổ Hội An", location: "Quảng Nam, Việt Nam", price: "$50", rating: "⭐ 4.7",
             image: "https://images.unsplash.com/photo-1555921015-5532091f6026?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
         }
     ];
@@ -54,10 +37,10 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan, onOp
                 position: 'sticky',
                 top: 0,
                 zIndex: 100,
-                backgroundColor: '#ffffff', // Nền trắng để che nội dung cuộn bên dưới
+                backgroundColor: '#ffffff',
                 paddingTop: '20px',
                 paddingBottom: '2px',
-                marginTop: '-20px',      // Bù trừ khoảng cách để tràn viền sát góc trên
+                marginTop: '-20px',
                 marginLeft: '-20px',
                 marginRight: '-20px',
                 paddingLeft: '20px',
@@ -85,27 +68,21 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan, onOp
                         {/* Khung Menu Tác vụ */}
                         {showMenu && !isGuest && (
                             <div className="user-menu">
+                                <button className="menu-btn" onClick={onOpenHistory}>
+                                    <span>📜</span> Lịch sử chuyến đi
+                                </button>
                                 <button className="menu-btn" onClick={() => {
                                     if (onOpenProfileEdit) {
-                                        onOpenProfileEdit(); // Nếu có hàm thì chạy
+                                        onOpenProfileEdit();
                                     } else {
-                                        alert("❌ Lỗi: File MainTabs chưa truyền onOpenProfileEdit sang cho Travel_trip!");
+                                        alert("❌ Lỗi: Chưa truyền onOpenProfileEdit!");
                                     }
-                                }}
-                                >
+                                }}>
                                     <span>⚙️</span> Cài đặt quyền riêng tư
                                 </button>
-                                <button className="menu-btn">
-                                    <span>❓</span> Trợ giúp và hỗ trợ
-                                </button>
-                                <button className="menu-btn">
-                                    <span>💬</span> Đóng góp ý kiến
-                                </button>
-                                
-                                <button 
-                                    className="menu-btn logout-btn" 
-                                    onClick={onLogout}
-                                >
+                                <button className="menu-btn"><span>❓</span> Trợ giúp và hỗ trợ</button>
+                                <button className="menu-btn"><span>💬</span> Đóng góp ý kiến</button>
+                                <button className="menu-btn logout-btn" onClick={onLogout}>
                                     <span>🚪</span> Đăng xuất
                                 </button>
                             </div>
@@ -124,7 +101,8 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan, onOp
             
             {/* CÁC PHẦN BÊN DƯỚI NÀY SẼ TỰ DO CUỘN (SCROLL) */}
             <div style={{ paddingTop: '10px' }}>
-                {/* Banner tạo lộ trình */}
+                
+                {/* Banner tạo lộ trình DUY NHẤT */}
                 <div style={{ 
                     background: 'linear-gradient(135deg, #0abde3 0%, #22a6b3 100%)', 
                     padding: '20px', 
@@ -148,7 +126,7 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan, onOp
                     </button>
                 </div>
 
-                {/* Banner dành riêng cho Doanh Nghiệp (Chỉ hiện khi role là ENTERPRISE) */}
+                {/* Banner Doanh Nghiệp */}
                 {!isGuest && user?.role === 'ENTERPRISE' && (
                     <div style={{ 
                         background: 'linear-gradient(135deg, #f0932b 0%, #ffbe76 100%)', 
@@ -174,18 +152,14 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan, onOp
                     </div>
                 )}
                 
-                {/* Danh sách Tour Phổ Biến */}
-                <div className="section-title">
-                    Khám phá địa điểm <span>Xem tất cả</span>
-                </div>
-
+                {/* Danh sách Tour */}
+                <div className="section-title">Khám phá địa điểm <span>Xem tất cả</span></div>
                 <div className="card-scroller">
                     {featuredTours.map((tour) => (
                         <div className="tour-card" key={tour.id}>
                             <img src={tour.image} alt={tour.title} className="tour-image" />
                             <h3 className="tour-title">{tour.title}</h3>
                             <p className="tour-location">📍 {tour.location}</p>
-                            
                             <div className="tour-footer">
                                 <div className="tour-price">{tour.price} <span>/người</span></div>
                                 <div className="tour-rating">{tour.rating}</div>
