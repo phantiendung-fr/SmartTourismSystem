@@ -1,21 +1,28 @@
 import random
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
+
 from datetime import datetime, timedelta, timezone 
 from pydantic import BaseModel # Thêm thư viện này để tạo form nhận OTP
+
 
 from database import get_session
 import crud.crud_user as crud_user
 import crud.crud_auth as crud_auth 
 import schemas
+from models import UserStatus
 import core.security as security
+
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
 # Thay bằng Client ID của nhóm
 GOOGLE_CLIENT_ID = "(Thay thế bằng Client ID của nhóm)"
 
-router = APIRouter()
+from core.config import settings
+
+
+router = APIRouter(tags=["Auth - Đăng nhập/Đăng ký"])
 
 # ===========================================================================
 # 1. CÁC CLASS NHẬN DỮ LIỆU TỪ FRONTEND CHO CHỨC NĂNG OTP
@@ -44,20 +51,23 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_session)):
     
     # 2. Tạo user
     new_user = crud_user.create_user(
-        db, 
+        db=db, 
         full_name=user_data.full_name, 
         email=user_data.email, 
         password=user_data.password,
         register_type=user_data.register_type, 
         role=user_data.role,
         status="ACTIVE" 
+
     )
     return {"message": "Đăng ký thành công", "email": new_user.email}
 
 @router.post("/login", response_model=schemas.TokenResponse)
 def login(credentials: schemas.UserLogin, db: Session = Depends(get_session)):
     user = crud_auth.get_user_by_email(db, email=credentials.email)
-    if not user or user.status != "ACTIVE":
+    
+    # Dùng UserStatus.ACTIVE thay vì string "ACTIVE"
+    if not user or user.status != UserStatus.ACTIVE:
         raise HTTPException(status_code=401, detail="Tài khoản không tồn tại hoặc bị khóa")
 
     if not security.verify_password(credentials.password, user.passwordhash):
@@ -67,10 +77,12 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_session)):
     refresh_token = security.create_refresh_token(data={"sub": str(user.user_id)})
     expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=7)
 
+# Lấy device_id từ Frontend gửi lên, nếu không có thì mặc định là 'web-browser'
+    device_id = getattr(credentials, 'device_id', 'web-browser')
     crud_auth.create_user_session(
         db=db, 
         user_id=user.user_id, 
-        device_id="web-browser", 
+        device_id=device_id,
         refresh_token_hash=refresh_token,
         expires_at=expires_at
     )
@@ -120,6 +132,7 @@ def logout(refresh_token: str = Header(..., alias="Authorization-Refresh"), db: 
     if not success:
         raise HTTPException(status_code=400, detail="Phiên không hợp lệ hoặc đã đăng xuất")
     return {"message": "Đăng xuất thành công"}
+
 
 @router.get("/me")
 def get_my_profile(current_user: dict = Depends(security.verify_token)):

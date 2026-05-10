@@ -17,11 +17,14 @@ from database import create_db_and_tables
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Run startup tasks before accepting requests."""
-    # NOTE: On Supabase production, tables are managed via schema.sql.
-    # Calling create_db_and_tables() is safe for local dev only.
-    create_db_and_tables()
+    try:
+        print("🔍 Đang kiểm tra kết nối Database...")
+        create_db_and_tables()
+        print("✅ Kết nối Database và khởi tạo bảng thành công!")
+    except Exception as e:
+        print(f"❌ LỖI KẾT NỐI DATABASE: {str(e)}")
+        print("⚠️ Cảnh báo: Server vẫn chạy nhưng các chức năng liên quan đến DB sẽ lỗi.")
     yield
-    # Shutdown logic (e.g., close background tasks) goes here
 
 
 # ============================================================
@@ -44,6 +47,7 @@ app.add_middleware(
     allow_origins=["http://localhost:3000", "http://localhost:3001"], 
 
     allow_credentials=True,
+
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -58,10 +62,16 @@ app.add_middleware(
 # app.include_router(locations.router, prefix="/api/v1/locations", tags=["Locations"])
 # app.include_router(itineraries.router, prefix="/api/v1/itineraries", tags=["Itineraries"])
 
-from routers import auth, enterprise # Import router vừa tạo
+from routers import auth, enterprise, location_router
+from api import planning, locations, trips
 
 app.include_router(auth.router, prefix="/api/auth")
 app.include_router(enterprise.router, prefix="/api")
+app.include_router(location_router.router, prefix="/api/v1")
+app.include_router(planning.router)
+app.include_router(locations.router)
+app.include_router(trips.router)
+
 # ============================================================
 # Health check
 # ============================================================
@@ -84,7 +94,12 @@ from schemas import UserCreate
 
 @app.post("/test-create-user", tags=["Test"])
 def test_db(user: UserCreate, db: Session = Depends(get_session)):
-    return create_user(db=db, user_in=user)
+    return create_user(
+        db=db,
+        full_name=user.full_name,
+        email=user.email,
+        password=user.password
+    )
 # ============================================================
 # Run locally: uvicorn main:app --reload
 # ============================================================

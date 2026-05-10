@@ -58,16 +58,7 @@ def get_user_by_email(db: Session, email: str) -> Optional[Users]:
     Trả về ``None`` nếu không tìm thấy.
     Columns trả về: user_id, email, passwordhash, role, status.
     """
-    statement = (
-        select(
-            Users.user_id,
-            Users.email,
-            Users.passwordhash,
-            Users.role,
-            Users.status,
-        )
-        .where(Users.email == email)
-    )
+    statement = select(Users).where(Users.email == email)
     return db.exec(statement).first()
 
 
@@ -794,3 +785,54 @@ def update_user_kyc_status(
     db.refresh(row)
     return row
 
+
+from models import UserSessions
+from core.security import get_password_hash, verify_password
+from datetime import timedelta
+
+# ---------------------------------------------------------------------------
+# Tạo phiên đăng nhập (INSERT INTO user_sessions)
+# ---------------------------------------------------------------------------
+def create_user_session(
+    db: Session, 
+    user_id: UUID, 
+    device_id: str, 
+    refresh_token: str,
+    expires_delta_days: int = 7
+) -> UserSessions:
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    expires_at = now + timedelta(days=expires_delta_days)
+    
+    session = UserSessions(
+        user_id=user_id,
+        device_id=device_id,
+        refresh_token_hash=get_password_hash(refresh_token), # Hash trước khi lưu DB
+        expires_at=expires_at
+    )
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session
+
+# ---------------------------------------------------------------------------
+# Thu hồi phiên (UPDATE user_sessions SET is_revoked = True)
+# ---------------------------------------------------------------------------
+def revoke_session(db: Session, user_id: UUID, refresh_token: str) -> bool:
+    """
+    Lấy các session đang active của user, check bcrypt xem hash nào khớp với
+    refresh_token gửi lên thì đổi trạng thái is_revoked = True.
+    """
+    statement = select(UserSessions).where(
+        UserSessions.user_id == user_id,
+        UserSessions.is_revoked == False
+    )
+    sessions = db.exec(statement).all()
+    
+    for session in sessions:
+        if verify_password(refresh_token, session.refresh_token_hash):
+            session.is_revoked = True
+            db.add(session)
+            db.commit()
+            return True
+            
+    return False

@@ -90,8 +90,8 @@ class StopStatus(str, enum.Enum):
     SKIPPED = "SKIPPED"
 
 class ExportFormat(str, enum.Enum):
-    EXCEL = "excel"
-    PDF = "pdf"
+    excel = "excel"
+    pdf = "pdf"
 
 class ExportStatus(str, enum.Enum):
     PROCESSING = "PROCESSING"
