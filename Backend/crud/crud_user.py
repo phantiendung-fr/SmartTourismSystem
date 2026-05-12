@@ -107,7 +107,14 @@ def create_user(
     db.refresh(db_user)
     return db_user
 
+def get_user_by_id(db: Session, user_id: UUID) -> Optional[Users]:
+    """
+    Lấy bản ghi ``Users`` khớp với *user_id*.
 
+    Trả về ``None`` nếu không tìm thấy.
+    """
+    statement = select(Users).where(Users.user_id == user_id)
+    return db.exec(statement).first()
 # ---------------------------------------------------------------------------
 # Q3 – Lấy trọng số tag của user  (SELECT preference_tag_weights WHERE user_id = ?)
 # ---------------------------------------------------------------------------
@@ -711,14 +718,7 @@ def update_user_role(
 def update_user_profile(
     db: Session,
     user_id: UUID,
-    *,
-    avatar_url: Optional[str] = None,
-    bio: Optional[str] = None,
-    base_location: Optional[str] = None,
-    travel_style: Optional[TravelStyle] = None,
-    privacy_status: Optional[PrivacyStatus] = None,
-    identity_doc_url: Optional[str] = None,
-    selfie_url: Optional[str] = None,
+    **kwargs
 ) -> Optional[UserProfiles]:
     """
     Cập nhật thông tin profile của user — chỉ ghi đè các field được truyền vào
@@ -732,24 +732,16 @@ def update_user_profile(
         select(UserProfiles).where(UserProfiles.user_id == user_id)
     ).first()
     if row is None:
-        return None
+        row = UserProfiles(user_id=user_id)
+    
+    for key, value in kwargs.items():
+        # Nếu value không bị None VÀ bảng UserProfiles thực sự có cái cột (key) đó
+        if value is not None and hasattr(row, key):
+            setattr(row, key, value) # Cập nhật giá trị mới vào dòng dữ liệu
 
-    if avatar_url is not None:
-        row.avatar_url = avatar_url
-    if bio is not None:
-        row.bio = bio
-    if base_location is not None:
-        row.base_location = base_location
-    if travel_style is not None:
-        row.travel_style = travel_style
-    if privacy_status is not None:
-        row.privacy_status = privacy_status
-    if identity_doc_url is not None:
-        row.identity_doc_url = identity_doc_url
-    if selfie_url is not None:
-        row.selfie_url = selfie_url
-
+    # Cập nhật thời gian sửa đổi
     row.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
     db.add(row)
     db.commit()
     db.refresh(row)

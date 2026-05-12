@@ -41,11 +41,9 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
     };
 
     useEffect(() => {
-        if (itineraryId) {
-            fetchDetail();
-            fetchDeviationStatus();
-        }
-    }, [itineraryId]);
+        fetchDetail();
+        fetchDeviationStatus();
+    }, []);
 
     if (loading) {
         return (

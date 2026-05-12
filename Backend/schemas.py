@@ -150,14 +150,19 @@ class TokenPayload(BaseModel):
     exp: Optional[int] = None          # expiry (unix timestamp)
     role: Optional[UserRole] = None
 
-# MỚI: thêm class TokenResponse
+class UserInfo(BaseModel):
+    """Thông tin cơ bản của User lồng bên trong TokenResponse"""
+    user_id: str
+    email: str
+    full_name: str
+    role: str
+
 class TokenResponse(BaseModel):
     """Payload trả về khi đăng nhập thành công."""
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
-    role: UserRole
-    full_name: str
+    user: UserInfo  # Trả về toàn bộ object UserInfo
 
     
 # ============================================================

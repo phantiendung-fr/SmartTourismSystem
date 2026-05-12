@@ -49,7 +49,7 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan, onOp
                 <div className="header">
                     <div className="greeting">
                         <p>{isGuest ? 'Chào bạn mới,' : getGreeting()}</p>
-                        <h2>{isGuest ? 'Khách du lịch 🎒' : `${user?.full_name || 'Bạn'} 🎒`}</h2>
+                        <h2>{isGuest ? 'Khách du lịch 🎒' : `${user?.user?.full_name || user?.full_name || 'Bạn'} 🎒`}</h2>
                     </div>
                     
                     <div style={{ position: 'relative' }}>

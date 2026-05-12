@@ -86,13 +86,43 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_session)):
         refresh_token_hash=refresh_token,
         expires_at=expires_at
     )
+    user_role_str = getattr(user.role, 'value', user.role)
+    profile_data = {}
+    
+    # Import model (Bạn kiểm tra lại đường dẫn import file models của nhóm nhé)
+    from models import UserProfiles, EnterpriseProfiles 
 
+    if user_role_str == "ENTERPRISE":
+        profile = db.query(EnterpriseProfiles).filter(EnterpriseProfiles.user_id == user.user_id).first()
+        if profile:
+            profile_data = {
+                "business_name": profile.business_name,
+                "contact_person": profile.contact_person,
+                "contact_phone": profile.contact_phone,
+                "status": getattr(profile.status, 'value', profile.status) if profile.status else "PENDING"
+            }
+    else:
+        profile = db.query(UserProfiles).filter(UserProfiles.user_id == user.user_id).first()
+        if profile:
+            profile_data = {
+                "date_of_birth": str(profile.date_of_birth) if profile.date_of_birth else "",
+                "gender": getattr(profile.gender, 'value', profile.gender) if profile.gender else "MALE",
+                "base_location": profile.base_location or "",
+                "bio": profile.bio or "",
+                "travel_style": getattr(profile.travel_style, 'value', profile.travel_style) if profile.travel_style else "",
+                "privacy_status": getattr(profile.privacy_status, 'value', profile.privacy_status) if profile.privacy_status else "PUBLIC"
+            }
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
-        "role": user.role,
-        "full_name": user.full_name or "User"
+        "user": {
+            "user_id": str(user.user_id),
+            "email": user.email,
+            "full_name": user.full_name or "User",
+            "role": user_role_str,
+            **profile_data
+        }
     }
 
 @router.post("/google-login")
@@ -117,12 +147,16 @@ def google_login(token_data: dict, db: Session = Depends(get_session)):
         crud_user.create_user_session(db, user.user_id, device_id, refresh_token)
 
         return {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer",
-            "role": user_role_str,
-            "full_name": user.full_name
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "user": {
+            "user_id": str(user.user_id),
+            "email": user.email,
+            "full_name": user.full_name or "User",
+            "role": getattr(user.role, 'value', user.role) # Lấy đúng string role
         }
+    }
     except ValueError:
         raise HTTPException(status_code=401, detail="Xác thực Google thất bại")
 
@@ -135,11 +169,56 @@ def logout(refresh_token: str = Header(..., alias="Authorization-Refresh"), db: 
 
 
 @router.get("/me")
-def get_my_profile(current_user: dict = Depends(security.verify_token)):
+def get_my_profile(
+    current_user: dict = Depends(security.verify_token),
+    db: Session = Depends(get_session)
+):
+    user_id = current_user.get("sub")
+    
+    # 1. Tìm user trong bảng chính
+    user = crud_auth.get_user_by_id(db, user_id=user_id) 
+    if not user:
+        raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
+
+    user_role_str = getattr(user.role, 'value', user.role)
+    profile_data = {}
+
+    # 2. RẼ NHÁNH: Lấy dữ liệu tùy theo Role
+    if user_role_str == "ENTERPRISE":
+        # (Nếu code báo lỗi import EnterpriseProfiles, hãy import nó vào nhé)
+        from models import EnterpriseProfiles 
+        profile = db.exec(select(EnterpriseProfiles).where(EnterpriseProfiles.user_id == user.user_id)).first()
+        
+        if profile:
+            profile_data = {
+                "business_name": profile.business_name,
+                "contact_person": profile.contact_person,
+                "contact_phone": profile.contact_phone,
+                "status": getattr(profile.status, 'value', profile.status) if profile.status else "PENDING"
+            }
+    else:
+        from models import UserProfiles
+        profile = db.exec(select(UserProfiles).where(UserProfiles.user_id == user.user_id)).first()
+        
+        if profile:
+            profile_data = {
+                "date_of_birth": str(profile.date_of_birth) if profile.date_of_birth else "",
+                "gender": getattr(profile.gender, 'value', profile.gender) if profile.gender else "MALE",
+                "base_location": profile.base_location or "",
+                "bio": profile.bio or "",
+                "travel_style": getattr(profile.travel_style, 'value', profile.travel_style) if profile.travel_style else "",
+                "privacy_status": getattr(profile.privacy_status, 'value', profile.privacy_status) if profile.privacy_status else "PUBLIC"
+            }
+
+    # 3. Trả về cấu trúc bọc trong key "user" GIỐNG HỆT với API /login
     return {
-        "message": "Bạn đã vượt qua chốt kiểm tra quyền!",
-        "user_email": current_user.get("sub"),
-        "role": current_user.get("role")
+        "user": {
+            "user_id": str(user.user_id),
+            "email": user.email,
+            "full_name": user.full_name or "Khách hàng",
+            "role": user_role_str,
+            **profile_data  # Trải phẳng dữ liệu (bio, location, business_name...) ra đây
+        }
     }
 
 @router.put("/update-profile")
