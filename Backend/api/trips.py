@@ -146,8 +146,17 @@ def create_new_itinerary(
             # Chuẩn bị data cho TSP: List[(id, lat, lon)]
             tsp_input = [(lid, float(loc_map[lid].latitude), float(loc_map[lid].longitude)) for lid in chunk_ids]
 
+            # MỚI: Nếu là ngày đầu tiên và có GPS người dùng, chèn GPS vào đầu danh sách để làm điểm xuất phát
+            if day_index == 0 and request.start_lat is not None and request.start_lon is not None:
+                # Dùng một UUID ảo hoặc None cho ID của điểm xuất phát
+                tsp_input.insert(0, ("START_POINT", float(request.start_lat), float(request.start_lon)))
+
             # Gọi thuật toán tối ưu của team để lấy thứ tự đi chuẩn nhất
             optimized_ids, daily_dist = tsp_dp_bitmask(tsp_input)
+
+            # Nếu có điểm xuất phát ảo, loại bỏ nó khỏi danh sách ID kết quả (vì nó không phải địa điểm tham quan)
+            if "START_POINT" in optimized_ids:
+                optimized_ids.remove("START_POINT")
 
             # Tính toán ngân sách dự kiến cho ngày này dựa trên min_price của các địa điểm
             day_budget = sum(float(loc_map[lid].min_price) for lid in chunk_ids)

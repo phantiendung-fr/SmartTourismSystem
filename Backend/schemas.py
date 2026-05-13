@@ -280,6 +280,8 @@ class CreateItineraryRequest(BaseModel):
     start_date: date
     end_date: Optional[date] = None
     location_ids: list[UUID]
+    start_lat: Optional[float] = None
+    start_lon: Optional[float] = None
 
 # LOCATION SCHEMAS
 # ============================================================

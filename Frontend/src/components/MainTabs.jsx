@@ -4,13 +4,62 @@ import './MainTabs.css';
 
 // Tạm thời import file trang chủ cũ của bạn vào Tab 1
 import Traveltrip from '../screens/Travel_trip'; 
+import MapComponent from './Map/MapComponent';
 
 const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenLocationRegister, onOpenProfileEdit, onOpenHistory }) => {
     // State quản lý tab đang hiển thị
     const [activeTab, setActiveTab] = useState('home');
+    const [userLocation, setUserLocation] = useState(null);
+
+    // Lấy vị trí khi chuyển sang tab Location
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        if (tab === 'location') {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    setUserLocation({
+                        lat: pos.coords.latitude,
+                        lng: pos.coords.longitude
+                    });
+                },
+                (err) => console.warn("Lỗi lấy vị trí:", err),
+                { enableHighAccuracy: false, timeout: 10000 }
+            );
+        }
+    };
 
     // Các trang giả định (Placeholder) cho các tab chưa code
-    const LocationScreen = () => <div style={{padding: '20px'}}><h2>📍 Vị trí / Lịch trình</h2><p>Bản đồ và tọa độ hiển thị tại đây...</p></div>;
+    const LocationScreen = () => (
+        <div style={{padding: '20px', backgroundColor: '#f8f9fa', minHeight: '100vh'}}>
+            <h2 style={{ marginBottom: '20px', color: '#2f3542' }}>📍 Vị trí hiện tại</h2>
+            
+            <MapComponent userLocation={userLocation} stops={[]} />
+            
+            {userLocation ? (
+                <div style={{ 
+                    backgroundColor: 'white', padding: '15px', borderRadius: '12px', 
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.05)', marginTop: '10px' 
+                }}>
+                    <p style={{ margin: '0 0 5px 0', color: '#747d8c', fontSize: '14px' }}>Tọa độ của bạn:</p>
+                    <div style={{ display: 'flex', gap: '20px' }}>
+                        <div><small>Vĩ độ:</small> <strong>{userLocation.lat.toFixed(6)}</strong></div>
+                        <div><small>Kinh độ:</small> <strong>{userLocation.lng.toFixed(6)}</strong></div>
+                    </div>
+                </div>
+            ) : (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#747d8c' }}>
+                    🛰️ Đang xác định vị trí của bạn...
+                </div>
+            )}
+            
+            <div style={{ marginTop: '25px', padding: '15px', background: '#e1f5fe', borderRadius: '12px' }}>
+                <h4 style={{ margin: '0 0 10px 0', color: '#01579b' }}>💡 Mẹo nhỏ</h4>
+                <p style={{ margin: 0, fontSize: '14px', color: '#0277bd', lineHeight: '1.5' }}>
+                    Bản đồ này sẽ giúp bạn theo dõi vị trí của mình trong suốt hành trình. Khi bạn bắt đầu một chuyến đi, lịch trình sẽ hiển thị trực tiếp tại đây!
+                </p>
+            </div>
+        </div>
+    );
     const FriendsScreen = () => <div style={{padding: '20px'}}><h2>👥 Bạn bè & Cộng đồng</h2><p>Ghép đôi và danh sách bạn bè...</p></div>;
     const FavoritesScreen = () => <div style={{padding: '20px'}}><h2>❤️ Yêu thích</h2><p>Các địa điểm, bài đăng đã lưu...</p></div>;
     const GuestPlaceholder = ({ title, icon }) => (
@@ -139,35 +188,35 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
 
             {/* Thanh menu dưới đáy */}
             <div className="bottom-nav">
-                <div className={`nav-item ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>
+                <div className={`nav-item ${activeTab === 'home' ? 'active' : ''}`} onClick={() => handleTabChange('home')}>
                     <svg className="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'home' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline>
                     </svg>
                     <span className="nav-label">Trang chủ</span>
                 </div>
 
-                <div className={`nav-item ${activeTab === 'location' ? 'active' : ''}`} onClick={() => setActiveTab('location')}>
+                <div className={`nav-item ${activeTab === 'location' ? 'active' : ''}`} onClick={() => handleTabChange('location')}>
                     <svg className="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'location' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle>
                     </svg>
                     <span className="nav-label">Vị trí</span>
                 </div>
 
-                <div className={`nav-item ${activeTab === 'friends' ? 'active' : ''}`} onClick={() => setActiveTab('friends')}>
+                <div className={`nav-item ${activeTab === 'friends' ? 'active' : ''}`} onClick={() => handleTabChange('friends')}>
                     <svg className="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'friends' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                     </svg>
                     <span className="nav-label">Bạn bè</span>
                 </div>
 
-                <div className={`nav-item ${activeTab === 'favorites' ? 'active' : ''}`} onClick={() => setActiveTab('favorites')}>
+                <div className={`nav-item ${activeTab === 'favorites' ? 'active' : ''}`} onClick={() => handleTabChange('favorites')}>
                     <svg className="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'favorites' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                     </svg>
                     <span className="nav-label">Yêu thích</span>
                 </div>
 
-                <div className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
+                <div className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => handleTabChange('profile')}>
                     <svg className="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'profile' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
                     </svg>

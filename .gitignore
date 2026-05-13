@@ -29,8 +29,9 @@ yarn-error.log*
 
 # Environment Variables (Bảo mật)
 .env
-Backend/.env
-Frontend/.env
+*.env
+.env.*
+!*.env.example
 
 # IDE / Editor
 .vscode/

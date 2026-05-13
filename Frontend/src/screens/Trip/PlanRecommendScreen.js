@@ -18,7 +18,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated }) => {
             try {
                 setLoading(true);
                 const token = localStorage.getItem('access_token');
-                
+
                 // 1. Khởi tạo phiên
                 const sessionRes = await createPlanningSession(planPayload, token);
                 setSessionData(sessionRes);
@@ -41,7 +41,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated }) => {
                     max_results: 15
                 };
                 const suggestRes = await getRecommendations(suggestPayload);
-                
+
                 setRecommendations(suggestRes.locations || []);
                 // Mặc định chọn 5 địa điểm điểm cao nhất
                 const top5 = (suggestRes.locations || []).slice(0, 5).map(loc => loc.location_id);
@@ -72,24 +72,57 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated }) => {
             alert("Vui lòng chọn ít nhất 1 địa điểm.");
             return;
         }
-
+        setCreatingTrip(true);
         try {
-            setCreatingTrip(true);
             const token = localStorage.getItem('access_token');
-            const tripPayload = {
-                session_id: sessionData.session_id,
-                name: "Chuyến đi tuyệt vời",
-                location_ids: selectedLocations,
-                start_date: planPayload.start_day,
-                end_date: planPayload.end_day || planPayload.start_day,
-            };
 
-            const result = await createTrip(tripPayload, token);
-            onTripCreated(result.itinerary_id);
+
+            // Lấy GPS hiện tại để gửi lên Backend làm điểm xuất phát
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const { latitude, longitude } = position.coords;
+
+                const tripPayload = {
+                    session_id: sessionData.session_id,
+                    name: "Chuyến đi tuyệt vời", 
+                    location_ids: selectedLocations,
+                    start_date: planPayload.start_day,
+                    end_date: planPayload.end_day,
+                    start_lat: latitude,
+                    start_lon: longitude
+                };
+
+                try {
+                    const result = await createTrip(tripPayload, token);
+                    alert("Tạo lộ trình thành công!");
+                    onTripCreated(result.itinerary_id);
+                } catch (err) {
+                    alert("Lỗi khi tạo lộ trình: " + err.message);
+                } finally {
+                    setCreatingTrip(false);
+                }
+            }, async (geoError) => {
+                console.warn("Không lấy được GPS, tạo lộ trình không có điểm bắt đầu thực tế:", geoError);
+                // Nếu không lấy được GPS, vẫn cho tạo lộ trình nhưng không có start_lat/lon
+                const tripPayload = {
+                    session_id: sessionData.session_id,
+                    name: "Chuyến đi tuyệt vời", 
+                    location_ids: selectedLocations,
+                    start_date: planPayload.start_day,
+                    end_date: planPayload.end_day
+                };
+                try {
+                    const result = await createTrip(tripPayload, token);
+                    onTripCreated(result.itinerary_id);
+                } catch (err) {
+                    alert("Lỗi khi tạo lộ trình: " + err.message);
+                } finally {
+                    setCreatingTrip(false);
+                }
+            });
+
         } catch (err) {
             const msg = typeof err.message === 'string' ? err.message : JSON.stringify(err.message);
-            alert("Lỗi khi tạo lộ trình: " + msg);
-        } finally {
+            alert("Lỗi hệ thống: " + msg);
             setCreatingTrip(false);
         }
     };
@@ -131,15 +164,15 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated }) => {
                 <button onClick={onBack} className="btn-back-icon">⬅️</button>
                 <h2>Gợi ý địa điểm</h2>
             </div>
-            
+
             <p className="recommend-subtitle">
                 Chúng tôi tìm thấy {recommendations.length} địa điểm phù hợp. Hãy chọn những nơi bạn thích!
             </p>
 
             <div className="locations-list">
                 {recommendations.map(loc => (
-                    <div 
-                        key={loc.location_id} 
+                    <div
+                        key={loc.location_id}
                         className={`location-card ${selectedLocations.includes(loc.location_id) ? 'selected' : ''}`}
                         onClick={() => toggleSelection(loc.location_id)}
                     >
@@ -165,8 +198,8 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated }) => {
                         </span>
                     </div>
                     <div className="budget-bar-container">
-                        <div 
-                            className={`budget-bar ${isOverBudget ? 'bar-over' : 'bar-ok'}`} 
+                        <div
+                            className={`budget-bar ${isOverBudget ? 'bar-over' : 'bar-ok'}`}
                             style={{ width: `${budgetPercentage}%` }}
                         ></div>
                     </div>
@@ -176,8 +209,8 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated }) => {
                     <div className="selected-count">
                         Đã chọn: <strong>{selectedLocations.length}</strong> điểm
                     </div>
-                    <button 
-                        className="btn-create-trip" 
+                    <button
+                        className="btn-create-trip"
                         onClick={handleCreateTrip}
                         disabled={creatingTrip || selectedLocations.length === 0}
                     >
