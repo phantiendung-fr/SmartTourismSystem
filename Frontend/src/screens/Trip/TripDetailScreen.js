@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { getTripDetail, getDeviationStatus, checkinStop } from '../../services/tripService';
+import MapComponent from '../../components/Map/MapComponent';
 import './TripDetailScreen.css';
 
 const TripDetailScreen = ({ itineraryId, onBack }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [tripDetail, setTripDetail] = useState(null);
+    const [userLocation, setUserLocation] = useState(null);
 
     // Deviation state — updated by click (demo) OR by fetching from backend (real)
     const [isDeviated, setIsDeviated] = useState(false);
@@ -45,6 +47,24 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
             fetchDetail();
             fetchDeviationStatus();
         }
+
+        // Theo dõi vị trí hiện tại của người dùng
+        const watchId = navigator.geolocation.watchPosition(
+            (pos) => {
+                setUserLocation({
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude
+                });
+            },
+            (err) => console.warn("Không thể lấy vị trí:", err),
+            {
+                enableHighAccuracy: false,
+                timeout: 20000,
+                maximumAge: 60000
+            }
+        );
+
+        return () => navigator.geolocation.clearWatch(watchId);
     }, [itineraryId]);
 
     if (loading) {
@@ -92,25 +112,42 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
         if (!nextStop) return;
         setCheckinLoading(true);
         setCheckinMsg('');
-        try {
-            const token = localStorage.getItem('access_token');
-            // Use the stop's own coordinates so it passes the radius check (demo)
-            const result = await checkinStop(nextStop.stop_id, {
-                latitude: parseFloat(nextStop.latitude),
-                longitude: parseFloat(nextStop.longitude)
-            }, token);
-            setCheckinMsg(result.message);
-            // Auto refresh to update colors
-            setTimeout(() => {
-                handleRefresh();
-                setCheckinMsg('');
-            }, 1500);
-        } catch (err) {
-            setCheckinMsg(`❌ ${err.message}`);
-            setTimeout(() => setCheckinMsg(''), 4000);
-        } finally {
-            setCheckinLoading(false);
-        }
+
+        // 1. Lấy vị trí thực tế
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+                setUserLocation({ lat: latitude, lng: longitude });
+
+                try {
+                    const token = localStorage.getItem('access_token');
+                    // 2. Gửi tọa độ THỰC lên Backend để so sánh
+                    const result = await checkinStop(nextStop.stop_id, {
+                        latitude: latitude,
+                        longitude: longitude
+                    }, token);
+
+                    setCheckinMsg(result.message);
+                    setTimeout(() => {
+                        handleRefresh();
+                        setCheckinMsg('');
+                    }, 2000);
+                } catch (err) {
+                    setCheckinMsg(`❌ ${err.message}`);
+                } finally {
+                    setCheckinLoading(false);
+                }
+            },
+            (error) => {
+                setCheckinMsg("❌ Lỗi lấy vị trí: " + error.message);
+                setCheckinLoading(false);
+            },
+            {
+                enableHighAccuracy: false,
+                timeout: 20000,
+                maximumAge: 5000
+            }
+        );
     };
 
     return (
@@ -176,6 +213,11 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
                         <div>
                             <small>Điểm tiếp theo</small>
                             <strong>{nextStop.location_name}</strong>
+                            {userLocation && (
+                                <div className="gps-indicator">
+                                    🛰️ GPS của bạn: {userLocation.lat.toFixed(5)}, {userLocation.lng.toFixed(5)}
+                                </div>
+                            )}
                         </div>
                     </div>
                     <button
@@ -191,6 +233,14 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
             {checkinMsg && (
                 <div className="checkin-toast">{checkinMsg}</div>
             )}
+
+            <div className="trip-map-section" style={{ padding: '0 15px' }}>
+                <h3>📍 Vị trí & Lộ trình</h3>
+                <MapComponent 
+                    stops={allStops} 
+                    userLocation={userLocation} 
+                />
+            </div>
 
             <div className="trip-itinerary">
                 <h3>Lịch trình chi tiết</h3>

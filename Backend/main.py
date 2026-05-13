@@ -4,7 +4,9 @@ Backend: FastAPI | Database: Supabase (PostgreSQL) | ORM: SQLModel
 """
 
 from contextlib import asynccontextmanager
+# pyrefly: ignore [missing-import]
 from fastapi import FastAPI
+# pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import create_db_and_tables
@@ -44,7 +46,11 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"], 
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000"
+    ], 
 
     allow_credentials=True,
 
@@ -87,7 +93,9 @@ def health_check():
     return {"status": "healthy"}
 
 # Code thêm vào để test tính năng module data
+# pyrefly: ignore [missing-import]
 from fastapi import Depends
+# pyrefly: ignore [missing-import]
 from sqlmodel import Session
 from database import get_session
 from crud.crud_user import create_user

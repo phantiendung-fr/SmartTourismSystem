@@ -53,7 +53,10 @@ export const createTrip = async (payload, token) => {
         });
         if (!response.ok) {
             const err = await response.json();
-            throw new Error(err.detail || "Lỗi khi tạo chuyến đi");
+            const errMsg = typeof err.detail === 'string' 
+                ? err.detail 
+                : JSON.stringify(err.detail);
+            throw new Error(errMsg || "Lỗi khi tạo chuyến đi");
         }
         return await response.json();
     } catch (error) {
