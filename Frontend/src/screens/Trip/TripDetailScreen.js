@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getTripDetail, getDeviationStatus, checkinStop } from '../../services/tripService';
+import RouteMap from '../../components/RouteMap/RouteMap';
 import './TripDetailScreen.css';
 
 const TripDetailScreen = ({ itineraryId, onBack }) => {
@@ -241,6 +242,12 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
                     </div>
                 ))}
             </div>
+
+            {/* 🗺️ Bản đồ lộ trình với đường đi thực tế từ OSRM */}
+            <RouteMap 
+                stops={allStops} 
+                routes={tripDetail.routes || []} 
+            />
         </div>
     );
 };

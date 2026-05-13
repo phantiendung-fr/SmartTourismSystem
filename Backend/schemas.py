@@ -447,9 +447,21 @@ class ItineraryStopResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class RouteResponse(BaseModel):
+    """Thông tin đường đi giữa 2 trạm dừng (polyline + khoảng cách + thời gian)."""
+    route_id: int
+    from_stop_id: int
+    to_stop_id: int
+    travel_time: int          # phút
+    distance: Decimal         # km
+    polyline_data: str        # Encoded polyline string (OSRM format)
+
+    model_config = ConfigDict(from_attributes=True)
+
 class ItineraryDetailResponse(ItineraryResponse):
-    """Schema chi tiết lộ trình bao gồm các trạm dừng"""
+    """Schema chi tiết lộ trình bao gồm các trạm dừng và đường đi"""
     stops: list[ItineraryStopResponse] = []
+    routes: list[RouteResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -172,11 +172,17 @@ def create_new_itinerary(
                 # Vẽ Route từ trạm trước đến trạm này và cộng thời gian di chuyển TRƯỚC KHI tính thời gian đến
                 if prev_stop_id is not None:
                     prev_loc = loc_map[optimized_ids[order - 2]]
-                    # Gọi Google Maps Directions
                     route_info = get_route_polyline(
                         float(prev_loc.latitude), float(prev_loc.longitude),
                         float(loc.latitude), float(loc.longitude)
                     )
+                    
+                    # === DEBUG: Log nguồn tính toán ===
+                    print(f"🔗 Route: {prev_loc.location_name} → {loc.location_name}")
+                    print(f"   📡 Source: {route_info.source.upper()}")
+                    print(f"   📏 Distance: {route_info.distance_km} km")
+                    print(f"   ⏱️  Time: {route_info.travel_time_min} phút")
+                    print(f"   🗺️  Polyline: {route_info.polyline_data[:40]}...")
                     
                     # Cộng thời gian di chuyển vào current_dt
                     if route_info is not None:
@@ -184,6 +190,7 @@ def create_new_itinerary(
                         daily_time += route_info.travel_time_min
                 else:
                     route_info = None
+                    print(f"📍 Điểm xuất phát: {loc.location_name} (Ngày {day_index + 1})")
 
                 # Thời gian đến (Arrival)
                 arrival_time = current_dt.time()
@@ -211,6 +218,7 @@ def create_new_itinerary(
                 prev_stop_id = new_stop.stop_id
 
             global_total_time += daily_time
+            print(f"📊 Ngày {day_index + 1}: Tổng {daily_time} phút")
 
         # 5. Cập nhật tổng thời gian chuyến đi và ngân sách
         trip.total_travel_time = global_total_time
@@ -233,6 +241,8 @@ def create_new_itinerary(
 
 @router.get("/{itinerary_id}", response_model=ItineraryDetailResponse, summary="Xem chi tiết lộ trình")
 def get_trip_detail(itinerary_id: UUID, db: Session = Depends(get_session)):
+    from models import ItineraryRoutes
+    
     trip = get_itinerary_by_id(db, itinerary_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi")
@@ -253,6 +263,7 @@ def get_trip_detail(itinerary_id: UUID, db: Session = Depends(get_session)):
     
     # 3. Nhét thêm danh sách stops vào dictionary
     stop_dicts = []
+    all_stop_ids = []
     for idx, (stop, day, loc) in enumerate(stops_data, start=1):
         stop_dict = stop.model_dump()
         stop_dict["stop_order"] = idx
@@ -271,10 +282,24 @@ def get_trip_detail(itinerary_id: UUID, db: Session = Depends(get_session)):
         stop_dict["max_price"] = loc.max_price
         
         stop_dicts.append(stop_dict)
+        all_stop_ids.append(stop.stop_id)
         
     trip_data["stops"] = stop_dicts
     
-    # 3. Đưa dictionary vào khuôn Pydantic
+    # 4. Lấy routes (polyline) giữa các trạm dừng
+    routes_data = []
+    if all_stop_ids:
+        route_statement = (
+            select(ItineraryRoutes)
+            .where(ItineraryRoutes.from_stop_id.in_(all_stop_ids))
+            .order_by(ItineraryRoutes.route_id)
+        )
+        routes = db.exec(route_statement).all()
+        routes_data = [r.model_dump() for r in routes]
+    
+    trip_data["routes"] = routes_data
+    
+    # 5. Đưa dictionary vào khuôn Pydantic
     return ItineraryDetailResponse(**trip_data)
 
 

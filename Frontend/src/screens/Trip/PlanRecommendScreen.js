@@ -78,14 +78,17 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated }) => {
             const token = localStorage.getItem('access_token');
             const tripPayload = {
                 session_id: sessionData.session_id,
-                name: "Chuyến đi tuyệt vời", // Có thể cho người dùng nhập
-                location_ids: selectedLocations
+                name: "Chuyến đi tuyệt vời",
+                location_ids: selectedLocations,
+                start_date: planPayload.start_day,
+                end_date: planPayload.end_day || planPayload.start_day,
             };
 
             const result = await createTrip(tripPayload, token);
             onTripCreated(result.itinerary_id);
         } catch (err) {
-            alert("Lỗi khi tạo lộ trình: " + err.message);
+            const msg = typeof err.message === 'string' ? err.message : JSON.stringify(err.message);
+            alert("Lỗi khi tạo lộ trình: " + msg);
         } finally {
             setCreatingTrip(false);
         }

@@ -28,3 +28,8 @@ email-validator>=2.1.0 #Mới thêm
 # Dev / Testing (optional)
 pytest>=8.0.0
 httpx>=0.27.0                   # Async test client for FastAPI
+
+
+google-auth~=2.52.0
+google-auth-oauthlib~=1.4.0
+google-auth-httplib2~=0.4.0
