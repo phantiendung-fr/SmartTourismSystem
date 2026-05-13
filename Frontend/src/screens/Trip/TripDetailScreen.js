@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getTripDetail, getDeviationStatus, checkinStop } from '../../services/tripService';
 import RouteMap from '../../components/RouteMap/RouteMap';
 import './TripDetailScreen.css';
@@ -13,6 +13,7 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
     const [isDeviated, setIsDeviated] = useState(false);
     const [checkinLoading, setCheckinLoading] = useState(false);
     const [checkinMsg, setCheckinMsg] = useState('');
+    const checkinInProgress = useRef(false);
 
     const fetchDetail = async () => {
         try {
@@ -109,9 +110,20 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
     };
 
     const handleCheckin = async () => {
-        if (!nextStop) return;
+        // Guard: nếu đang xử lý thì không cho bấm nữa (tránh click đúp)
+        if (!nextStop || checkinInProgress.current) return;
+        checkinInProgress.current = true;
         setCheckinLoading(true);
         setCheckinMsg('');
+
+        // Safety timeout: tự reset sau 15 giây nếu mọi thứ bị treo
+        const safetyTimer = setTimeout(() => {
+            if (checkinInProgress.current) {
+                checkinInProgress.current = false;
+                setCheckinLoading(false);
+                setCheckinMsg('❌ Hết thời gian chờ. Vui lòng thử lại.');
+            }
+        }, 15000);
 
         // 1. Lấy vị trí thực tế
         navigator.geolocation.getCurrentPosition(
@@ -135,16 +147,20 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
                 } catch (err) {
                     setCheckinMsg(`❌ ${err.message}`);
                 } finally {
+                    clearTimeout(safetyTimer);
+                    checkinInProgress.current = false;
                     setCheckinLoading(false);
                 }
             },
             (error) => {
-                setCheckinMsg("❌ Lỗi lấy vị trí: " + error.message);
+                clearTimeout(safetyTimer);
+                checkinInProgress.current = false;
+                setCheckinMsg('❌ Lỗi lấy vị trí: ' + error.message);
                 setCheckinLoading(false);
             },
             {
                 enableHighAccuracy: false,
-                timeout: 20000,
+                timeout: 10000,
                 maximumAge: 5000
             }
         );
