@@ -9,7 +9,7 @@ from typing import Any
 
 from fastapi import HTTPException, Security, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt
+from jose import jwt, JWTError
 import bcrypt
 
 from core.config import settings
@@ -80,7 +80,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Security(security_s
             detail="Token đã hết hạn",
             headers={"WWW-Authenticate": "Bearer"}
         )
-    except jwt.InvalidTokenError:
+    except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="Token không hợp lệ",

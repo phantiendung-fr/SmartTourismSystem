@@ -124,12 +124,16 @@ function App() {
         )}
 
         {currentScreen === 'plan' && (
-            <TripInputForm 
-                onSubmitPlan={(collectedData) => {
-                    setPlanPayload(collectedData);
-                    setCurrentScreen('plan_recommend');
-                }}
-            />
+            isGuest || !currentUser ? (
+                (() => { setCurrentScreen('login'); return null; })()
+            ) : (
+                <TripInputForm 
+                    onSubmitPlan={(collectedData) => {
+                        setPlanPayload(collectedData);
+                        setCurrentScreen('plan_recommend');
+                    }}
+                />
+            )
         )}
 
         {currentScreen === 'plan_recommend' && (
