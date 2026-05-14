@@ -285,6 +285,8 @@ class CreateItineraryRequest(BaseModel):
     start_date: date
     end_date: Optional[date] = None
     location_ids: list[UUID]
+    start_lat: Optional[float] = None
+    start_lon: Optional[float] = None
 
 # LOCATION SCHEMAS
 # ============================================================
@@ -440,6 +442,7 @@ class ItineraryStopResponse(BaseModel):
     arrival_time: time
     departure_time: time
     checkin_radius: Optional[int] = None
+    reward: Optional[int] = 0
     status: Optional[StopStatus] = None
     location_id: UUID
     location_name: Optional[str] = None
@@ -447,12 +450,26 @@ class ItineraryStopResponse(BaseModel):
     longitude: Optional[Decimal] = None
     open_time: Optional[time] = None
     close_time: Optional[time] = None
+    min_price: Optional[Decimal] = None
+    max_price: Optional[Decimal] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class RouteResponse(BaseModel):
+    """Thông tin đường đi giữa 2 trạm dừng (polyline + khoảng cách + thời gian)."""
+    route_id: int
+    from_stop_id: int
+    to_stop_id: int
+    travel_time: int          # phút
+    distance: Decimal         # km
+    polyline_data: str        # Encoded polyline string (OSRM format)
 
     model_config = ConfigDict(from_attributes=True)
 
 class ItineraryDetailResponse(ItineraryResponse):
-    """Schema chi tiết lộ trình bao gồm các trạm dừng"""
+    """Schema chi tiết lộ trình bao gồm các trạm dừng và đường đi"""
     stops: list[ItineraryStopResponse] = []
+    routes: list[RouteResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -483,6 +500,7 @@ class CheckInResponse(BaseModel):
     message: str
     stop_id: int
     progress_id: int
+    earned_points: Optional[int] = 0
 
 class CheckinCreate(BaseModel):
     """

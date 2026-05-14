@@ -119,7 +119,7 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout , onOpenPlan, onOp
                         <p style={{ margin: '5px 0 0', fontSize: '14px', opacity: 0.9 }}>Để hệ thống tạo lộ trình riêng</p>
                     </div>
                     <button 
-                        onClick={onOpenPlan} 
+                        onClick={isGuest ? onRequireLogin : onOpenPlan} 
                         style={{ background: 'white', color: '#0abde3', border: 'none', padding: '12px 18px', borderRadius: '14px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}
                     >
                         Bắt đầu 🚀

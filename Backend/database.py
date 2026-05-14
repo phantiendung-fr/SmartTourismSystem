@@ -7,14 +7,17 @@ Supabase DATABASE_URL format:
 
 Set in .env:
   DATABASE_URL=postgresql://postgres:...
-  DB_ECHO=false
+  DB_ECHO=falsepip
 """
 
 import os
 from typing import Generator
 
+# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
+# pyrefly: ignore [missing-import]
 from sqlalchemy import event
+# pyrefly: ignore [missing-import]
 from sqlmodel import Session, SQLModel, create_engine
 
 load_dotenv()
@@ -25,7 +28,7 @@ DATABASE_URL: str = os.getenv(
 )
 
 # Supabase requires SSL - append sslmode if not already present
-if "supabase.co" in DATABASE_URL and "sslmode" not in DATABASE_URL:
+if ("supabase.co" in DATABASE_URL or "supabase.com" in DATABASE_URL) and "sslmode" not in DATABASE_URL:
     DATABASE_URL += "?sslmode=require"
 
 engine = create_engine(
@@ -38,7 +41,7 @@ engine = create_engine(
     connect_args={
         # Required by Supabase / cloud PostgreSQL providers
         "sslmode": "require",
-    } if "supabase.co" in DATABASE_URL else {},
+    } if ("supabase.co" in DATABASE_URL or "supabase.com" in DATABASE_URL) else {},
 )
 
 

@@ -53,7 +53,16 @@ export const createTrip = async (payload, token) => {
         });
         if (!response.ok) {
             const err = await response.json();
-            throw new Error(err.detail || "Lỗi khi tạo chuyến đi");
+            // Handle Pydantic validation errors (detail is array)
+            let message = "Lỗi khi tạo chuyến đi";
+            if (typeof err.detail === 'string') {
+                message = err.detail;
+            } else if (Array.isArray(err.detail)) {
+                message = err.detail.map(e => e.msg || e.message || JSON.stringify(e)).join('; ');
+            } else if (err.detail) {
+                message = JSON.stringify(err.detail);
+            }
+            throw new Error(message);
         }
         return await response.json();
     } catch (error) {
