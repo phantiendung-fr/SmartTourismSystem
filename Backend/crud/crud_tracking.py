@@ -318,6 +318,7 @@ def get_stop_with_ownership(
             ItineraryStops.stop_id,
             ItineraryStops.checkin_radius,
             ItineraryStops.reward,
+            ItineraryStops.stop_order,
             Locations.location_id,
             Locations.location_name,
             Locations.latitude,

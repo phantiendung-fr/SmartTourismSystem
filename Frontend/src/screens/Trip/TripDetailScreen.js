@@ -223,10 +223,12 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
                     // 5. Xóa thông báo sau 2 giây
                     setTimeout(() => setCheckinMsg(''), 2000);
 
-                    // 6. Background refresh (không block UI, chỉ đồng bộ data)
-                    handleRefresh(true).catch(err => 
-                        console.warn('Background refresh failed:', err)
-                    );
+                    // 6. Background refresh — delay 1.5s để DB commit xong và tránh nghẽn pool
+                    setTimeout(() => {
+                        handleRefresh(true).catch(err => 
+                            console.warn('Background refresh failed:', err)
+                        );
+                    }, 1500);
 
                 } catch (err) {
                     clearTimeout(safetyTimer);

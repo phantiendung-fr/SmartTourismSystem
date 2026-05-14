@@ -422,13 +422,19 @@ def checkin_stop(
     # Tăng lượt checkin tại địa điểm
     increment_location_checkin_count(db, stop_data.location_id)
 
-    # TÍNH ĐIỂM THƯỞNG BẰNG CÔNG THỨC (không lấy từ DB)
-    # Formula: điểm = base (10, chỉ trạm đầu tiên) + 5 × stop_order
-    # Base points chỉ cộng khi check-in trạm đầu tiên (tránh tạo trip mà không đi vẫn ăn điểm)
-    stop_obj = db.get(ItineraryStops, stop_id)
-    stop_order = stop_obj.stop_order if stop_obj else 1
-    base_points = 10 if stop_order == 1 else 0
-    earned_points = base_points + 5 * stop_order
+    # TÍNH ĐIỂM THƯỞNG
+    # Trạm đầu: +15 điểm (khuyến khích bắt đầu chuyến đi)
+    # Từ trạm 2 trở đi: +5 điểm cố định
+    stop_order = stop_data.stop_order  # lấy từ query gộp, không cần query thêm
+    earned_points = 15 if stop_order == 1 else 5
+    
+    # Lưu điểm thưởng vào stop để frontend hiển thị được — dùng UPDATE trực tiếp
+    from sqlalchemy import update as sa_update
+    db.execute(
+        sa_update(ItineraryStops)
+        .where(ItineraryStops.stop_id == stop_id)
+        .values(reward=earned_points)
+    )
     
     # Cộng điểm vào total_points (điểm hiện tại của chuyến đi)
     from models import UserProfiles

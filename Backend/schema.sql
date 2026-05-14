@@ -392,3 +392,12 @@ CREATE TABLE USER_FEEDBACKS (
     STATUS          VARCHAR(50)     NOT NULL DEFAULT 'PENDING' CHECK (STATUS IN ('PENDING', 'PROCESSING', 'RESOLVED')),
     CREATED_AT      TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
+
+-- ============================================================
+-- PERFORMANCE INDEXES
+-- ============================================================
+
+-- Check-in flow: tăng tốc query ownership + checkin lookup
+CREATE INDEX IF NOT EXISTS idx_checkin_user_stop ON CHECKIN_PROGRESS(USER_ID, STOP_ID);
+CREATE INDEX IF NOT EXISTS idx_stops_day_order ON ITINERARY_STOPS(DAY_ID, STOP_ORDER);
+CREATE INDEX IF NOT EXISTS idx_days_itinerary ON ITINERARY_DAYS(ITINERARY_ID, DAY_ORDER);
