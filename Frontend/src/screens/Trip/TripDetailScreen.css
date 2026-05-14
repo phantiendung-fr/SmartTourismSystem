@@ -433,3 +433,116 @@
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* ========== Trip Status Badge ========== */
+.trip-status-badge {
+    display: flex;
+    align-items: center;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.trip-status-badge.status-ongoing {
+    background: #e3f2fd;
+    color: #1976d2;
+    border: 1.5px solid #1976d2;
+}
+
+.trip-status-badge.status-completed {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1.5px solid #2e7d32;
+}
+
+.trip-status-badge.status-cancelled {
+    background: #ffebee;
+    color: #c62828;
+    border: 1.5px solid #c62828;
+}
+
+/* ========== Trip Action Buttons ========== */
+.trip-action-section {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.btn-complete-trip {
+    flex: 1;
+    background: linear-gradient(135deg, #00b894, #55efc4);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 184, 148, 0.3);
+}
+
+.btn-complete-trip:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 184, 148, 0.4);
+}
+
+.btn-complete-trip:disabled {
+    background: #b2bec3;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.btn-cancel-trip {
+    flex: 1;
+    background: linear-gradient(135deg, #e74c3c, #fd79a8);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+}
+
+.btn-cancel-trip:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+}
+
+.btn-cancel-trip:disabled {
+    background: #b2bec3;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+/* ========== Action Toast ========== */
+.action-toast {
+    background: linear-gradient(135deg, #2d3436, #636e72);
+    color: white;
+    padding: 12px 18px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    animation: fadeSlide 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* ========== GPS Indicator ========== */
+.gps-indicator {
+    font-size: 10px;
+    color: #74b9ff;
+    margin-top: 3px;
+}

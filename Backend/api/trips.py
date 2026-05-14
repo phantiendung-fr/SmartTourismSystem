@@ -71,6 +71,28 @@ def complete_trip(
     
     return MessageResponse(detail="Chúc mừng bạn đã hoàn thành chuyến đi!")
 
+@router.put("/{itinerary_id}/cancel", response_model=MessageResponse, summary="Hủy chuyến đi")
+def cancel_trip(
+    itinerary_id: UUID,
+    db: Session = Depends(get_session),
+    current_user: dict = Depends(security.verify_token)
+):
+    user_id = get_current_user_id(db, current_user)
+    
+    trip = get_itinerary_by_id(db, itinerary_id)
+    if not trip or trip.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Lộ trình không tồn tại hoặc không thuộc về bạn")
+        
+    if trip.status == ItineraryStatus.CANCELLED:
+        raise HTTPException(status_code=400, detail="Chuyến đi này đã bị hủy")
+    
+    if trip.status == ItineraryStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="Không thể hủy chuyến đi đã hoàn thành")
+        
+    update_itinerary_status(db, itinerary_id=itinerary_id, new_status=ItineraryStatus.CANCELLED)
+    
+    return MessageResponse(detail="Chuyến đi đã được hủy.")
+
 @router.get("/{itinerary_id}/deviation-status", response_model=DeviationAlert, summary="Kiểm tra trạng thái lệch hướng")
 def get_deviation_status(
     itinerary_id: UUID,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getTripDetail, getDeviationStatus, checkinStop } from '../../services/tripService';
+import { getTripDetail, getDeviationStatus, checkinStop, completeTrip, cancelTrip } from '../../services/tripService';
 import RouteMap from '../../components/RouteMap/RouteMap';
 import './TripDetailScreen.css';
 
@@ -14,6 +14,10 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
     const [checkinLoading, setCheckinLoading] = useState(false);
     const [checkinMsg, setCheckinMsg] = useState('');
     const checkinInProgress = useRef(false);
+
+    // Trip action states
+    const [actionLoading, setActionLoading] = useState(false);
+    const [actionMsg, setActionMsg] = useState('');
 
     const fetchDetail = async (silent = false) => {
         try {
@@ -47,6 +51,7 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
         checkinInProgress.current = false;
         setCheckinLoading(false);
         setCheckinMsg('');
+        setActionMsg('');
 
         if (itineraryId) {
             fetchDetail();
@@ -71,6 +76,55 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
 
         return () => navigator.geolocation.clearWatch(watchId);
     }, [itineraryId]);
+
+    // Determine if trip is ongoing (can be completed/cancelled)
+    const isTripOngoing = tripDetail && (tripDetail.status === 'DRAFT' || tripDetail.status === 'CONFIRMED');
+    const isTripCompleted = tripDetail && tripDetail.status === 'COMPLETED';
+    const isTripCancelled = tripDetail && tripDetail.status === 'CANCELLED';
+
+    const getStatusLabel = () => {
+        if (isTripCompleted) return { text: '✅ Hoàn thành', className: 'status-completed' };
+        if (isTripCancelled) return { text: '❌ Đã hủy', className: 'status-cancelled' };
+        return { text: '🔄 Đang diễn ra', className: 'status-ongoing' };
+    };
+
+    const handleCompleteTrip = async () => {
+        if (!window.confirm('Bạn có chắc chắn muốn hoàn thành chuyến đi này không?')) return;
+        
+        setActionLoading(true);
+        setActionMsg('');
+        try {
+            const token = localStorage.getItem('access_token');
+            const result = await completeTrip(itineraryId, token);
+            setActionMsg(`✅ ${result.detail}`);
+            // Refresh trip detail to get updated status
+            await fetchDetail(true);
+        } catch (err) {
+            setActionMsg(`❌ ${err.message}`);
+        } finally {
+            setActionLoading(false);
+            setTimeout(() => setActionMsg(''), 3000);
+        }
+    };
+
+    const handleCancelTrip = async () => {
+        if (!window.confirm('Bạn có chắc chắn muốn hủy chuyến đi này không? Hành động này không thể hoàn tác.')) return;
+        
+        setActionLoading(true);
+        setActionMsg('');
+        try {
+            const token = localStorage.getItem('access_token');
+            const result = await cancelTrip(itineraryId, token);
+            setActionMsg(`⚠️ ${result.detail}`);
+            // Refresh trip detail to get updated status
+            await fetchDetail(true);
+        } catch (err) {
+            setActionMsg(`❌ ${err.message}`);
+        } finally {
+            setActionLoading(false);
+            setTimeout(() => setActionMsg(''), 3000);
+        }
+    };
 
     if (loading) {
         return (
@@ -195,21 +249,29 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
         );
     };
 
+    const statusInfo = getStatusLabel();
+
     return (
         <div className="trip-detail-screen">
             <div className="detail-header">
                 <button className="btn-back-icon" onClick={onBack}>⬅️</button>
                 <h2>{tripDetail.name || "Chi tiết chuyến đi"}</h2>
                 <button className="btn-refresh" onClick={handleRefresh} title="Tải lại dữ liệu">🔄</button>
-                {/* Deviation status badge — click to toggle for demo */}
-                <div
-                    className={`deviation-badge ${isDeviated ? 'deviated' : 'on-track'}`}
-                    onClick={() => setIsDeviated(!isDeviated)}
-                    title="Nhấn để chuyển trạng thái (demo)"
-                >
-                    <span className="badge-dot"></span>
-                    <span className="badge-text">{isDeviated ? 'Lệch hướng' : 'Đúng hướng'}</span>
+                {/* Trip status badge */}
+                <div className={`trip-status-badge ${statusInfo.className}`}>
+                    {statusInfo.text}
                 </div>
+                {/* Deviation status badge — click to toggle for demo */}
+                {isTripOngoing && (
+                    <div
+                        className={`deviation-badge ${isDeviated ? 'deviated' : 'on-track'}`}
+                        onClick={() => setIsDeviated(!isDeviated)}
+                        title="Nhấn để chuyển trạng thái (demo)"
+                    >
+                        <span className="badge-dot"></span>
+                        <span className="badge-text">{isDeviated ? 'Lệch hướng' : 'Đúng hướng'}</span>
+                    </div>
+                )}
             </div>
 
             <div className="trip-summary">
@@ -243,6 +305,30 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
                 </div>
             </div>
 
+            {/* Trip action buttons — Hoàn thành / Hủy */}
+            {isTripOngoing && (
+                <div className="trip-action-section">
+                    <button
+                        className="btn-complete-trip"
+                        onClick={handleCompleteTrip}
+                        disabled={actionLoading}
+                    >
+                        {actionLoading ? '⏳ Đang xử lý...' : '✅ Hoàn thành lịch trình'}
+                    </button>
+                    <button
+                        className="btn-cancel-trip"
+                        onClick={handleCancelTrip}
+                        disabled={actionLoading}
+                    >
+                        {actionLoading ? '⏳ Đang xử lý...' : '❌ Hủy chuyến đi'}
+                    </button>
+                </div>
+            )}
+
+            {actionMsg && (
+                <div className="action-toast">{actionMsg}</div>
+            )}
+
             {/* Color legend */}
             <div className="color-legend">
                 <div className="legend-item"><span className="legend-dot legend-blue"></span> Chưa đến</div>
@@ -251,7 +337,7 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
             </div>
 
             {/* Check-in button for next stop */}
-            {nextStop && (
+            {isTripOngoing && nextStop && (
                 <div className="checkin-section">
                     <div className="checkin-info">
                         <span>📍</span>

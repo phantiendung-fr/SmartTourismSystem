@@ -189,6 +189,11 @@
     color: #d63939;
 }
 
+.card-status[data-status="ONGOING"] {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
 .card-info h3 {
     margin: 0 0 8px 0;
     font-size: 17px;

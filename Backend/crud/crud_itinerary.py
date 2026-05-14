@@ -287,7 +287,7 @@ def update_itinerary_status(
 
 def get_itinerary_history(db: Session, user_id: UUID) -> list:
     """
-    Lấy lịch sử các lộ trình COMPLETED hoặc CANCELLED của *user_id*,
+    Lấy lịch sử tất cả các lộ trình của *user_id*,
     sắp xếp theo ``create_at`` giảm dần (mới nhất trước).
 
     Columns trả về:
@@ -304,10 +304,6 @@ def get_itinerary_history(db: Session, user_id: UUID) -> list:
         )
         .where(
             Itineraries.user_id == user_id,
-            Itineraries.status.in_([
-                ItineraryStatus.COMPLETED,
-                ItineraryStatus.CANCELLED,
-            ]),
         )
         .order_by(Itineraries.create_at.desc())
     )

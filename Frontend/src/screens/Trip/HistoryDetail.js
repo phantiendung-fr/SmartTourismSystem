@@ -62,7 +62,7 @@ const HistoryDetail = ({ itineraryId, onBack }) => {
                 </button>
                 <h2>{tripDetail.name || "Chi tiết hành trình"}</h2>
                 <div className="status-badge-history">
-                    {tripDetail.status === 'COMPLETED' ? '✅ Hoàn thành' : '⚠️ Chưa hoàn thành'}
+                    {tripDetail.status === 'COMPLETED' ? '✅ Hoàn thành' : tripDetail.status === 'CANCELLED' ? '❌ Đã hủy' : '🔄 Đang diễn ra'}
                 </div>
             </div>
 

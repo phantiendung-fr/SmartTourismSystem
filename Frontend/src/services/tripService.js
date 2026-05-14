@@ -41,6 +41,26 @@ export const completeTrip = async (itineraryId, token) => {
     }
 };
 
+export const cancelTrip = async (itineraryId, token) => {
+    try {
+        const response = await fetch(`${API_URL}/${itineraryId}/cancel`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || "Lỗi khi hủy chuyến đi");
+        }
+        return await response.json();
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
+};
+
 export const createTrip = async (payload, token) => {
     try {
         const response = await fetch(`${API_URL}/create`, {

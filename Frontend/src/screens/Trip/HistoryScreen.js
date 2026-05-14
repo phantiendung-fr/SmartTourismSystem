@@ -31,7 +31,11 @@ const HistoryScreen = ({ onBack }) => {
         let result = [...history];
 
         if (filterStatus !== 'ALL') {
-            result = result.filter(item => item.status === filterStatus);
+            if (filterStatus === 'ONGOING') {
+                result = result.filter(item => item.status === 'DRAFT' || item.status === 'CONFIRMED');
+            } else {
+                result = result.filter(item => item.status === filterStatus);
+            }
         }
 
         if (filterDate) {
@@ -78,8 +82,9 @@ const HistoryScreen = ({ onBack }) => {
                         className="filter-select"
                     >
                         <option value="ALL">Tất cả</option>
+                        <option value="ONGOING">Đang diễn ra</option>
                         <option value="COMPLETED">Hoàn thành</option>
-                        <option value="CANCELLED">Chưa hoàn thành</option>
+                        <option value="CANCELLED">Đã hủy</option>
                     </select>
                 </div>
 
@@ -122,8 +127,8 @@ const HistoryScreen = ({ onBack }) => {
                             className="history-card"
                             onClick={() => setSelectedTripId(item.itinerary_id)}
                         >
-                            <div className="card-status" data-status={item.status}>
-                                {item.status === 'COMPLETED' ? 'Hoàn thành' : 'Chưa hoàn thành'}
+                            <div className="card-status" data-status={item.status === 'DRAFT' || item.status === 'CONFIRMED' ? 'ONGOING' : item.status}>
+                                {item.status === 'COMPLETED' ? '✅ Hoàn thành' : item.status === 'CANCELLED' ? '❌ Đã hủy' : '🔄 Đang diễn ra'}
                             </div>
                             <div className="card-info">
                                 <h3>{item.name || 'Hành trình không tên'}</h3>
