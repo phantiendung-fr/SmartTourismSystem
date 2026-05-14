@@ -23,7 +23,7 @@ from crud.crud_tracking import (
     get_stop_with_ownership
 )
 from crud.crud_itinerary import update_itinerary_status, get_itinerary_history
-from models import Locations, ItineraryDays, ItineraryStops, ItineraryStatus, DeviationLogs, Itineraries
+from models import Locations, ItineraryDays, ItineraryStops, ItineraryRoutes, ItineraryStatus, StopStatus, DeviationLogs, Itineraries
 
 from core.algorithms import check_within_radius, tsp_dp_bitmask
 from core.google_maps import get_route_polyline
@@ -422,11 +422,21 @@ def checkin_stop(
     # Tăng lượt checkin tại địa điểm
     increment_location_checkin_count(db, stop_data.location_id)
 
-    # TÍNH ĐIỂM THƯỞNG
-    # Trạm đầu: +15 điểm (khuyến khích bắt đầu chuyến đi)
-    # Từ trạm 2 trở đi: +5 điểm cố định
-    stop_order = stop_data.stop_order  # lấy từ query gộp, không cần query thêm
-    earned_points = 15 if stop_order == 1 else 5
+    # TÍNH ĐIỂM THƯỞNG — dựa trên khoảng cách giữa các trạm
+    # Tra cứu route đến trạm này (đã tính sẵn khi tạo lộ trình, KHÔNG gọi thêm API)
+    route_to_stop = db.exec(
+        select(ItineraryRoutes).where(ItineraryRoutes.to_stop_id == stop_id)
+    ).first()
+    
+    if route_to_stop is not None:
+        distance_km = float(route_to_stop.distance)
+        # Custom rounding: phần thập phân >= 0.8 làm tròn lên, < 0.8 làm tròn xuống
+        frac = distance_km - math.floor(distance_km)
+        earned_points = math.ceil(distance_km) if frac >= 0.8 else math.floor(distance_km)
+        earned_points = max(1, earned_points)  # Tối thiểu 1 điểm
+    else:
+        # Trạm đầu tiên (không có route đến) → 10 điểm mặc định
+        earned_points = 10
     
     # Lưu điểm thưởng vào stop để frontend hiển thị được — dùng UPDATE trực tiếp
     from sqlalchemy import update as sa_update
@@ -444,8 +454,46 @@ def checkin_stop(
         profile.total_points += earned_points
         db.add(profile)
 
+    # AUTO-COMPLETE: Nếu tất cả trạm đã check-in → tự động hoàn thành chuyến đi
+    itinerary_id = stop_data.itinerary_id
+    pending_stop = db.exec(
+        select(ItineraryStops.stop_id)
+        .join(ItineraryDays, ItineraryStops.day_id == ItineraryDays.day_id)
+        .where(
+            ItineraryDays.itinerary_id == itinerary_id,
+            ItineraryStops.status != StopStatus.COMPLETED
+        )
+    ).first()
+    
+    auto_completed = False
+    if pending_stop is None:
+        # Tất cả trạm đã hoàn thành → auto-complete trip
+        trip = db.exec(select(Itineraries).where(Itineraries.itinerary_id == itinerary_id)).first()
+        if trip and trip.status not in (ItineraryStatus.COMPLETED, ItineraryStatus.CANCELLED):
+            from datetime import timezone
+            trip.status = ItineraryStatus.COMPLETED
+            trip.update_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            db.add(trip)
+            
+            # Chuyển total_points → points_balance
+            if profile and profile.total_points > 0:
+                profile.points_balance += profile.total_points
+                profile.total_points = 0
+                db.add(profile)
+            
+            auto_completed = True
+
     # KHÔNG cần db.commit() — get_session() tự commit khi request thành công
     # KHÔNG cần db.rollback() — get_session() tự rollback khi có exception
+
+    if auto_completed:
+        return CheckInResponse(
+            success=True,
+            message=f"✅ Check-in thành công! +{earned_points} điểm. 🎉 Tất cả trạm đã hoàn thành — chuyến đi tự động hoàn tất!",
+            stop_id=stop_id,
+            progress_id=progress_id,
+            earned_points=earned_points
+        )
 
     return CheckInResponse(
         success=True,

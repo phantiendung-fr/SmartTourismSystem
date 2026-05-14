@@ -206,13 +206,17 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
                     //    → Không cần đợi refetch từ backend → nút check-in sẵn sàng ngay
                     setTripDetail(prev => {
                         if (!prev) return prev;
+                        const updatedStops = prev.stops.map(s => 
+                            s.stop_id === checkedStopId 
+                                ? { ...s, status: 'COMPLETED' } 
+                                : s
+                        );
+                        // Nếu tất cả trạm đã COMPLETED → cập nhật status trip luôn
+                        const allDone = updatedStops.every(s => s.status === 'COMPLETED');
                         return {
                             ...prev,
-                            stops: prev.stops.map(s => 
-                                s.stop_id === checkedStopId 
-                                    ? { ...s, status: 'COMPLETED' } 
-                                    : s
-                            )
+                            stops: updatedStops,
+                            status: allDone ? 'COMPLETED' : prev.status
                         };
                     });
 
