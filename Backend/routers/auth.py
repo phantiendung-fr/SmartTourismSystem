@@ -77,8 +77,8 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_session)):
     refresh_token = security.create_refresh_token(data={"sub": str(user.user_id)})
     expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=7)
 
-# Lấy device_id từ Frontend gửi lên, nếu không có thì mặc định là 'web-browser'
-    device_id = getattr(credentials, 'device_id', 'web-browser')
+    # Lấy device_id từ Frontend gửi lên, nếu không có thì mặc định là 'web-browser'
+    device_id = credentials.device_id or 'web-browser'
     crud_auth.create_user_session(
         db=db, 
         user_id=user.user_id, 

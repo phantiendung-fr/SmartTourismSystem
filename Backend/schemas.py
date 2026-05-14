@@ -54,6 +54,7 @@ class UserLogin(BaseModel):
     """Payload for authenticating an existing user."""
     email: EmailStr
     password: str
+    device_id: Optional[str] = "web-browser"
 
 
 class UserResponse(BaseModel):
@@ -156,6 +157,8 @@ class UserInfo(BaseModel):
     email: str
     full_name: str
     role: str
+    
+    model_config = ConfigDict(extra="allow")
 
 class TokenResponse(BaseModel):
     """Payload trả về khi đăng nhập thành công."""
