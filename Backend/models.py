@@ -155,6 +155,7 @@ class UserProfiles(SQLModel, table=True):
     selfie_url: Optional[str] = Field(default=None)
     kyc_status: KycStatus = Field(default=KycStatus.UNVERIFIED)
     total_points: int = Field(default=0, ge=0)
+    points_balance: int = Field(default=0, ge=0)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 

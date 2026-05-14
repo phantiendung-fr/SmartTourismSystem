@@ -69,6 +69,17 @@ def complete_trip(
         
     update_itinerary_status(db, itinerary_id=itinerary_id, new_status=ItineraryStatus.COMPLETED)
     
+    # Cộng điểm hiện tại (total_points) vào ngân sách điểm (points_balance)
+    from models import UserProfiles
+    profile = db.exec(select(UserProfiles).where(UserProfiles.user_id == user_id)).first()
+    if profile and profile.total_points > 0:
+        profile.points_balance += profile.total_points
+        earned = profile.total_points
+        profile.total_points = 0
+        db.add(profile)
+        db.commit()
+        return MessageResponse(detail=f"Chúc mừng bạn đã hoàn thành chuyến đi! +{earned} điểm đã được cộng vào ngân sách.")
+    
     return MessageResponse(detail="Chúc mừng bạn đã hoàn thành chuyến đi!")
 
 @router.put("/{itinerary_id}/cancel", response_model=MessageResponse, summary="Hủy chuyến đi")
@@ -90,6 +101,17 @@ def cancel_trip(
         raise HTTPException(status_code=400, detail="Không thể hủy chuyến đi đã hoàn thành")
         
     update_itinerary_status(db, itinerary_id=itinerary_id, new_status=ItineraryStatus.CANCELLED)
+    
+    # Dù hủy, vẫn cộng điểm hiện tại vào ngân sách
+    from models import UserProfiles
+    profile = db.exec(select(UserProfiles).where(UserProfiles.user_id == user_id)).first()
+    if profile and profile.total_points > 0:
+        profile.points_balance += profile.total_points
+        earned = profile.total_points
+        profile.total_points = 0
+        db.add(profile)
+        db.commit()
+        return MessageResponse(detail=f"Chuyến đi đã được hủy. +{earned} điểm đã được cộng vào ngân sách.")
     
     return MessageResponse(detail="Chuyến đi đã được hủy.")
 
@@ -400,15 +422,21 @@ def checkin_stop(
     # Tăng lượt checkin tại địa điểm
     increment_location_checkin_count(db, stop_data.location_id)
 
-    # CỘNG ĐIỂM THƯỞNG CHO USER
-    earned_points = getattr(stop_data, 'reward', 0)
-    if earned_points > 0:
-        from models import UserProfiles
-        statement = select(UserProfiles).where(UserProfiles.user_id == user_id)
-        profile = db.exec(statement).first()
-        if profile:
-            profile.total_points += earned_points
-            db.add(profile)
+    # TÍNH ĐIỂM THƯỞNG BẰNG CÔNG THỨC (không lấy từ DB)
+    # Formula: điểm = base (10, chỉ trạm đầu tiên) + 5 × stop_order
+    # Base points chỉ cộng khi check-in trạm đầu tiên (tránh tạo trip mà không đi vẫn ăn điểm)
+    stop_obj = db.get(ItineraryStops, stop_id)
+    stop_order = stop_obj.stop_order if stop_obj else 1
+    base_points = 10 if stop_order == 1 else 0
+    earned_points = base_points + 5 * stop_order
+    
+    # Cộng điểm vào total_points (điểm hiện tại của chuyến đi)
+    from models import UserProfiles
+    statement = select(UserProfiles).where(UserProfiles.user_id == user_id)
+    profile = db.exec(statement).first()
+    if profile:
+        profile.total_points += earned_points
+        db.add(profile)
 
     # KHÔNG cần db.commit() — get_session() tự commit khi request thành công
     # KHÔNG cần db.rollback() — get_session() tự rollback khi có exception

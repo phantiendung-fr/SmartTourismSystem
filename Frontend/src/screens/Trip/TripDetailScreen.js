@@ -256,11 +256,6 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
             <div className="detail-header">
                 <button className="btn-back-icon" onClick={onBack}>⬅️</button>
                 <h2>{tripDetail.name || "Chi tiết chuyến đi"}</h2>
-                <button className="btn-refresh" onClick={handleRefresh} title="Tải lại dữ liệu">🔄</button>
-                {/* Trip status badge */}
-                <div className={`trip-status-badge ${statusInfo.className}`}>
-                    {statusInfo.text}
-                </div>
                 {/* Deviation status badge — click to toggle for demo */}
                 {isTripOngoing && (
                     <div

@@ -1,6 +1,7 @@
 import random
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
+from sqlmodel import select
 
 from datetime import datetime, timedelta, timezone 
 from pydantic import BaseModel # Thêm thư viện này để tạo form nhận OTP
@@ -110,7 +111,9 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_session)):
                 "base_location": profile.base_location or "",
                 "bio": profile.bio or "",
                 "travel_style": getattr(profile.travel_style, 'value', profile.travel_style) if profile.travel_style else "",
-                "privacy_status": getattr(profile.privacy_status, 'value', profile.privacy_status) if profile.privacy_status else "PUBLIC"
+                "privacy_status": getattr(profile.privacy_status, 'value', profile.privacy_status) if profile.privacy_status else "PUBLIC",
+                "total_points": profile.total_points or 0,
+                "points_balance": profile.points_balance or 0,
             }
     return {
         "access_token": access_token,
@@ -176,7 +179,7 @@ def get_my_profile(
     user_id = current_user.get("sub")
     
     # 1. Tìm user trong bảng chính
-    user = crud_auth.get_user_by_id(db, user_id=user_id) 
+    user = crud_user.get_user_by_id(db, user_id=user_id) 
     if not user:
         raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
 
@@ -207,7 +210,9 @@ def get_my_profile(
                 "base_location": profile.base_location or "",
                 "bio": profile.bio or "",
                 "travel_style": getattr(profile.travel_style, 'value', profile.travel_style) if profile.travel_style else "",
-                "privacy_status": getattr(profile.privacy_status, 'value', profile.privacy_status) if profile.privacy_status else "PUBLIC"
+                "privacy_status": getattr(profile.privacy_status, 'value', profile.privacy_status) if profile.privacy_status else "PUBLIC",
+                "total_points": profile.total_points or 0,
+                "points_balance": profile.points_balance or 0,
             }
 
     # 3. Trả về cấu trúc bọc trong key "user" GIỐNG HỆT với API /login
