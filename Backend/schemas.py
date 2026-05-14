@@ -375,6 +375,8 @@ class ItineraryResponse(BaseModel):
     currency: CurrencyEnum
     total_travel_time: int
     total_distance: Decimal
+    budget_category: Optional[str] = Field(default="MEDIUM", description="LOW, MEDIUM, or HIGH")
+    warning_message: Optional[str] = None
     create_at: datetime
     update_at: datetime
 
@@ -455,6 +457,7 @@ class ItineraryStopResponse(BaseModel):
     close_time: Optional[time] = None
     min_price: Optional[Decimal] = None
     max_price: Optional[Decimal] = None
+    estimated_price: Optional[Decimal] = None
 
     model_config = ConfigDict(from_attributes=True)
 

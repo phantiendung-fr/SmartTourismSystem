@@ -68,13 +68,6 @@ const HistoryDetail = ({ itineraryId, onBack }) => {
 
             <div className="trip-summary">
                 <div className="summary-item">
-                    <span className="icon">💰</span>
-                    <div>
-                        <small>Tổng ngân sách</small>
-                        <strong>{new Intl.NumberFormat('vi-VN').format(tripDetail.total_budget)} {tripDetail.currency}</strong>
-                    </div>
-                </div>
-                <div className="summary-item">
                     <span className="icon">⏱️</span>
                     <div>
                         <small>Tổng thời gian</small>
@@ -109,11 +102,6 @@ const HistoryDetail = ({ itineraryId, onBack }) => {
                                         <div className={`stop-card ${getStopColorClass(stop)}`}>
                                             <div className="stop-card-header">
                                                 <h4>{stop.location_name}</h4>
-                                                {stop.min_price && (
-                                                    <span className="stop-price-tag">
-                                                        {new Intl.NumberFormat('vi-VN').format(stop.min_price)}đ
-                                                    </span>
-                                                )}
                                             </div>
                                             <p>
                                                 {stop.status === 'COMPLETED' ? '✅ Đã ghé thăm' : '⚪ Chưa ghé thăm'}

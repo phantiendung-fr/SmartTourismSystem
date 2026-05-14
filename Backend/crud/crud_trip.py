@@ -110,7 +110,7 @@ def create_itinerary_with_days(
 
 # --- Bổ sung các hàm Create lẻ để linh hoạt hơn ---
 
-def create_itinerary(db: Session, session_id: UUID, user_id: UUID, name: str, total_travel_time: int, commit: bool = True) -> Itineraries:
+def create_itinerary(db: Session, session_id: UUID, user_id: UUID, name: str, total_travel_time: int, budget_category: str = "MEDIUM", commit: bool = True) -> Itineraries:
     db_itinerary = Itineraries(
         session_id=session_id,
         user_id=user_id,
@@ -118,6 +118,7 @@ def create_itinerary(db: Session, session_id: UUID, user_id: UUID, name: str, to
         total_travel_time=total_travel_time,
         total_distance=0,
         total_budget=0,
+        budget_category=budget_category,
         status=ItineraryStatus.DRAFT
     )
     db.add(db_itinerary)
@@ -144,13 +145,14 @@ def create_itinerary_day(db: Session, itinerary_id: UUID, day_order: int, travel
         db.flush()
     return db_day
 
-def create_itinerary_stop(db: Session, day_id: int, location_id: UUID, stop_order: int, arrival_time=None, departure_time=None, commit: bool = True) -> ItineraryStops:
+def create_itinerary_stop(db: Session, day_id: int, location_id: UUID, stop_order: int, arrival_time=None, departure_time=None, estimated_price: float = 0, commit: bool = True) -> ItineraryStops:
     db_stop = ItineraryStops(
         day_id=day_id,
         location_id=location_id,
         stop_order=stop_order,
         arrival_time=arrival_time or "08:00:00",
         departure_time=departure_time or "09:30:00",
+        estimated_price=estimated_price,
         status=StopStatus.PENDING
     )
     db.add(db_stop)

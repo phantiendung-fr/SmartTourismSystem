@@ -275,6 +275,12 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
                 )}
             </div>
 
+            {tripDetail.warning_message && (
+                <div className="budget-warning-banner">
+                    ⚠️ {tripDetail.warning_message}
+                </div>
+            )}
+
             <div className="trip-summary">
                 <div className="summary-item">
                     <span className="icon">💰</span>
@@ -406,7 +412,10 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
                                             <p>Khởi hành: {stop.departure_time?.slice(0, 5)}</p>
                                             {stop.min_price && (
                                                 <p className="stop-price-range">
-                                                    Dự kiến: {new Intl.NumberFormat('vi-VN').format(stop.min_price)}đ - {new Intl.NumberFormat('vi-VN').format(stop.max_price)}đ
+                                                    {tripDetail.budget_category === 'MEDIUM' 
+                                                        ? `Dự kiến: ${new Intl.NumberFormat('vi-VN').format(stop.min_price)}đ - ${new Intl.NumberFormat('vi-VN').format(stop.estimated_price)}đ`
+                                                        : `Dự kiến: ${new Intl.NumberFormat('vi-VN').format(stop.estimated_price)}đ`
+                                                    }
                                                 </p>
                                             )}
                                         </div>

@@ -167,9 +167,61 @@ def create_new_itinerary(
 
     loc_map = {loc.location_id: loc for loc in locations}
     
+    # 1.1 Lấy ngân sách từ PlanningSession
+    from models import PlanningSessions
+    session_plan = db.get(PlanningSessions, request.session_id)
+    if not session_plan:
+        raise HTTPException(status_code=404, detail="Không tìm thấy phiên lập kế hoạch.")
+    
+    total_user_budget = float(session_plan.budget)
+    
+    # 1.2 Tính toán tổng min_price và max_price để phân bổ
+    total_min = sum(float(loc.min_price) for loc in locations)
+    total_max = sum(float(loc.max_price) for loc in locations)
+    total_range = total_max - total_min
+
+    # 1.3 Thuật toán phân bổ ngân sách cho từng địa điểm
+    allocated_prices = {}
+    budget_category = "MEDIUM"
+    warning_message = None
+
+    if total_user_budget < total_min:
+        # Ngân sách thấp hơn cả mức tối thiểu -> Cảnh báo (Cách 1)
+        budget_category = "LOW"
+        missing_amount = total_min - total_user_budget
+        warning_message = f"Cảnh báo: Ngân sách của bạn thấp hơn mức tối thiểu để đi hết các điểm này (Thiếu hụt {missing_amount:,.0f}đ). Hệ thống sẽ tự động sử dụng giá sàn."
+        for loc in locations:
+            allocated_prices[loc.location_id] = float(loc.min_price)
+    elif total_user_budget == total_min:
+        budget_category = "LOW"
+        for loc in locations:
+            allocated_prices[loc.location_id] = float(loc.min_price)
+    elif total_user_budget >= total_max:
+        # Ngân sách dồi dào -> dùng max_price
+        budget_category = "HIGH"
+        for loc in locations:
+            allocated_prices[loc.location_id] = float(loc.max_price)
+    else:
+        # Ngân sách nằm giữa min và max -> phân bổ tỷ lệ thuận theo (max - min)
+        budget_category = "MEDIUM"
+        surplus = total_user_budget - total_min
+        for loc in locations:
+            loc_range = float(loc.max_price) - float(loc.min_price)
+            if total_range > 0:
+                share = (loc_range / total_range) * surplus
+                raw_price = float(loc.min_price) + share
+                # Làm tròn đến hàng nghìn (ví dụ: 33.076 -> 33.000)
+                allocated_prices[loc.location_id] = round(raw_price / 1000) * 1000
+            else:
+                raw_price = float(loc.min_price) + (surplus / len(locations))
+                allocated_prices[loc.location_id] = round(raw_price / 1000) * 1000
+    
     try:
         # 2. Tạo bản ghi Itinerary (Lộ trình tổng)
-        trip = create_itinerary(db, session_id=request.session_id, user_id=user_id, name=request.name, total_travel_time=0, commit=False)
+        trip = create_itinerary(
+            db, session_id=request.session_id, user_id=user_id, name=request.name, 
+            total_travel_time=0, budget_category=budget_category, commit=False
+        )
         # 3. Phân bổ ngày (Day Clustering)
         # Giả sử request có truyền end_date, nếu không mặc định là 1 ngày
         num_days = 1
@@ -203,10 +255,10 @@ def create_new_itinerary(
             if "START_POINT" in optimized_ids:
                 optimized_ids.remove("START_POINT")
 
-            # Tính toán ngân sách dự kiến cho ngày này dựa trên min_price của các địa điểm
-            day_budget = sum(float(loc_map[lid].min_price) for lid in chunk_ids)
+            # Tính toán ngân sách dự kiến cho ngày này dựa trên allocated_prices đã tính
+            day_budget = sum(allocated_prices[lid] for lid in chunk_ids)
             global_total_budget += day_budget
-
+            
             # Tạo bản ghi Day
             day = create_itinerary_day(
                 db, itinerary_id=trip.itinerary_id, day_order=day_index + 1,
@@ -254,10 +306,11 @@ def create_new_itinerary(
                 current_dt += timedelta(minutes=play_duration_mins)
                 departure_time = current_dt.time()
 
-                # Lưu Stop vào DB
+                # Lưu Stop vào DB kèm ngân sách đã phân bổ
                 new_stop = create_itinerary_stop(
                     db, day_id=day.day_id, location_id=loc_id, stop_order=order,
-                    arrival_time=arrival_time, departure_time=departure_time, commit=False
+                    arrival_time=arrival_time, departure_time=departure_time, 
+                    estimated_price=allocated_prices[loc_id], commit=False
                 )
                 daily_time += play_duration_mins
 
@@ -286,8 +339,10 @@ def create_new_itinerary(
 
         # Reload
         full_trip = get_itinerary_by_id(db, trip.itinerary_id)
-        return ItineraryResponse.model_validate(full_trip)
-
+        resp = ItineraryResponse.model_validate(full_trip)
+        resp.warning_message = warning_message
+        return resp
+    
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Lỗi hệ thống khi tạo lộ trình: {str(e)}")
@@ -334,6 +389,7 @@ def get_trip_detail(itinerary_id: UUID, db: Session = Depends(get_session)):
         stop_dict["close_time"] = loc.close_time
         stop_dict["min_price"] = loc.min_price
         stop_dict["max_price"] = loc.max_price
+        stop_dict["estimated_price"] = stop.estimated_price
         
         stop_dicts.append(stop_dict)
         all_stop_ids.append(stop.stop_id)

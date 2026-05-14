@@ -379,6 +379,7 @@ class Itineraries(SQLModel, table=True):
     status: ItineraryStatus = Field(default=ItineraryStatus.DRAFT)
     total_budget: Decimal = Field(sa_column=Column(Numeric(18, 2), nullable=False))
     currency: CurrencyEnum = Field(default=CurrencyEnum.VND)
+    budget_category: str = Field(default="MEDIUM", max_length=20)
     total_travel_time: int = Field(ge=0)
     total_distance: Decimal = Field(sa_column=Column(Numeric(10, 2), nullable=False))
     create_at: datetime = Field(default_factory=datetime.utcnow)
@@ -408,6 +409,7 @@ class ItineraryStops(SQLModel, table=True):
     departure_time: time
     checkin_radius: int = Field(default=100)
     reward: int = Field(default=0, ge=0)
+    estimated_price: Decimal = Field(sa_column=Column(Numeric(18, 2), nullable=False, default=0))
     status: StopStatus = Field(default=StopStatus.PENDING)
 
 
