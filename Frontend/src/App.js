@@ -25,6 +25,22 @@ function App() {
     const [currentItineraryId, setCurrentItineraryId] = useState(null);
     const [currentLocationDetail, setCurrentLocationDetail] = useState(null);
 
+    const refreshUser = async () => {
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+        try {
+            const res = await fetch('http://127.0.0.1:8000/api/auth/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setCurrentUser(data);
+            }
+        } catch (error) {
+            console.error("Lỗi cập nhật user:", error);
+        }
+    };
+
     // =========================================================================
     // 1. TỰ ĐỘNG ĐĂNG NHẬP VÀ LẤY FULL DATA KHI MỞ APP (F5 KHÔNG BỊ MẤT)
     // =========================================================================
@@ -145,6 +161,7 @@ function App() {
                                 setCurrentItineraryId(id);
                                 setCurrentScreen('trip_detail');
                             }}
+                            refreshUser={refreshUser}
                         />
                     )
                 )}
@@ -215,6 +232,7 @@ function App() {
                     <TripDetailScreen
                         itineraryId={currentItineraryId}
                         onBack={() => setCurrentScreen('main')}
+                        refreshUser={refreshUser}
                     />
                 )}
 

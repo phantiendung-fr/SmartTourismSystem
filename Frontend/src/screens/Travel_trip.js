@@ -76,7 +76,25 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
                 <div className="header">
                     <div className="greeting">
                         <p>{isGuest ? 'Chào bạn mới,' : getGreeting()}</p>
-                        <h2>{isGuest ? 'Khách du lịch 🎒' : `${user?.user?.full_name || user?.full_name || 'Bạn'} 🎒`}</h2>
+                        <h2>
+                            {isGuest ? 'Khách du lịch 🎒' : `${user?.user?.full_name || user?.full_name || 'Bạn'} 🎒`}
+                        </h2>
+                        {!isGuest && (
+                            <div style={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                background: 'rgba(255, 244, 230, 0.8)', 
+                                padding: '4px 10px', 
+                                borderRadius: '10px', 
+                                marginTop: '4px',
+                                border: '1px solid #ffeaa7'
+                            }}>
+                                <span style={{ fontSize: '14px', marginRight: '5px' }}>⭐</span>
+                                <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#f39c12' }}>
+                                    {(user?.user?.total_points || user?.total_points || 0)} pts
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     <div style={{ position: 'relative' }}>

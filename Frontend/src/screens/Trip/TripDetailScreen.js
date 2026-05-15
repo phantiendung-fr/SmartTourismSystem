@@ -3,7 +3,7 @@ import { getTripDetail, getDeviationStatus, checkinStop, completeTrip, cancelTri
 import RouteMap from '../../components/RouteMap/RouteMap';
 import './TripDetailScreen.css';
 
-const TripDetailScreen = ({ itineraryId, onBack }) => {
+const TripDetailScreen = ({ itineraryId, onBack, refreshUser }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [tripDetail, setTripDetail] = useState(null);
@@ -223,6 +223,11 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
                         console.warn('Background refresh failed:', err)
                     );
                 }, 1500);
+
+                // Cập nhật lại tổng điểm người dùng ở App
+                if (typeof refreshUser === 'function') {
+                    refreshUser();
+                }
 
             } catch (err) {
                 clearTimeout(safetyTimer);
