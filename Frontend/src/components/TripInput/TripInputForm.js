@@ -74,7 +74,7 @@ const TripInputForm = ({ onSubmitPlan, onCancel }) => {
             city_id: tripData.city_id,
             start_day: tripData.start_day,
             end_day: end_day,
-            budget: tripData.budget || 5000000,
+            budget: tripData.budget,
             currency: "VND",
             pax_adult: tripData.pax_adult,
             pax_children: tripData.pax_children,
@@ -156,7 +156,7 @@ const TripInputForm = ({ onSubmitPlan, onCancel }) => {
                             step="100000"
                             placeholder="VD: 5000000"
                             value={tripData.budget}
-                            onChange={(e) => handleChange('budget', parseInt(e.target.value))}
+                            onChange={(e) => handleChange('budget', parseInt(e.target.value) || 0)}
                         />
                         <small style={{ color: '#8395a7', marginTop: '5px' }}>
                             Hệ thống sẽ tối ưu lộ trình dựa trên ngân sách này.
@@ -164,7 +164,13 @@ const TripInputForm = ({ onSubmitPlan, onCancel }) => {
                     </div>
                     <div className="btn-row">
                         <button className="btn-back" onClick={() => setStep(1)}>⬅️ Quay lại</button>
-                        <button className="btn-next" style={{ width: 'auto' }} onClick={() => setStep(3)}>Tiếp tục ➡️</button>
+                        <button className="btn-next" style={{ width: 'auto' }} onClick={() => {
+                            if (!tripData.budget || tripData.budget <= 0) {
+                                alert("Vui lòng nhập ngân sách tối đa dự kiến của bạn.");
+                                return;
+                            }
+                            setStep(3);
+                        }}>Tiếp tục ➡️</button>
                     </div>
                 </div>
             )}

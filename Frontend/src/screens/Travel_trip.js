@@ -91,7 +91,7 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
                             }}>
                                 <span style={{ fontSize: '14px', marginRight: '5px' }}>⭐</span>
                                 <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#f39c12' }}>
-                                    {(user?.user?.total_points || user?.total_points || 0)} pts
+                                    {(user?.user?.points_balance || user?.points_balance || 0) + (user?.user?.total_points || user?.total_points || 0)} pts
                                 </span>
                             </div>
                         )}

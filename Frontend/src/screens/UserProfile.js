@@ -154,7 +154,7 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
                     <div>
                         <div style={{ fontSize: '13px', color: '#636e72', fontWeight: '600' }}>Điểm thưởng tích lũy</div>
                         <div style={{ fontSize: '20px', color: '#f39c12', fontWeight: '800' }}>
-                            {userInfo?.total_points || 0} <span style={{ fontSize: '14px', color: '#b2bec3', fontWeight: '500' }}>pts</span>
+                            {(userInfo?.points_balance || 0) + (userInfo?.total_points || 0)} <span style={{ fontSize: '14px', color: '#b2bec3', fontWeight: '500' }}>pts</span>
                         </div>
                     </div>
                 </div>

@@ -186,23 +186,21 @@ def create_new_itinerary(
     warning_message = None
 
     if total_user_budget < total_min:
-        # Ngân sách thấp hơn cả mức tối thiểu -> Cảnh báo (Cách 1)
+        # Ngân sách thấp hơn cả mức tối thiểu -> Phân bổ tỷ lệ thuận theo giá sàn và ép vào budget
         budget_category = "LOW"
-        missing_amount = total_min - total_user_budget
-        warning_message = f"Cảnh báo: Ngân sách của bạn thấp hơn mức tối thiểu để đi hết các điểm này (Thiếu hụt {missing_amount:,.0f}đ). Hệ thống sẽ tự động sử dụng giá sàn."
+        warning_message = f"Cảnh báo: Ngân sách của bạn ({total_user_budget:,.0f}đ) thấp hơn mức tối thiểu tổng cộng ({total_min:,.0f}đ). Hệ thống sẽ cố gắng phân bổ trong giới hạn."
         for loc in locations:
-            allocated_prices[loc.location_id] = float(loc.min_price)
-    elif total_user_budget == total_min:
-        budget_category = "LOW"
-        for loc in locations:
-            allocated_prices[loc.location_id] = float(loc.min_price)
+            # Tỷ lệ của địa điểm này trong tổng giá sàn
+            share_ratio = float(loc.min_price) / total_min if total_min > 0 else 0
+            # Cấp phát theo tỷ lệ của budget người dùng, làm tròn xuống hàng nghìn
+            allocated_prices[loc.location_id] = math.floor((share_ratio * total_user_budget) / 1000) * 1000
     elif total_user_budget >= total_max:
         # Ngân sách dồi dào -> dùng max_price
         budget_category = "HIGH"
         for loc in locations:
             allocated_prices[loc.location_id] = float(loc.max_price)
     else:
-        # Ngân sách nằm giữa min và max -> phân bổ tỷ lệ thuận theo (max - min)
+        # Ngân sách nằm giữa min và max -> phân bổ tỷ lệ thuận theo thặng dư
         budget_category = "MEDIUM"
         surplus = total_user_budget - total_min
         for loc in locations:
@@ -210,11 +208,12 @@ def create_new_itinerary(
             if total_range > 0:
                 share = (loc_range / total_range) * surplus
                 raw_price = float(loc.min_price) + share
-                # Làm tròn đến hàng nghìn (ví dụ: 33.076 -> 33.000)
-                allocated_prices[loc.location_id] = round(raw_price / 1000) * 1000
+                # Dùng math.floor để không bao giờ vượt quá ngân sách
+                allocated_prices[loc.location_id] = math.floor(raw_price / 1000) * 1000
             else:
                 raw_price = float(loc.min_price) + (surplus / len(locations))
-                allocated_prices[loc.location_id] = round(raw_price / 1000) * 1000
+                allocated_prices[loc.location_id] = math.floor(raw_price / 1000) * 1000
+
     
     try:
         # 2. Tạo bản ghi Itinerary (Lộ trình tổng)
