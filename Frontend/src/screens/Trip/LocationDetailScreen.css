@@ -1,0 +1,246 @@
+.location-detail-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: #f8f9fb;
+    position: relative;
+    overflow-y: auto;
+    font-family: 'Inter', sans-serif; /* Giả định dùng font Inter hoặc tương tự */
+}
+
+/* --- Image Banner --- */
+.detail-banner {
+    width: 100%;
+    height: 350px;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+
+.banner-overlay {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px 20px;
+}
+
+.banner-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background-color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    font-size: 16px;
+    color: #333;
+}
+
+/* --- Content Area --- */
+.detail-content {
+    background-color: #ffffff;
+    border-top-left-radius: 30px;
+    border-top-right-radius: 30px;
+    padding: 25px 20px;
+    margin-top: -30px; /* Kéo lên đè lên ảnh */
+    flex: 1;
+    position: relative;
+    z-index: 2;
+}
+
+.header-info {
+    margin-bottom: 15px;
+}
+
+.loc-title {
+    margin: 0 0 10px 0;
+    font-size: 26px;
+    color: #2c2c2c;
+    font-weight: 800;
+}
+
+.loc-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.loc-address {
+    color: #6a6a6a;
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.loc-rating {
+    font-weight: bold;
+    color: #333;
+    display: flex;
+    align-items: center;
+    font-size: 15px;
+}
+
+/* --- Description --- */
+.desc-section {
+    margin-bottom: 20px;
+}
+
+.loc-desc {
+    color: #4a4a4a;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.read-more {
+    font-weight: bold;
+    color: #2c2c2c;
+    cursor: pointer;
+}
+
+/* --- Directions Button --- */
+.btn-directions {
+    background-color: #00bcd4; /* Màu cyan */
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+/* --- Sections --- */
+.section {
+    margin-bottom: 25px;
+}
+
+.section-title {
+    font-size: 18px;
+    margin: 0 0 15px 0;
+    color: #1a1a1a;
+    font-weight: 800;
+}
+
+/* --- Nearby Luxuries --- */
+.luxuries-list {
+    display: flex;
+    gap: 15px;
+}
+
+.luxury-item {
+    display: flex;
+    align-items: center;
+    background-color: #f7f8fa;
+    border-radius: 20px;
+    padding: 10px 15px;
+    gap: 8px;
+    font-size: 14px;
+    color: #333;
+    font-weight: 600;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+
+.luxury-item.active {
+    background-color: #e8f0fe;
+    color: #333;
+}
+
+.lux-icon {
+    font-size: 14px;
+}
+
+/* --- Rating & Reviews --- */
+.review-card {
+    background-color: #f5f5f5;
+    border-radius: 15px;
+    padding: 15px;
+}
+
+.review-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.reviewer-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 12px;
+}
+
+.reviewer-info {
+    flex: 1;
+}
+
+.reviewer-name {
+    margin: 0 0 3px 0;
+    font-size: 15px;
+    color: #333;
+}
+
+.review-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.stars {
+    color: #f39c12;
+    letter-spacing: 2px;
+}
+
+.review-time {
+    color: #888;
+}
+
+.btn-options {
+    background: none;
+    border: none;
+    color: #333;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.review-text {
+    margin: 0;
+    font-size: 13px;
+    color: #666;
+    line-height: 1.5;
+}
+
+/* --- Bottom Fixed Button --- */
+.bottom-fixed-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 20px;
+    background: linear-gradient(to top, rgba(255,255,255,1) 80%, rgba(255,255,255,0));
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    z-index: 10;
+}
+
+.btn-write-review {
+    width: 100%;
+    background-color: #00bcd4;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 188, 212, 0.4);
+}

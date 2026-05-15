@@ -90,7 +90,7 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
 
     const handleCompleteTrip = async () => {
         if (!window.confirm('Bạn có chắc chắn muốn hoàn thành chuyến đi này không?')) return;
-        
+
         setActionLoading(true);
         setActionMsg('');
         try {
@@ -109,7 +109,7 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
 
     const handleCancelTrip = async () => {
         if (!window.confirm('Bạn có chắc chắn muốn hủy chuyến đi này không? Hành động này không thể hoàn tác.')) return;
-        
+
         setActionLoading(true);
         setActionMsg('');
         try {
@@ -196,13 +196,13 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
 
                 clearTimeout(safetyTimer);
                 setCheckinMsg(result.message || '✅ Check-in thành công!');
-                
+
                 // OPTIMISTIC UPDATE: Cập nhật state local ngay lập tức
                 setTripDetail(prev => {
                     if (!prev) return prev;
-                    const updatedStops = prev.stops.map(s => 
-                        s.stop_id === checkedStopId 
-                            ? { ...s, status: 'COMPLETED' } 
+                    const updatedStops = prev.stops.map(s =>
+                        s.stop_id === checkedStopId
+                            ? { ...s, status: 'COMPLETED' }
                             : s
                     );
                     const allDone = updatedStops.every(s => s.status === 'COMPLETED');
@@ -219,7 +219,7 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
                 setTimeout(() => setCheckinMsg(''), 2000);
 
                 setTimeout(() => {
-                    handleRefresh(true).catch(err => 
+                    handleRefresh(true).catch(err =>
                         console.warn('Background refresh failed:', err)
                     );
                 }, 1500);
@@ -263,7 +263,7 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
         <div className="trip-detail-screen">
             <div className="detail-header">
                 <button className="btn-back-icon" onClick={onBack}>
-                    <i className="fas fa-arrow-left"></i> Quay lại
+                    <i className="fas fa-arrow-left"></i>
                 </button>
                 <h2>{tripDetail.name || "Chi tiết chuyến đi"}</h2>
                 {/* Deviation status badge — click to toggle for demo */}
@@ -416,7 +416,7 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
                                             <p>Khởi hành: {stop.departure_time?.slice(0, 5)}</p>
                                             {stop.min_price && (
                                                 <p className="stop-price-range">
-                                                    {tripDetail.budget_category === 'MEDIUM' 
+                                                    {tripDetail.budget_category === 'MEDIUM'
                                                         ? `Dự kiến: ${new Intl.NumberFormat('vi-VN').format(stop.min_price)}đ - ${new Intl.NumberFormat('vi-VN').format(stop.estimated_price)}đ`
                                                         : `Dự kiến: ${new Intl.NumberFormat('vi-VN').format(stop.estimated_price)}đ`
                                                     }
@@ -432,9 +432,9 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
             </div>
 
             {/* 🗺️ Bản đồ lộ trình với đường đi thực tế từ OSRM */}
-            <RouteMap 
-                stops={allStops} 
-                routes={tripDetail.routes || []} 
+            <RouteMap
+                stops={allStops}
+                routes={tripDetail.routes || []}
                 userLocation={userLocation}
             />
         </div>

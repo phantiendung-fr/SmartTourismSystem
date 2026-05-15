@@ -5,7 +5,7 @@ import './PlanRecommendScreen.css';
 
 const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
-const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated }) => {
+const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocationDetail, onSessionExpired }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [sessionData, setSessionData] = useState(null);
@@ -83,7 +83,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated }) => {
 
                 const tripPayload = {
                     session_id: sessionData.session_id,
-                    name: "Chuyến đi tuyệt vời", 
+                    name: "Chuyến đi tuyệt vời",
                     location_ids: selectedLocations,
                     start_date: planPayload.start_day,
                     end_date: planPayload.end_day,
@@ -105,7 +105,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated }) => {
                 // Nếu không lấy được GPS, vẫn cho tạo lộ trình nhưng không có start_lat/lon
                 const tripPayload = {
                     session_id: sessionData.session_id,
-                    name: "Chuyến đi tuyệt vời", 
+                    name: "Chuyến đi tuyệt vời",
                     location_ids: selectedLocations,
                     start_date: planPayload.start_day,
                     end_date: planPayload.end_day
@@ -139,12 +139,37 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated }) => {
     }
 
     if (error) {
+        const isTokenExpired = error.toLowerCase().includes('hết hạn') ||
+            error.toLowerCase().includes('expired') ||
+            error.toLowerCase().includes('unauthorized') ||
+            error.includes('401');
+
         return (
             <div className="recommend-screen">
                 <div className="error-state">
-                    <h2>Lỗi</h2>
-                    <p>{error}</p>
-                    <button onClick={onBack} className="btn-back">Quay lại</button>
+                    {isTokenExpired ? (
+                        <>
+                            <h2 style={{ fontSize: '20px', color: '#de350b', marginBottom: '10px' }}>
+                                Phiên đăng nhập đã hết hạn
+                            </h2>
+                            <p style={{ color: '#636e72', marginBottom: '20px' }}>
+                                Vui lòng đăng nhập lại để tiếp tục.
+                            </p>
+                            <button
+                                onClick={onSessionExpired || onBack}
+                                className="btn-back"
+                                style={{ background: '#0abde3', color: '#fff', padding: '10px 20px', borderRadius: '20px', border: 'none', fontWeight: 'bold' }}
+                            >
+                                Đăng nhập lại
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <h2>Lỗi</h2>
+                            <p>{error}</p>
+                            <button onClick={onBack} className="btn-back">Quay lại</button>
+                        </>
+                    )}
                 </div>
             </div>
         );
@@ -181,6 +206,15 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated }) => {
                             <p className="loc-tags">{(loc.tags || []).join(', ')}</p>
                             <p className="loc-price">{new Intl.NumberFormat('vi-VN').format(loc.min_price)}đ - {new Intl.NumberFormat('vi-VN').format(loc.max_price)}đ</p>
                             {loc.score && <div className="loc-score">Điểm phù hợp: {Number(loc.score).toFixed(1)}</div>}
+                            <div
+                                className="loc-view-detail"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onOpenLocationDetail(loc);
+                                }}
+                            >
+                                Xem chi tiết ➔
+                            </div>
                         </div>
                         <div className="loc-checkbox">
                             {selectedLocations.includes(loc.location_id) ? '✅' : '⚪'}

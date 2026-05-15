@@ -14,6 +14,7 @@ import UserProfile from './screens/UserProfile';
 import HistoryScreen from './screens/Trip/HistoryScreen';
 import PlanRecommendScreen from './screens/Trip/PlanRecommendScreen';
 import TripDetailScreen from './screens/Trip/TripDetailScreen';
+import LocationDetailScreen from './screens/Trip/LocationDetailScreen';
 
 function App() {
     const [currentScreen, setCurrentScreen] = useState('splash');
@@ -22,6 +23,7 @@ function App() {
     const [currentUser, setCurrentUser] = useState(null);
     const [planPayload, setPlanPayload] = useState(null);
     const [currentItineraryId, setCurrentItineraryId] = useState(null);
+    const [currentLocationDetail, setCurrentLocationDetail] = useState(null);
 
     // =========================================================================
     // 1. TỰ ĐỘNG ĐĂNG NHẬP VÀ LẤY FULL DATA KHI MỞ APP (F5 KHÔNG BỊ MẤT)
@@ -190,6 +192,22 @@ function App() {
                             setCurrentItineraryId(itineraryId);
                             setCurrentScreen('trip_detail');
                         }}
+                        onOpenLocationDetail={(loc) => {
+                            setCurrentLocationDetail(loc);
+                            setCurrentScreen('location_detail');
+                        }}
+                        onSessionExpired={() => {
+                            localStorage.removeItem('access_token');
+                            localStorage.removeItem('refresh_token');
+                            setCurrentScreen('login');
+                        }}
+                    />
+                )}
+
+                {currentScreen === 'location_detail' && (
+                    <LocationDetailScreen
+                        location={currentLocationDetail}
+                        onBack={() => setCurrentScreen('plan_recommend')}
                     />
                 )}
 
