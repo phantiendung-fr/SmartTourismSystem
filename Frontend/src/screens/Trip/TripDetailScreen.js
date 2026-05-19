@@ -3,7 +3,7 @@ import { getTripDetail, getDeviationStatus, checkinStop, completeTrip, cancelTri
 import RouteMap from '../../components/RouteMap/RouteMap';
 import './TripDetailScreen.css';
 
-const TripDetailScreen = ({ itineraryId, onBack }) => {
+const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [tripDetail, setTripDetail] = useState(null);
@@ -99,6 +99,7 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
             setActionMsg(`✅ ${result.detail}`);
             // Refresh trip detail to get updated status
             await fetchDetail(true);
+            if (onPointsUpdate) onPointsUpdate();
         } catch (err) {
             setActionMsg(`❌ ${err.message}`);
         } finally {
@@ -118,6 +119,7 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
             setActionMsg(`⚠️ ${result.detail}`);
             // Refresh trip detail to get updated status
             await fetchDetail(true);
+            if (onPointsUpdate) onPointsUpdate();
         } catch (err) {
             setActionMsg(`❌ ${err.message}`);
         } finally {
@@ -215,6 +217,7 @@ const TripDetailScreen = ({ itineraryId, onBack }) => {
 
                 checkinInProgress.current = false;
                 setCheckinLoading(false);
+                if (onPointsUpdate) onPointsUpdate();
 
                 setTimeout(() => setCheckinMsg(''), 2000);
 
