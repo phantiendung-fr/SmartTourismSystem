@@ -26,39 +26,28 @@ function App() {
     // =========================================================================
     // 1. TỰ ĐỘNG ĐĂNG NHẬP VÀ LẤY FULL DATA KHI MỞ APP (F5 KHÔNG BỊ MẤT)
     // =========================================================================
-    const fetchUserData = async () => {
-        const token = localStorage.getItem('access_token');
-        if (token) {
-            try {
-                const res = await fetch('http://127.0.0.1:8000/api/auth/me', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    setCurrentUser(data); // data này chứa đầy đủ user, bio, location...
-                    return data;
-                }
-            } catch (error) {
-                console.error("Lỗi xác thực:", error);
-            }
-        }
-        return null;
-    };
-
-    // =========================================================================
-    // 1. TỰ ĐỘNG ĐĂNG NHẬP VÀ LẤY FULL DATA KHI MỞ APP (F5 KHÔNG BỊ MẤT)
-    // =========================================================================
     useEffect(() => {
-        const initUser = async () => {
-            const data = await fetchUserData();
-            if (data) {
-                setCurrentScreen('main'); // Bỏ qua Welcome, vào thẳng App
+        const fetchUserData = async () => {
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                try {
+                    const res = await fetch('http://127.0.0.1:8000/api/auth/me', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        setCurrentUser(data); // data này chứa đầy đủ user, bio, location...
+                        setCurrentScreen('main'); // Bỏ qua Welcome, vào thẳng App
+                    }
+                } catch (error) {
+                    console.error("Lỗi xác thực:", error);
+                }
             }
         };
 
         // Chỉ chạy sau khi SplashScreen kết thúc
         if (currentScreen === 'welcome') {
-            initUser();
+            fetchUserData();
         }
     }, [currentScreen]);
 
@@ -207,10 +196,11 @@ function App() {
                 {currentScreen === 'trip_detail' && (
                     <TripDetailScreen
                         itineraryId={currentItineraryId}
+                        user={currentUser?.user || currentUser}
                         onBack={() => setCurrentScreen('main')}
-                        onPointsUpdate={fetchUserData}
                     />
                 )}
+
 
                 {currentScreen === 'register_location' && (
                     <LocationRegister onBack={() => setCurrentScreen('main')} />

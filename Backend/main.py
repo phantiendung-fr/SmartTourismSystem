@@ -3,6 +3,10 @@ main.py - FastAPI application entrypoint
 Backend: FastAPI | Database: Supabase (PostgreSQL) | ORM: SQLModel
 """
 
+import sys
+# Reconfigure stdout to use UTF-8 on Windows
+sys.stdout.reconfigure(encoding='utf-8')
+
 from contextlib import asynccontextmanager
 # pyrefly: ignore [missing-import]
 from fastapi import FastAPI
@@ -68,17 +72,18 @@ app.add_middleware(
 # app.include_router(locations.router, prefix="/api/v1/locations", tags=["Locations"])
 # app.include_router(itineraries.router, prefix="/api/v1/itineraries", tags=["Itineraries"])
 
-from routers import auth, enterprise, location_router
-from api import planning, locations, trips, reference, leaderboard
+from routers import auth, enterprise, location_router, gamification
+from api import planning, locations, trips, reference
 
 app.include_router(auth.router, prefix="/api/auth")
 app.include_router(enterprise.router, prefix="/api")
 app.include_router(location_router.router, prefix="/api/v1")
+app.include_router(gamification.router)
 app.include_router(planning.router)
 app.include_router(locations.router)
 app.include_router(trips.router)
 app.include_router(reference.router)
-app.include_router(leaderboard.router)
+
 
 # ============================================================
 # Health check

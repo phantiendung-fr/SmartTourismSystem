@@ -1,13 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getTripDetail, getDeviationStatus, checkinStop, completeTrip, cancelTrip } from '../../services/tripService';
 import RouteMap from '../../components/RouteMap/RouteMap';
+import LocationTasks from './LocationTasks';
+import TaskDetail from './TaskDetail';
 import './TripDetailScreen.css';
 
-const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate }) => {
+const TripDetailScreen = ({ itineraryId, user, onBack }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [tripDetail, setTripDetail] = useState(null);
     const [userLocation, setUserLocation] = useState(null);
+
+    // Gamification state variables
+    const [selectedLocationForTasks, setSelectedLocationForTasks] = useState(null);
+    const [selectedTaskForExecution, setSelectedTaskForExecution] = useState(null);
+
+    const userId = user?.user_id || user?.id || '296be4b0-9556-42bb-9be1-fdb1277a06c2';
 
     // Deviation state — updated by click (demo) OR by fetching from backend (real)
     const [isDeviated, setIsDeviated] = useState(false);
@@ -18,6 +26,7 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate }) => {
     // Trip action states
     const [actionLoading, setActionLoading] = useState(false);
     const [actionMsg, setActionMsg] = useState('');
+
 
     const fetchDetail = async (silent = false) => {
         try {
@@ -99,7 +108,6 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate }) => {
             setActionMsg(`✅ ${result.detail}`);
             // Refresh trip detail to get updated status
             await fetchDetail(true);
-            if (onPointsUpdate) onPointsUpdate();
         } catch (err) {
             setActionMsg(`❌ ${err.message}`);
         } finally {
@@ -119,7 +127,6 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate }) => {
             setActionMsg(`⚠️ ${result.detail}`);
             // Refresh trip detail to get updated status
             await fetchDetail(true);
-            if (onPointsUpdate) onPointsUpdate();
         } catch (err) {
             setActionMsg(`❌ ${err.message}`);
         } finally {
@@ -217,7 +224,6 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate }) => {
 
                 checkinInProgress.current = false;
                 setCheckinLoading(false);
-                if (onPointsUpdate) onPointsUpdate();
 
                 setTimeout(() => setCheckinMsg(''), 2000);
 
@@ -425,6 +431,34 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate }) => {
                                                     }
                                                 </p>
                                             )}
+                                            
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedLocationForTasks({
+                                                            location_id: stop.location_id,
+                                                            location_name: stop.location_name
+                                                        });
+                                                    }}
+                                                    style={{
+                                                        backgroundColor: '#10b981',
+                                                        color: '#0b0f19',
+                                                        border: 'none',
+                                                        borderRadius: '8px',
+                                                        padding: '6px 12px',
+                                                        fontSize: '11px',
+                                                        fontWeight: 'bold',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                        boxShadow: '0 2px 8px rgba(16,185,129,0.2)'
+                                                    }}
+                                                >
+                                                    🎮 Nhiệm vụ địa điểm
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -440,7 +474,48 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate }) => {
                 routes={tripDetail.routes || []} 
                 userLocation={userLocation}
             />
+
+            {/* GAMIFICATION OVERLAYS */}
+            {selectedLocationForTasks && (
+                <LocationTasks
+                    locationId={selectedLocationForTasks.location_id}
+                    locationName={selectedLocationForTasks.location_name}
+                    itineraryId={itineraryId}
+                    userId={userId}
+                    onClose={() => setSelectedLocationForTasks(null)}
+                    onSelectTask={(task) => {
+                        setSelectedTaskForExecution(task);
+                        setSelectedLocationForTasks(null); // Close task drawer when opening detail
+                    }}
+                />
+            )}
+
+            {selectedTaskForExecution && (
+                <TaskDetail
+                    task={selectedTaskForExecution}
+                    userId={userId}
+                    itineraryId={itineraryId}
+                    onBack={() => {
+                        setSelectedTaskForExecution(null);
+                        // Re-open location tasks drawer when backing out
+                        setSelectedLocationForTasks({
+                            location_id: selectedTaskForExecution.location_id,
+                            location_name: selectedTaskForExecution.location_name || 'Địa điểm'
+                        });
+                    }}
+                    onCompleteSuccess={() => {
+                        setSelectedTaskForExecution(null);
+                        setSelectedLocationForTasks({
+                            location_id: selectedTaskForExecution.location_id,
+                            location_name: selectedTaskForExecution.location_name || 'Địa điểm'
+                        });
+                        // Refresh details to update points/levels in UI
+                        handleRefresh(true);
+                    }}
+                />
+            )}
         </div>
+
     );
 };
 

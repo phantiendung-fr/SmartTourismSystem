@@ -527,3 +527,80 @@ class UserFeedbacks(SQLModel, table=True):
     content: str
     status: FeedbackStatus = Field(default=FeedbackStatus.PENDING)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ============================================================
+# GROUP 9: GAMIFICATION
+# ============================================================
+
+class TaskTypeEnum(str, enum.Enum):
+    PHOTO = "PHOTO"
+    CHECKIN = "CHECKIN"
+    QUIZ = "QUIZ"
+
+class TaskDifficultyEnum(str, enum.Enum):
+    EASY = "EASY"
+    MEDIUM = "MEDIUM"
+    HARD = "HARD"
+
+class SubmissionStatusEnum(str, enum.Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+class ProgressStatusEnum(str, enum.Enum):
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+class PhotoTasks(SQLModel, table=True):
+    __tablename__ = "photo_tasks"
+
+    task_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    location_id: UUID = Field(foreign_key="locations.location_id", index=True)
+    title: str = Field(max_length=255)
+    description: Optional[str] = Field(default=None)
+    task_type: TaskTypeEnum = Field(default=TaskTypeEnum.PHOTO)
+    reference_image_url: Optional[str] = Field(default=None, max_length=500)
+    reward_exp: int = Field(default=100)
+    radius_meters: int = Field(default=50)
+    difficulty: TaskDifficultyEnum = Field(default=TaskDifficultyEnum.EASY)
+    latitude: Decimal = Field(sa_column=Column(Numeric(10, 6), nullable=False))
+    longitude: Decimal = Field(sa_column=Column(Numeric(10, 6), nullable=False))
+    is_active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class UserTaskProgress(SQLModel, table=True):
+    __tablename__ = "user_task_progress"
+
+    progress_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    user_id: UUID = Field(foreign_key="users.user_id", index=True)
+    task_id: UUID = Field(foreign_key="photo_tasks.task_id", index=True)
+    itinerary_id: UUID = Field(foreign_key="itineraries.itinerary_id", index=True)
+    location_id: UUID = Field(foreign_key="locations.location_id")
+    status: ProgressStatusEnum = Field(default=ProgressStatusEnum.IN_PROGRESS)
+    started_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = Field(default=None)
+
+class TaskSubmissions(SQLModel, table=True):
+    __tablename__ = "task_submissions"
+
+    submission_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    progress_id: UUID = Field(foreign_key="user_task_progress.progress_id", index=True)
+    submitted_image_url: str = Field(max_length=500)
+    submitted_latitude: Decimal = Field(sa_column=Column(Numeric(10, 6), nullable=False))
+    submitted_longitude: Decimal = Field(sa_column=Column(Numeric(10, 6), nullable=False))
+    distance_meters: float
+    confidence_score: float
+    status: SubmissionStatusEnum = Field(default=SubmissionStatusEnum.PENDING)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class ItineraryExp(SQLModel, table=True):
+    __tablename__ = "itinerary_exp"
+
+    itinerary_id: UUID = Field(primary_key=True, foreign_key="itineraries.itinerary_id")
+    total_exp: int = Field(default=0)
+    current_level: int = Field(default=1)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
