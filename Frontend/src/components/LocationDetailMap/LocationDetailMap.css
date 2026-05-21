@@ -1,0 +1,14 @@
+.location-detail-map-wrapper {
+    width: 100%;
+    height: 250px;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 15px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 2px solid #fff;
+}
+
+.location-detail-map {
+    width: 100%;
+    height: 100%;
+}

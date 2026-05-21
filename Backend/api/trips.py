@@ -68,18 +68,6 @@ def complete_trip(
         raise HTTPException(status_code=400, detail="Chuyến đi này đã được hoàn thành")
         
     update_itinerary_status(db, itinerary_id=itinerary_id, new_status=ItineraryStatus.COMPLETED)
-    
-    # Cộng điểm hiện tại (total_points) vào ngân sách điểm (points_balance)
-    from models import UserProfiles
-    profile = db.exec(select(UserProfiles).where(UserProfiles.user_id == user_id)).first()
-    if profile and profile.total_points > 0:
-        profile.points_balance += profile.total_points
-        earned = profile.total_points
-        profile.total_points = 0
-        db.add(profile)
-        db.commit()
-        return MessageResponse(detail=f"Chúc mừng bạn đã hoàn thành chuyến đi! +{earned} điểm đã được cộng vào ngân sách.")
-    
     return MessageResponse(detail="Chúc mừng bạn đã hoàn thành chuyến đi!")
 
 @router.put("/{itinerary_id}/cancel", response_model=MessageResponse, summary="Hủy chuyến đi")
@@ -101,17 +89,6 @@ def cancel_trip(
         raise HTTPException(status_code=400, detail="Không thể hủy chuyến đi đã hoàn thành")
         
     update_itinerary_status(db, itinerary_id=itinerary_id, new_status=ItineraryStatus.CANCELLED)
-    
-    # Dù hủy, vẫn cộng điểm hiện tại vào ngân sách
-    from models import UserProfiles
-    profile = db.exec(select(UserProfiles).where(UserProfiles.user_id == user_id)).first()
-    if profile and profile.total_points > 0:
-        profile.points_balance += profile.total_points
-        earned = profile.total_points
-        profile.total_points = 0
-        db.add(profile)
-        db.commit()
-        return MessageResponse(detail=f"Chuyến đi đã được hủy. +{earned} điểm đã được cộng vào ngân sách.")
     
     return MessageResponse(detail="Chuyến đi đã được hủy.")
 
@@ -283,11 +260,11 @@ def create_new_itinerary(
                     )
                     
                     # === DEBUG: Log nguồn tính toán ===
-                    print(f"🔗 Route: {prev_loc.location_name} → {loc.location_name}")
-                    print(f"   📡 Source: {route_info.source.upper()}")
-                    print(f"   📏 Distance: {route_info.distance_km} km")
-                    print(f"   ⏱️  Time: {route_info.travel_time_min} phút")
-                    print(f"   🗺️  Polyline: {route_info.polyline_data[:40]}...")
+                    print(f"Route: {prev_loc.location_name} -> {loc.location_name}")
+                    print(f"   Source: {route_info.source.upper()}")
+                    print(f"   Distance: {route_info.distance_km} km")
+                    print(f"   Time: {route_info.travel_time_min} phut")
+                    print(f"   Polyline: {route_info.polyline_data[:40]}...")
                     
                     # Cộng thời gian di chuyển vào current_dt
                     if route_info is not None:
@@ -295,7 +272,7 @@ def create_new_itinerary(
                         daily_time += route_info.travel_time_min
                 else:
                     route_info = None
-                    print(f"📍 Điểm xuất phát: {loc.location_name} (Ngày {day_index + 1})")
+                    print(f"Diem xuat phat: {loc.location_name} (Ngay {day_index + 1})")
 
                 # Thời gian đến (Arrival)
                 arrival_time = current_dt.time()
@@ -324,7 +301,7 @@ def create_new_itinerary(
                 prev_stop_id = new_stop.stop_id
 
             global_total_time += daily_time
-            print(f"📊 Ngày {day_index + 1}: Tổng {daily_time} phút")
+            print(f"Ngay {day_index + 1}: Tong {daily_time} phut")
 
         # 5. Cập nhật tổng thời gian chuyến đi và ngân sách
         trip.total_travel_time = global_total_time
@@ -366,6 +343,20 @@ def get_trip_detail(itinerary_id: UUID, db: Session = Depends(get_session)):
     
     stops_data = db.exec(statement).all()
     
+    # Lấy categories cho các location
+    from models import LocationCategories, Categories
+    location_ids = [loc.location_id for _, _, loc in stops_data]
+    cat_map = {}
+    if location_ids:
+        cat_statement = (
+            select(LocationCategories.location_id, Categories.category_name)
+            .join(Categories, LocationCategories.category_id == Categories.category_id)
+            .where(LocationCategories.location_id.in_(location_ids))
+        )
+        cat_results = db.exec(cat_statement).all()
+        for loc_id, cat_name in cat_results:
+            cat_map[loc_id] = cat_name  # Lấy 1 category
+            
     # 2. Biến SQLModel object thành Dictionary
     trip_data = trip.model_dump() 
     
@@ -389,6 +380,7 @@ def get_trip_detail(itinerary_id: UUID, db: Session = Depends(get_session)):
         stop_dict["min_price"] = loc.min_price
         stop_dict["max_price"] = loc.max_price
         stop_dict["estimated_price"] = stop.estimated_price
+        stop_dict["category_name"] = cat_map.get(loc.location_id)
         
         stop_dicts.append(stop_dict)
         all_stop_ids.append(stop.stop_id)
@@ -501,13 +493,26 @@ def checkin_stop(
         .values(reward=earned_points)
     )
     
-    # Cộng điểm vào total_points (điểm hiện tại của chuyến đi)
+    # Cộng điểm vào total_points và points_balance lập tức (Tạo mới profile nếu chưa tồn tại)
     from models import UserProfiles
     statement = select(UserProfiles).where(UserProfiles.user_id == user_id)
     profile = db.exec(statement).first()
-    if profile:
-        profile.total_points += earned_points
-        db.add(profile)
+    if not profile:
+        from models import Users, GenderEnum
+        from datetime import date
+        user_record = db.exec(select(Users).where(Users.user_id == user_id)).first()
+        full_name = user_record.full_name if user_record else "Khách du lịch"
+        profile = UserProfiles(
+            user_id=user_id,
+            full_name=full_name,
+            date_of_birth=date(2000, 1, 1),
+            gender=GenderEnum.OTHER,
+            total_points=0,
+            points_balance=0
+        )
+    profile.total_points += earned_points
+    profile.points_balance += earned_points
+    db.add(profile)
 
     # AUTO-COMPLETE: Nếu tất cả trạm đã check-in → tự động hoàn thành chuyến đi
     itinerary_id = stop_data.itinerary_id
@@ -530,11 +535,8 @@ def checkin_stop(
             trip.update_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.add(trip)
             
-            # Chuyển total_points → points_balance
-            if profile and profile.total_points > 0:
-                profile.points_balance += profile.total_points
-                profile.total_points = 0
-                db.add(profile)
+            # Điểm đã được cộng thẳng trực tiếp khi check-in, không cần reset total_points nữa
+            pass
             
             auto_completed = True
 

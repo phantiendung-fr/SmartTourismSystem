@@ -20,12 +20,12 @@ from database import create_db_and_tables
 async def lifespan(app: FastAPI):
     """Run startup tasks before accepting requests."""
     try:
-        print("🔍 Đang kiểm tra kết nối Database...")
+        print("Dang kiem tra ket noi Database...")
         create_db_and_tables()
-        print("✅ Kết nối Database và khởi tạo bảng thành công!")
+        print("Ket noi Database va khoi tao bang thanh cong!")
     except Exception as e:
-        print(f"❌ LỖI KẾT NỐI DATABASE: {str(e)}")
-        print("⚠️ Cảnh báo: Server vẫn chạy nhưng các chức năng liên quan đến DB sẽ lỗi.")
+        print(f"LOI KET NOI DATABASE: {str(e)}")
+        print("Canh bao: Server van chay nhung cac chuc nang lien quan den DB se loi.")
     yield
 
 
@@ -69,7 +69,7 @@ app.add_middleware(
 # app.include_router(itineraries.router, prefix="/api/v1/itineraries", tags=["Itineraries"])
 
 from routers import auth, enterprise, location_router
-from api import planning, locations, trips, reference
+from api import planning, locations, trips, reference, leaderboard
 
 app.include_router(auth.router, prefix="/api/auth")
 app.include_router(enterprise.router, prefix="/api")
@@ -78,6 +78,7 @@ app.include_router(planning.router)
 app.include_router(locations.router)
 app.include_router(trips.router)
 app.include_router(reference.router)
+app.include_router(leaderboard.router)
 
 # ============================================================
 # Health check

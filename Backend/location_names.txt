@@ -1,0 +1,362 @@
+DANH SÁCH TÊN ĐỊA ĐIỂM (TỪ SUPABASE)
+========================================
+1. Hoàng thành Thăng Long
+2. Văn Miếu - Quốc Tử Giám
+3. Nhà tù Hỏa Lò
+4. Hồ Hoàn Kiếm
+5. Phố Cổ Hà Nội
+6. Lăng Chủ tịch Hồ Chí Minh
+7. Nhà hát Lớn Hà Nội
+8. Bảo tàng Dân tộc học
+9. Hồ Tây
+10. Chùa Một Cột
+11. Mega Grand World Hà Nội
+12. Đài quan sát Lotte Sky
+13. Làng lụa Vạn Phúc
+14. Đồi Bù
+15. Ga Tàu Cát Linh - Hà Đông
+16. Chùa Hương
+17. Làng gốm Bát Tràng
+18. Nhà thờ Lớn Hà Nội
+19. Bảo tàng Mỹ thuật Việt Nam
+20. Quảng trường Ba Đình
+21. Old Quarter Hotel 1961
+22. Narcissus 2 Hotel
+23. Galliot Central Hotel
+24. Spoon Hotel Hà Nội
+25. Mường Thanh Grand Hà Nội
+26. Nesta Hotel & Spa
+27. Sofitel Legend Metropole
+28. Melia Hà Nội
+29. Phở 49 Bát Đàn
+30. Phở Thìn Lò Đúc
+31. Bún ốc cô Huệ
+32. Bánh cuốn Bà Hoành
+33. Nộm Long Vi Dung
+34. Mỳ gà tần Hàng Bồ
+35. Bún chả Hàng Quạt
+36. Bánh mì sốt vang Trâm
+37. Landmark 81
+38. Dinh Độc Lập
+39. Chợ Bến Thành
+40. Nhà thờ Đức Bà
+41. Bưu điện Thành phố
+42. Địa đạo Củ Chi
+43. Phố đi bộ Nguyễn Huệ
+44. Bảo tàng Chứng tích Chiến tranh
+45. Thảo Cầm Viên
+46. Bitexco Financial Tower
+47. Phố Tây Bùi Viện
+48. Khu du lịch Suối Tiên
+49. Bến Nhà Rồng
+50. Cầu Ánh Sao
+51. Nhà hát Thành phố
+52. Bảo tàng Mỹ thuật TP.HCM
+53. Chùa Bửu Long
+54. Công viên Vinhomes Central Park
+55. Hẻm Bia: Lost in HongKong
+56. Khu du lịch sinh thái Cần Giờ
+57. Cabana Saigon
+58. Queen Central Hotel
+59. Elios Hotel
+60. Alagon City Hotel & Spa
+61. Wink Saigon Centre
+62. Silverland Bến Thành
+63. Hotel Majestic Saigon
+64. New World Saigon
+65. Hẻm 76 Hai Bà Trưng
+66. Cơm tấm A Lủ
+67. Hủ tiếu mì Tài Ký
+68. Dimsum House
+69. Bún thịt nướng Trương Tuyền
+70. Mì xào giòn Phan Đình Phùng
+71. Bò tơ Năm Sánh
+72. Bún suông Bến Vân Đồn
+73. Đại Nội Huế
+74. Lăng Khải Định
+75. Lăng Tự Đức
+76. Lăng Minh Mạng
+77. Chùa Thiên Mụ
+78. Sông Hương
+79. Biển Lăng Cô
+80. Vườn quốc gia Bạch Mã
+81. Đầm Lập An
+82. Chợ Đông Ba
+83. Cầu Trường Tiền
+84. Điện Hòn Chén
+85. Đồi Vọng Cảnh
+86. Thiền viện Trúc Lâm Bạch Mã
+87. Trường Quốc học Huế
+88. Làng hương Thủy Xuân
+89. Hồ Thủy Tiên
+90. Phố đi bộ Huế
+91. Suối khoáng nóng Thanh Tân
+92. Đàn Nam Giao
+93. Bình An Hostel
+94. Tram Homestay
+95. Hương Giang Hotel
+96. Hachi Homestay & Spa
+97. Riverside Boutique Resort
+98. Pilgrimage Village
+99. Azerai La Residence
+100. Banyan Tree Lăng Cô
+101. Bún bò mệ Kéo
+102. Bánh canh Nam Phổ Thúy
+103. Cơm hến Hoa Đông
+104. Bánh bèo nậm lọc Bà Đỏ
+105. Bánh khoái Hạnh
+106. Bánh ướt thịt nướng Huyền Anh
+107. Cơm chay Thanh Liễu
+108. Chè Hẻm
+109. Phố cổ Hội An
+110. Chùa Cầu
+111. Hội quán Phúc Kiến
+112. VinWonders Nam Hội An
+113. Làng gốm Thanh Hà
+114. Làng rau Trà Quế
+115. Rừng dừa Bảy Mẫu
+116. Cù Lao Chàm
+117. Bãi biển An Bàng
+118. Nhà cổ Tấn Ký
+119. Hội quán Triều Châu
+120. Thánh địa Mỹ Sơn
+121. Chợ Hội An
+122. Xưởng thủ công mỹ nghệ
+123. Nhà thờ tộc Trần
+124. Bảo tàng Văn hóa Sa Huỳnh
+125. Bảo tàng Gốm sứ Mậu dịch
+126. Làng mộc Kim Bồng
+127. Phố đèn lồng
+128. Show Ký ức Hội An
+129. Thanh Binh 1 Hotel
+130. Hoi An Silk River Villa
+131. Emm Hotel Hoi An
+132. Laluna Hoi An Riverside
+133. Little Hoi An Boutique
+134. Almanity Hoi An Resort
+135. Four Seasons The Nam Hai
+136. Vinpearl Resort Hội An
+137. Cao lầu Thanh
+138. Cơm gà Bà Buội
+139. Bánh mì Madam Khánh
+140. Bánh xèo Giếng Bá Lễ
+141. Mì Quảng Ông Hai
+142. Hoa Hồng Trắng
+143. Bánh đập Bà Già
+144. Chè mè đen Ông Thiều
+145. Đỉnh Lang Biang
+146. Thác Datanla
+147. Vườn hoa Thành phố
+148. Puppy Farm
+149. Đồi chè Cầu Đất
+150. Đường hầm Điêu khắc
+151. Hồ Tuyền Lâm
+152. Thung lũng Tình yêu
+153. Dapa Hill
+154. Chợ đêm Đà Lạt
+155. Chùa Linh Phước
+156. Nhà thờ Domaine de Marie
+157. Ga xe lửa Đà Lạt
+158. Dalat Fairytale Land
+159. Quảng trường Lâm Viên
+160. Zoodoo Đà Lạt
+161. Dinh Bảo Đại
+162. Thiền viện Trúc Lâm
+163. Làng Cù Lần
+164. Thác Pongour
+165. New Century Đà Lạt
+166. Le House Đà Lạt
+167. Marigold Đà Lạt
+168. Sandals Lily Hotel
+169. Goldient Boutique
+170. Terracotta Resort
+171. Dalat Palace Heritage
+172. Ana Mandara Villas
+173. Bánh căn Lệ
+174. Bánh mì xíu mại Hoàng Diệu
+175. Bún bò thố đá Đoàn Viên
+176. Bánh canh Xuân An
+177. Nem nướng Bà Hùng
+178. Mì hoành thánh Tàu Cao
+179. Bánh mì chảo Icolor
+180. Kem bơ Chạm
+181. Bà Nà Hills
+182. Bãi biển Mỹ Khê
+183. Ngũ Hành Sơn
+184. Cầu Rồng
+185. Chùa Linh Ứng
+186. Bán đảo Sơn Trà
+187. Công viên suối khoáng Núi Thần Tài
+188. Asia Park
+189. Bảo tàng Điêu khắc Chăm
+190. Cầu Vàng
+191. Đèo Hải Vân
+192. Mikazuki Water Park 365
+193. Cầu Sông Hàn
+194. Công viên APEC
+195. Bảo tàng Mỹ thuật Đà Nẵng
+196. Nhà trưng bày Hoàng Sa
+197. Chợ Hàn
+198. Rạn Nam Ô
+199. Cung văn hóa thiếu nhi
+200. Bãi Bụt
+201. Rose Homestay
+202. Wings House
+203. Sea Garden Hotel
+204. Lavender Riverside
+205. Pullman Danang Resort
+206. Hyatt Regency Danang
+207. InterContinental Peninsula
+208. Naman Retreat
+209. Mì Quảng 1A
+210. Bún chả cá Ông Tạ
+211. Bún mắm Vân
+212. Bánh canh Ruộng
+213. Bánh bèo Bà Bé
+214. Ốc hút Cây Bàng
+215. Phở Cồ Long
+216. Bún xương 89
+217. VinWonders Nha Trang
+218. Tháp Bà Ponagar
+219. Hòn Tằm
+220. Viện Hải Dương Học
+221. Chùa Long Sơn
+222. Đảo Hòn Mun
+223. Skylight Nha Trang
+224. Nhà hát Đó (Vega City)
+225. Bãi Dài
+226. Vịnh Vân Phong
+227. Chùa Ốc (Từ Vân)
+228. Suối Ba Hồ
+229. Đảo Khỉ (Hòn Lao)
+230. Hòn Chồng
+231. Nhà thờ Đá Nha Trang
+232. Đảo Hoa Lan
+233. Đảo Robinson
+234. Tứ Bình (Bình Ba, Hưng, Lập, Tiên)
+235. Hồ Kênh Hạ
+236. Chùa Suối Đổ
+237. Senkotel Nha Trang
+238. Nice Swan Hotel
+239. Sun City Hotel
+240. Dendro Hotel
+241. Bonjour Nha Trang
+242. Sea Pearl Hotel
+243. Mường Thanh Luxury
+244. Melia Vinpearl Empire
+245. Bún cá Nguyên Loan
+246. Nem nướng Đặng Văn Quyên
+247. Bánh căn 51 Tô Hiến Thành
+248. Bánh xèo chảo 85
+249. Cơm gà Hà
+250. Bánh canh chả cá Hai Cá
+251. Xôi cá cơm Ngô Sĩ Liên
+252. Bánh ướt Diên Khánh
+253. Vịnh Hạ Long
+254. Dragon Park
+255. Typhoon Water Park
+256. Cáp treo Nữ Hoàng
+257. Sun Wheel
+258. Bảo tàng Quảng Ninh
+259. Đảo Tuần Châu
+260. Đồi Huyền Bí
+261. Hang Sửng Sốt
+262. Đảo Ti Tốp
+263. Đền thờ Đức Ông
+264. Phố đi bộ Bãi Cháy
+265. Chợ đêm Hạ Long
+266. Cảng tàu Quốc tế
+267. Núi Bài Thơ
+268. Công viên Hoa Hạ Long
+269. Bãi biển Bãi Cháy
+270. Hang Luồn
+271. Đảo Quan Lạn
+272. Chùa Long Tiên
+273. Milash Boutique Hotel
+274. Kenny Hạ Long Hotel
+275. Diamond Luxury Hotel
+276. City Bay Palace
+277. Halong Plaza Hotel
+278. Mường Thanh Hạ Long
+279. FLC Halong Bay Resort
+280. Vinpearl Hạ Long
+281. Sam Bà Tỵ
+282. Bún bề bề Cầu Trắng
+283. Bánh cuốn Gốc Bàng
+284. Xôi chả mực Minh Hòa
+285. Miến ngan cô Thủy
+286. Bún hải sản Phương Huyền
+287. Ốc 290
+288. Sữa chua cô Cương
+289. Quần thể Tràng An
+290. Chùa Bái Đính
+291. Tam Cốc - Bích Động
+292. Cố đô Hoa Lư
+293. Hang Múa
+294. Động Am Tiên
+295. Vườn chim Thung Nham
+296. Đầm Vân Long
+297. Vườn quốc gia Cúc Phương
+298. Phố cổ Hoa Lư
+299. Động Thiên Hà
+300. Nhà thờ đá Phát Diệm
+301. Thung Nắng
+302. Đền thờ Vua Đinh - Lê
+303. Hồ Đồng Chương
+304. Sân golf Tràng An
+305. Đồi dứa Tam Điệp
+306. Tuyệt Tình Cốc
+307. Hang Sáng - Hang Tối
+308. Núi Non Nước
+309. Ninh Binh Mountain View
+310. Tam Coc Homestay
+311. The Legend Hotel
+312. Hoang Son Peace Hotel
+313. Ninh Binh Hidden Charm
+314. Emeralda Resort & Spa
+315. Ninh Binh Legend Hotel
+316. Bái Đính Garden Resort
+317. Miến lươn bà Phấn
+318. Bún chả quạt Tình Mai
+319. Bún mọc Tố Như
+320. Bánh đa cá rô Liên Đông
+321. Đức Trọc Quán
+322. Ốc núi Thăng Long
+323. Kem xôi Thanh Hằng
+324. Thạch dừa Nguyễn Công Trứ
+325. VinWonders Phú Quốc
+326. Vinpearl Safari
+327. Grand World Phú Quốc
+328. Sun World Hòn Thơm
+329. Bãi Sao
+330. Rạch Vẹm
+331. Mũi Gành Dầu
+332. Sunset Town
+333. Nhà tù Phú Quốc
+334. Chùa Hộ Quốc
+335. Chợ đêm Phú Quốc
+336. Vườn quốc gia Phú Quốc
+337. Làng chài Hàm Ninh
+338. Bãi Khem
+339. Sunset Sanato
+340. Suối Tranh
+341. Công viên san hô Namaste
+342. Bảo tàng Gấu Teddy
+343. Mũi Trâu Nằm
+344. Vườn tiêu Phú Quốc
+345. Hiệp Thoại Hotel
+346. Tân Hoàng Gia
+347. Homestead Phú Quốc
+348. Praha Hotel
+349. Lahana Resort
+350. Green Bay Resort
+351. JW Marriott Emerald Bay
+352. Salinda Resort
+353. Bún quậy Kiến Xây
+354. Bún kèn Út Lượm
+355. Bánh canh ghẹ Quốc Anh
+356. Hủ tiếu mực Tư Hường
+357. Cơm tấm Huỳnh Nhu
+358. Pizza Regina
+359. Quán hải sản Ớt Ngọt
+360. Bún riêu Đức Tấn

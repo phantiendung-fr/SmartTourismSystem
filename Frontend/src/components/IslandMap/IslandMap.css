@@ -1,0 +1,156 @@
+.island-map-container {
+    position: relative;
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 400px;
+    border-radius: 0;
+    overflow: hidden;
+    background: #e0f7fa;
+    box-shadow: none;
+    border: none;
+}
+
+.island-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    transition: filter 0.3s ease;
+    filter: brightness(0.85) contrast(1.05); /* Tối hơn và hơi tăng độ tương phản để làm nền */
+    background: radial-gradient(ellipse at center, #dcedc1 0%, #a8e6cf 70%, transparent 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Vùng hotspot (bao gồm khối có thể nhấn và nhãn tên) */
+.island-hotspot {
+    position: absolute;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.3s ease;
+}
+
+.island-hotspot.completed {
+    opacity: 0.5; /* Làm mờ địa điểm đã hoàn thành */
+}
+
+/* Khu vực chứa ảnh đè lên map */
+.hotspot-image-wrapper {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    cursor: pointer;
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.hotspot-image-wrapper:hover {
+    transform: scale(1.15) translateY(-5px);
+    z-index: 20;
+}
+
+.hotspot-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* Tăng kích thước ảnh lớn hơn khung 4 ô, neo ở đáy để không bị lơ lửng */
+    transform: scale(1.6);
+    transform-origin: bottom center;
+    /* Làm ảnh sáng hơn, đậm màu hơn để nổi bật trên nền bản đồ tối */
+    filter: drop-shadow(0px 8px 10px rgba(0, 0, 0, 0.5)) drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.3)) saturate(1.25) contrast(1.15) brightness(1.15);
+    pointer-events: auto;
+}
+
+/* Vùng click fallback khi ảnh lỗi / chưa có */
+.hotspot-click-fallback {
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+    border-radius: 8px;
+    pointer-events: auto;
+}
+.hotspot-click-fallback:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.6);
+}
+
+.building-name {
+    position: absolute;
+    background: #ffffff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #111;
+    white-space: nowrap;
+    border: 1.5px solid #2d3436;
+    box-shadow: 2px 4px 6px rgba(0,0,0,0.15);
+    z-index: 30;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* Ẩn mặc định, chỉ hiện khi hover */
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(5px);
+    transition: opacity 0.2s ease-in-out, visibility 0.2s, transform 0.2s ease-in-out;
+}
+
+.building-name.show-label {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.building-name.show-label:hover {
+    transform: scale(1.05) translateY(0);
+}
+
+/* 1. Top Right (Default) */
+.bubble-tr { bottom: calc(100% + 8px); left: 40%; }
+.bubble-tr::before { content: ''; position: absolute; bottom: -14px; left: 12px; border-width: 14px 10px 0 0; border-style: solid; border-color: #2d3436 transparent transparent transparent; }
+.bubble-tr::after { content: ''; position: absolute; bottom: -11px; left: 13px; border-width: 12px 8px 0 0; border-style: solid; border-color: #ffffff transparent transparent transparent; }
+
+/* 2. Top Left */
+.bubble-tl { bottom: calc(100% + 8px); right: 40%; }
+.bubble-tl::before { content: ''; position: absolute; bottom: -14px; right: 12px; border-width: 14px 0 0 10px; border-style: solid; border-color: #2d3436 transparent transparent transparent; }
+.bubble-tl::after { content: ''; position: absolute; bottom: -11px; right: 13px; border-width: 12px 0 0 8px; border-style: solid; border-color: #ffffff transparent transparent transparent; }
+
+/* 3. Bottom Right */
+.bubble-br { top: calc(100% + 8px); left: 40%; }
+.bubble-br::before { content: ''; position: absolute; top: -14px; left: 12px; border-width: 0 10px 14px 0; border-style: solid; border-color: transparent transparent #2d3436 transparent; }
+.bubble-br::after { content: ''; position: absolute; top: -11px; left: 13px; border-width: 0 8px 12px 0; border-style: solid; border-color: transparent transparent #ffffff transparent; }
+
+/* 4. Bottom Left */
+.bubble-bl { top: calc(100% + 8px); right: 40%; }
+.bubble-bl::before { content: ''; position: absolute; top: -14px; right: 12px; border-width: 0 0 14px 10px; border-style: solid; border-color: transparent transparent #2d3436 transparent; }
+.bubble-bl::after { content: ''; position: absolute; top: -11px; right: 13px; border-width: 0 0 12px 8px; border-style: solid; border-color: transparent transparent #ffffff transparent; }
+
+/* Biểu tượng cờ check-in */
+.checkin-flag {
+    position: absolute;
+    top: -20px;
+    right: -10px;
+    font-size: 28px;
+    z-index: 3;
+    pointer-events: none;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    animation: bounce 2s infinite ease-in-out;
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+}

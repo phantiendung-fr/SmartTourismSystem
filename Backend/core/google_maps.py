@@ -90,20 +90,20 @@ def get_full_distance_matrix(coords: List[Tuple[float, float]]) -> List[List[flo
                     if i != j:
                         # Chuyển từ mét sang km
                         dist_matrix[i][j] = raw_distances[i][j] / 1000.0
-            print(f"✅ OSRM Table: Đã tính ma trận {n}x{n} khoảng cách đường bộ thực tế.")
+            print(f"OSRM Table: Da tinh ma tran {n}x{n} khoang cach duong bo thuc te.")
             return dist_matrix
         else:
-            print(f"⚠️ OSRM Table trả về code: {data.get('code')}. Chuyển sang Haversine.")
+            print(f"OSRM Table tra ve code: {data.get('code')}. Chuyen sang Haversine.")
 
     except Exception as e:
-        print(f"⚠️ OSRM Table lỗi: {e}. Chuyển sang Haversine fallback.")
+        print(f"OSRM Table loi: {e}. Chuyen sang Haversine fallback.")
 
     # --- FALLBACK: Haversine ---
     for i in range(n):
         for j in range(n):
             if i != j:
                 dist_matrix[i][j] = haversine_distance(*coords[i], *coords[j])
-    print(f"📐 Haversine fallback: Đã tính ma trận {n}x{n} đường chim bay.")
+    print(f"Haversine fallback: Da tinh ma tran {n}x{n} duong chim bay.")
     return dist_matrix
 
 
@@ -134,7 +134,7 @@ def get_distance_and_duration(
                 source="osrm",
             )
     except Exception as e:
-        print(f"⚠️ OSRM Route lỗi: {e}. Dùng Haversine.")
+        print(f"OSRM Route loi: {e}. Dung Haversine.")
 
     # FALLBACK
     dist_km = haversine_distance(origin_lat, origin_lon, dest_lat, dest_lon)
@@ -177,7 +177,7 @@ def get_route_polyline(
                 source="osrm",
             )
     except Exception as e:
-        print(f"⚠️ OSRM Directions lỗi: {e}. Dùng Haversine fallback.")
+        print(f"OSRM Directions loi: {e}. Dung Haversine fallback.")
 
     # FALLBACK (Rớt mạng hoặc OSRM không phản hồi)
     dist_km = haversine_distance(origin_lat, origin_lon, dest_lat, dest_lon)

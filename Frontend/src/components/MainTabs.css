@@ -33,7 +33,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 20%;
+    flex: 1;
     color: #a4b0be; /* Màu xám cho tab chưa chọn */
     cursor: pointer;
     transition: all 0.3s ease;
