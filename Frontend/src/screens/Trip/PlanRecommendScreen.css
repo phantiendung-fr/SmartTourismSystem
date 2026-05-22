@@ -199,3 +199,18 @@
     background: #09a1c1;
     transform: translateY(-2px);
 }
+
+.loc-view-detail {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #0abde3;
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-block;
+    transition: color 0.2s;
+}
+
+.loc-view-detail:hover {
+    color: #09a1c1;
+    text-decoration: underline;
+}

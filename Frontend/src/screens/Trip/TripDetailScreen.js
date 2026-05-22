@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getTripDetail, getDeviationStatus, checkinStop, completeTrip, cancelTrip } from '../../services/tripService';
+import IslandMap from '../../components/IslandMap/IslandMap';
+import LocationDetailMap from '../../components/LocationDetailMap/LocationDetailMap';
 import RouteMap from '../../components/RouteMap/RouteMap';
 import './TripDetailScreen.css';
 
-const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate, user }) => {
+const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate, user, refreshUser }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [tripDetail, setTripDetail] = useState(null);
     const [userLocation, setUserLocation] = useState(null);
 
     // Deviation state — updated by click (demo) OR by fetching from backend (real)
+    const [selectedStop, setSelectedStop] = useState(null);
     const [isDeviated, setIsDeviated] = useState(false);
     const [checkinLoading, setCheckinLoading] = useState(false);
     const [checkinMsg, setCheckinMsg] = useState('');
@@ -90,7 +93,7 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate, user }) => {
 
     const handleCompleteTrip = async () => {
         if (!window.confirm('Bạn có chắc chắn muốn hoàn thành chuyến đi này không?')) return;
-        
+
         setActionLoading(true);
         setActionMsg('');
         try {
@@ -110,7 +113,7 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate, user }) => {
 
     const handleCancelTrip = async () => {
         if (!window.confirm('Bạn có chắc chắn muốn hủy chuyến đi này không? Hành động này không thể hoàn tác.')) return;
-        
+
         setActionLoading(true);
         setActionMsg('');
         try {
@@ -169,9 +172,9 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate, user }) => {
         return 'stop-default'; // blue
     };
 
-    const handleCheckin = async () => {
+    const handleCheckin = async (targetStop) => {
         // Guard: nếu đang xử lý thì không cho bấm nữa (tránh click đúp)
-        if (!nextStop || checkinInProgress.current) return;
+        if (!targetStop || checkinInProgress.current) return;
         checkinInProgress.current = true;
         setCheckinLoading(true);
         setCheckinMsg('');
@@ -188,7 +191,7 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate, user }) => {
         const executeCheckinAPI = async (lat, lng) => {
             try {
                 const token = localStorage.getItem('access_token');
-                const checkedStopId = nextStop.stop_id;
+                const checkedStopId = targetStop.stop_id;
 
                 // Gửi tọa độ lên Backend (có thể null nếu fallback)
                 const result = await checkinStop(checkedStopId, {
@@ -198,13 +201,16 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate, user }) => {
 
                 clearTimeout(safetyTimer);
                 setCheckinMsg(result.message || '✅ Check-in thành công!');
-                
+
+                // Cập nhật lại stop đang chọn
+                setSelectedStop(null); // Đóng modal luôn sau khi checkin thành công
+
                 // OPTIMISTIC UPDATE: Cập nhật state local ngay lập tức
                 setTripDetail(prev => {
                     if (!prev) return prev;
-                    const updatedStops = prev.stops.map(s => 
-                        s.stop_id === checkedStopId 
-                            ? { ...s, status: 'COMPLETED' } 
+                    const updatedStops = prev.stops.map(s =>
+                        s.stop_id === checkedStopId
+                            ? { ...s, status: 'COMPLETED' }
                             : s
                     );
                     const allDone = updatedStops.every(s => s.status === 'COMPLETED');
@@ -222,10 +228,15 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate, user }) => {
                 setTimeout(() => setCheckinMsg(''), 2000);
 
                 setTimeout(() => {
-                    handleRefresh(true).catch(err => 
+                    handleRefresh(true).catch(err =>
                         console.warn('Background refresh failed:', err)
                     );
                 }, 1500);
+
+                // Cập nhật lại tổng điểm người dùng ở App
+                if (typeof refreshUser === 'function') {
+                    refreshUser();
+                }
 
             } catch (err) {
                 clearTimeout(safetyTimer);
@@ -262,11 +273,83 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate, user }) => {
         );
     };
 
+    if (selectedStop) {
+        const isCheckedIn = selectedStop.status === 'COMPLETED';
+
+        return (
+            <div className="trip-detail-screen location-detail-mode">
+                <div className="detail-header">
+                    <button className="btn-back-icon" onClick={() => setSelectedStop(null)}>
+                        <i className="fas fa-arrow-left"></i>
+                    </button>
+                    <h2>{selectedStop.location_name}</h2>
+                </div>
+                
+                <div className="location-detail-content">
+                    {/* Ảnh minh họa giả lập (mock image) */}
+                    <div className="location-cover-image" style={{ 
+                        backgroundImage: `url('https://images.unsplash.com/photo-1599839619722-39751411ea63?auto=format&fit=crop&w=800&q=80')` 
+                    }}>
+                        {isCheckedIn && (
+                            <div className="status-badge checked-in-badge">
+                                ✅ Đã Check-in
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="location-info-card">
+                        <div className="location-title-row">
+                            <h3>{selectedStop.location_name}</h3>
+                            <div className="rating-mock">
+                                ⭐ 4.8 <span>(124 đánh giá)</span>
+                            </div>
+                        </div>
+                        
+                        <p className="location-desc-mock">
+                            Một địa điểm tuyệt vời không thể bỏ qua trong hành trình của bạn. Nơi đây mang đậm dấu ấn văn hóa và lịch sử, hứa hẹn đem lại những trải nghiệm thú vị.
+                        </p>
+
+                        <div className="location-meta">
+                            <span><i className="fas fa-clock"></i> Mở cửa: 08:00 - 17:00</span>
+                            <span><i className="fas fa-ticket-alt"></i> Vé: Miễn phí</span>
+                        </div>
+                    </div>
+
+                    <div className="location-map-section">
+                        <h4>Bản đồ & Chỉ đường</h4>
+                        <LocationDetailMap stop={selectedStop} userLocation={userLocation} />
+                    </div>
+                    
+                    <div className="location-action-bar">
+                        {isCheckedIn ? (
+                            <button className="btn-checkin-tab btn-already-checked" disabled>
+                                ✅ Bạn đã ghé thăm điểm này
+                            </button>
+                        ) : (
+                            isTripOngoing && (
+                                <button 
+                                    className="btn-checkin-tab" 
+                                    onClick={() => handleCheckin(selectedStop)}
+                                    disabled={checkinLoading}
+                                >
+                                    {checkinLoading ? 'Đang xử lý...' : '📍 Xác nhận Check-in'}
+                                </button>
+                            )
+                        )}
+                        {checkinMsg && (
+                            <div className="checkin-toast">{checkinMsg}</div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="trip-detail-screen">
             <div className="detail-header">
                 <button className="btn-back-icon" onClick={onBack}>
-                    <i className="fas fa-arrow-left"></i> Quay lại
+                    <i className="fas fa-arrow-left"></i>
                 </button>
                 <h2>{tripDetail.name || "Chi tiết chuyến đi"}</h2>
                 {/* Deviation status badge — click to toggle for demo */}
@@ -282,13 +365,13 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate, user }) => {
                 )}
             </div>
 
-            {tripDetail.warning_message && (
+            {/* tripDetail.warning_message && (
                 <div className="budget-warning-banner">
                     ⚠️ {tripDetail.warning_message}
                 </div>
-            )}
+            ) */}
 
-            <div className="trip-summary">
+            {/* <div className="trip-summary">
                 <div className="summary-item">
                     <span className="icon">💰</span>
                     <div>
@@ -317,7 +400,7 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate, user }) => {
                         <strong>{(tripDetail.stops || []).reduce((acc, s) => acc + (s.reward || 0), 0)} pts</strong>
                     </div>
                 </div>
-            </div>
+            </div> */}
 
             {/* Trip action buttons — Hoàn thành / Hủy */}
             {isTripOngoing && (
@@ -344,94 +427,25 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate, user }) => {
             )}
 
             {/* Color legend */}
-            <div className="color-legend">
+            {/* <div className="color-legend">
                 <div className="legend-item"><span className="legend-dot legend-blue"></span> Chưa đến</div>
                 <div className="legend-item"><span className="legend-dot legend-orange"></span> Điểm tiếp theo</div>
                 <div className="legend-item"><span className="legend-dot legend-green"></span> Đã check-in</div>
-            </div>
+            </div> */}
 
-            {/* Check-in button for next stop */}
-            {isTripOngoing && nextStop && (
-                <div className="checkin-section">
-                    <div className="checkin-info">
-                        <span>📍</span>
-                        <div>
-                            <small>Điểm tiếp theo</small>
-                            <strong>{nextStop.location_name}</strong>
-                            {userLocation && (
-                                <div className="gps-indicator">
-                                    🛰️ GPS của bạn: {userLocation.lat.toFixed(5)}, {userLocation.lng.toFixed(5)}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    <button
-                        className="btn-checkin-main"
-                        onClick={handleCheckin}
-                        disabled={checkinLoading}
-                    >
-                        {checkinLoading ? 'Đang xử lý...' : '✅ Check-in'}
-                    </button>
-                </div>
-            )}
-
+            {/* Check-in button for next stop (Removed to favor Map interaction) */}
+            
             {checkinMsg && (
                 <div className="checkin-toast">{checkinMsg}</div>
             )}
 
-
-
-            <div className="trip-itinerary">
-                <h3>Lịch trình chi tiết</h3>
-                {Object.keys(stopsByDay).sort().map(day => (
-                    <div key={day} className="day-group">
-                        <div className="day-header">
-                            Ngày {day}
-                            <span className="day-date">({stopsByDay[day][0]?.travel_date})</span>
-                            {stopsByDay[day][0]?.estimated_budget && (
-                                <span className="day-budget">
-                                    💰 {new Intl.NumberFormat('vi-VN').format(stopsByDay[day][0].estimated_budget)}đ
-                                </span>
-                            )}
-                        </div>
-                        <div className="timeline">
-                            {stopsByDay[day].sort((a, b) => a.stop_order - b.stop_order).map(stop => (
-                                <div key={stop.stop_id} className={`timeline-item`}>
-                                    <div className="time-col">
-                                        <div className="time">{stop.arrival_time?.slice(0, 5)}</div>
-                                        <div className="line"></div>
-                                    </div>
-                                    <div className="content-col">
-                                        <div className={`stop-card ${getStopColorClass(stop)}`}>
-                                            <div className="stop-card-header">
-                                                <h4>{stop.location_name}</h4>
-                                                {stop.min_price && (
-                                                    <span className="stop-price-tag">
-                                                        {new Intl.NumberFormat('vi-VN').format(stop.min_price)}đ
-                                                    </span>
-                                                )}
-                                                {stop.reward > 0 && (
-                                                    <span className="stop-reward-tag">
-                                                        +{stop.reward} ⭐
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <p>Khởi hành: {stop.departure_time?.slice(0, 5)}</p>
-                                            {stop.min_price && (
-                                                <p className="stop-price-range">
-                                                    {tripDetail.budget_category === 'MEDIUM' 
-                                                        ? `Dự kiến: ${new Intl.NumberFormat('vi-VN').format(stop.min_price)}đ - ${new Intl.NumberFormat('vi-VN').format(stop.estimated_price)}đ`
-                                                        : `Dự kiến: ${new Intl.NumberFormat('vi-VN').format(stop.estimated_price)}đ`
-                                                    }
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ))}
+            {/* Bản đồ Đảo (Island Map) thay thế RouteMap */}
+            <div className="island-map-section">
+                {/* <p className="map-instruction">Nhấn vào các công trình trên đảo để xem chi tiết.</p> */}
+                <IslandMap
+                    stops={allStops}
+                    onBuildingClick={setSelectedStop}
+                />
             </div>
 
             {/* 🗺️ Bản đồ lộ trình với đường đi thực tế từ OSRM */}
@@ -441,6 +455,7 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate, user }) => {
                 userLocation={userLocation}
                 user={user}
                 nextStop={nextStop}
+                onStopClick={setSelectedStop}
             />
         </div>
     );

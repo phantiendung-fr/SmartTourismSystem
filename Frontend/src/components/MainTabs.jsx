@@ -134,7 +134,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <small style={{ color: '#636e72', fontSize: '12px', fontWeight: '500' }}>Điểm thưởng</small>
                         <strong style={{ color: '#f39c12', fontSize: '18px' }}>
-                            {user?.total_points || 0} <span style={{ fontSize: '12px', color: '#b2bec3', fontWeight: '500' }}>pts</span>
+                            {(user?.points_balance || 0) + (user?.total_points || 0)} <span style={{ fontSize: '12px', color: '#b2bec3', fontWeight: '500' }}>pts</span>
                         </strong>
                     </div>
                 </div>

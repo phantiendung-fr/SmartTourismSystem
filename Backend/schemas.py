@@ -458,6 +458,7 @@ class ItineraryStopResponse(BaseModel):
     min_price: Optional[Decimal] = None
     max_price: Optional[Decimal] = None
     estimated_price: Optional[Decimal] = None
+    category_name: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

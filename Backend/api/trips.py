@@ -163,23 +163,21 @@ def create_new_itinerary(
     warning_message = None
 
     if total_user_budget < total_min:
-        # Ngân sách thấp hơn cả mức tối thiểu -> Cảnh báo (Cách 1)
+        # Ngân sách thấp hơn cả mức tối thiểu -> Phân bổ tỷ lệ thuận theo giá sàn và ép vào budget
         budget_category = "LOW"
-        missing_amount = total_min - total_user_budget
-        warning_message = f"Cảnh báo: Ngân sách của bạn thấp hơn mức tối thiểu để đi hết các điểm này (Thiếu hụt {missing_amount:,.0f}đ). Hệ thống sẽ tự động sử dụng giá sàn."
+        warning_message = f"Cảnh báo: Ngân sách của bạn ({total_user_budget:,.0f}đ) thấp hơn mức tối thiểu tổng cộng ({total_min:,.0f}đ). Hệ thống sẽ cố gắng phân bổ trong giới hạn."
         for loc in locations:
-            allocated_prices[loc.location_id] = float(loc.min_price)
-    elif total_user_budget == total_min:
-        budget_category = "LOW"
-        for loc in locations:
-            allocated_prices[loc.location_id] = float(loc.min_price)
+            # Tỷ lệ của địa điểm này trong tổng giá sàn
+            share_ratio = float(loc.min_price) / total_min if total_min > 0 else 0
+            # Cấp phát theo tỷ lệ của budget người dùng, làm tròn xuống hàng nghìn
+            allocated_prices[loc.location_id] = math.floor((share_ratio * total_user_budget) / 1000) * 1000
     elif total_user_budget >= total_max:
         # Ngân sách dồi dào -> dùng max_price
         budget_category = "HIGH"
         for loc in locations:
             allocated_prices[loc.location_id] = float(loc.max_price)
     else:
-        # Ngân sách nằm giữa min và max -> phân bổ tỷ lệ thuận theo (max - min)
+        # Ngân sách nằm giữa min và max -> phân bổ tỷ lệ thuận theo thặng dư
         budget_category = "MEDIUM"
         surplus = total_user_budget - total_min
         for loc in locations:
@@ -187,11 +185,12 @@ def create_new_itinerary(
             if total_range > 0:
                 share = (loc_range / total_range) * surplus
                 raw_price = float(loc.min_price) + share
-                # Làm tròn đến hàng nghìn (ví dụ: 33.076 -> 33.000)
-                allocated_prices[loc.location_id] = round(raw_price / 1000) * 1000
+                # Dùng math.floor để không bao giờ vượt quá ngân sách
+                allocated_prices[loc.location_id] = math.floor(raw_price / 1000) * 1000
             else:
                 raw_price = float(loc.min_price) + (surplus / len(locations))
-                allocated_prices[loc.location_id] = round(raw_price / 1000) * 1000
+                allocated_prices[loc.location_id] = math.floor(raw_price / 1000) * 1000
+
     
     try:
         # 2. Tạo bản ghi Itinerary (Lộ trình tổng)
@@ -261,11 +260,11 @@ def create_new_itinerary(
                     )
                     
                     # === DEBUG: Log nguồn tính toán ===
-                    print(f"🔗 Route: {prev_loc.location_name} → {loc.location_name}")
-                    print(f"   📡 Source: {route_info.source.upper()}")
-                    print(f"   📏 Distance: {route_info.distance_km} km")
-                    print(f"   ⏱️  Time: {route_info.travel_time_min} phút")
-                    print(f"   🗺️  Polyline: {route_info.polyline_data[:40]}...")
+                    print(f"Route: {prev_loc.location_name} -> {loc.location_name}")
+                    print(f"   Source: {route_info.source.upper()}")
+                    print(f"   Distance: {route_info.distance_km} km")
+                    print(f"   Time: {route_info.travel_time_min} phut")
+                    print(f"   Polyline: {route_info.polyline_data[:40]}...")
                     
                     # Cộng thời gian di chuyển vào current_dt
                     if route_info is not None:
@@ -273,7 +272,7 @@ def create_new_itinerary(
                         daily_time += route_info.travel_time_min
                 else:
                     route_info = None
-                    print(f"📍 Điểm xuất phát: {loc.location_name} (Ngày {day_index + 1})")
+                    print(f"Diem xuat phat: {loc.location_name} (Ngay {day_index + 1})")
 
                 # Thời gian đến (Arrival)
                 arrival_time = current_dt.time()
@@ -302,7 +301,7 @@ def create_new_itinerary(
                 prev_stop_id = new_stop.stop_id
 
             global_total_time += daily_time
-            print(f"📊 Ngày {day_index + 1}: Tổng {daily_time} phút")
+            print(f"Ngay {day_index + 1}: Tong {daily_time} phut")
 
         # 5. Cập nhật tổng thời gian chuyến đi và ngân sách
         trip.total_travel_time = global_total_time
@@ -344,6 +343,20 @@ def get_trip_detail(itinerary_id: UUID, db: Session = Depends(get_session)):
     
     stops_data = db.exec(statement).all()
     
+    # Lấy categories cho các location
+    from models import LocationCategories, Categories
+    location_ids = [loc.location_id for _, _, loc in stops_data]
+    cat_map = {}
+    if location_ids:
+        cat_statement = (
+            select(LocationCategories.location_id, Categories.category_name)
+            .join(Categories, LocationCategories.category_id == Categories.category_id)
+            .where(LocationCategories.location_id.in_(location_ids))
+        )
+        cat_results = db.exec(cat_statement).all()
+        for loc_id, cat_name in cat_results:
+            cat_map[loc_id] = cat_name  # Lấy 1 category
+            
     # 2. Biến SQLModel object thành Dictionary
     trip_data = trip.model_dump() 
     
@@ -367,6 +380,7 @@ def get_trip_detail(itinerary_id: UUID, db: Session = Depends(get_session)):
         stop_dict["min_price"] = loc.min_price
         stop_dict["max_price"] = loc.max_price
         stop_dict["estimated_price"] = stop.estimated_price
+        stop_dict["category_name"] = cat_map.get(loc.location_id)
         
         stop_dicts.append(stop_dict)
         all_stop_ids.append(stop.stop_id)

@@ -20,12 +20,12 @@ from database import create_db_and_tables
 async def lifespan(app: FastAPI):
     """Run startup tasks before accepting requests."""
     try:
-        print("🔍 Đang kiểm tra kết nối Database...")
+        print("Dang kiem tra ket noi Database...")
         create_db_and_tables()
-        print("✅ Kết nối Database và khởi tạo bảng thành công!")
+        print("Ket noi Database va khoi tao bang thanh cong!")
     except Exception as e:
-        print(f"❌ LỖI KẾT NỐI DATABASE: {str(e)}")
-        print("⚠️ Cảnh báo: Server vẫn chạy nhưng các chức năng liên quan đến DB sẽ lỗi.")
+        print(f"LOI KET NOI DATABASE: {str(e)}")
+        print("Canh bao: Server van chay nhung cac chuc nang lien quan den DB se loi.")
     yield
 
 

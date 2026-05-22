@@ -46,16 +46,20 @@ function decodePolyline(encoded) {
 // --- Màu sắc cho các route theo ngày ---
 const DAY_COLORS = ['#6C5CE7', '#00B894', '#E17055', '#0984E3', '#FDCB6E', '#E84393'];
 
-// --- Custom icon cho marker ---
-function createStopIcon(order, status) {
-    const bgColor = status === 'COMPLETED' ? '#00b894' :
-                    status === 'VISITING'  ? '#f39c12' : '#0984e3';
+function createStopIcon(stop) {
+    const isCompleted = stop.status === 'COMPLETED';
+    const isVisiting = stop.status === 'VISITING';
+    const statusClass = isCompleted ? 'completed' : (isVisiting ? 'visiting' : 'pending');
+    
+    const shortName = stop.location_name.length > 20 ? stop.location_name.substring(0, 20) + '...' : stop.location_name;
+
     return L.divIcon({
-        className: 'custom-marker',
-        html: `<div class="marker-pin" style="background:${bgColor}"><span>${order}</span></div>`,
-        iconSize: [30, 42],
-        iconAnchor: [15, 42],
-        popupAnchor: [0, -45],
+        className: 'custom-block-marker',
+        html: `<div class="block-marker ${statusClass}">
+                   <span class="block-order">${stop.stop_order}</span>
+                   <span class="block-name">${shortName}</span>
+               </div>`,
+        iconSize: [null, null], // Let CSS set size
     });
 }
 
@@ -78,7 +82,7 @@ function formatDistance(meters) {
     return `${(meters / 1000).toFixed(1)}km`;
 }
 
-const RouteMap = ({ stops = [], routes = [], userLocation = null, user = null, nextStop = null }) => {
+const RouteMap = ({ stops = [], routes = [], userLocation = null, user = null, nextStop = null, onStopClick }) => {
     const mapRef = useRef(null);
     const mapInstanceRef = useRef(null);
     const userMarkerRef = useRef(null);
@@ -178,21 +182,14 @@ const RouteMap = ({ stops = [], routes = [], userLocation = null, user = null, n
             const lng = parseFloat(stop.longitude);
             if (isNaN(lat) || isNaN(lng)) return;
 
-            const icon = createStopIcon(stop.stop_order, stop.status);
+            const icon = createStopIcon(stop);
             const marker = L.marker([lat, lng], { icon }).addTo(map);
 
-            const priceStr = stop.min_price
-                ? `${new Intl.NumberFormat('vi-VN').format(stop.min_price)}đ`
-                : '';
-
-            marker.bindPopup(`
-                <div class="stop-popup">
-                    <strong>${stop.location_name}</strong><br/>
-                    <span>🕐 ${stop.arrival_time?.slice(0, 5)} - ${stop.departure_time?.slice(0, 5)}</span>
-                    ${priceStr ? `<br/><span>💰 ${priceStr}</span>` : ''}
-                    ${stop.status === 'COMPLETED' ? '<br/><span style="color:#00b894">✅ Đã check-in</span>' : ''}
-                </div>
-            `);
+            marker.on('click', () => {
+                if (onStopClick) {
+                    onStopClick(stop);
+                }
+            });
 
             allLatLngs.push([lat, lng]);
 

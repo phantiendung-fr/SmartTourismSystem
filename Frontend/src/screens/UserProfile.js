@@ -133,9 +133,32 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
                 )}
             </div>
 
-            <h2 style={{ color: '#222f3e', marginBottom: '20px', fontSize: '24px', fontWeight: 800 }}>
+            <h2 style={{ color: '#222f3e', marginBottom: '10px', fontSize: '24px', fontWeight: 800 }}>
                 {isEnterprise ? "Cấu hình Doanh nghiệp" : "Hồ sơ của tôi"}
             </h2>
+
+            {/* HIỂN THỊ ĐIỂM THƯỞNG (Nếu không phải doanh nghiệp) */}
+            {!isEnterprise && (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    backgroundColor: '#fff4e6',
+                    padding: '15px 20px',
+                    borderRadius: '16px',
+                    marginBottom: '25px',
+                    boxShadow: '0 4px 12px rgba(243, 156, 18, 0.15)',
+                    border: '1px solid #ffeaa7'
+                }}>
+                    <div style={{ fontSize: '24px' }}>⭐</div>
+                    <div>
+                        <div style={{ fontSize: '13px', color: '#636e72', fontWeight: '600' }}>Điểm thưởng tích lũy</div>
+                        <div style={{ fontSize: '20px', color: '#f39c12', fontWeight: '800' }}>
+                            {(userInfo?.points_balance || 0) + (userInfo?.total_points || 0)} <span style={{ fontSize: '14px', color: '#b2bec3', fontWeight: '500' }}>pts</span>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Avatar Section - Giữ nguyên cho cả 2 hoặc bạn có thể tách ra */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px' }}>
