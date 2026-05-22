@@ -209,6 +209,7 @@ function App() {
                         itineraryId={currentItineraryId}
                         onBack={() => setCurrentScreen('main')}
                         onPointsUpdate={fetchUserData}
+                        user={currentUser?.user || currentUser}
                     />
                 )}
 

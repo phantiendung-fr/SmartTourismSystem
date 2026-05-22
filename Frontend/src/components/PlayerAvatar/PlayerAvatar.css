@@ -1,0 +1,109 @@
+/* ==============================
+   Player Avatar Marker on Map
+   ============================== */
+
+/* Container for the avatar marker */
+.player-avatar-marker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+    filter: drop-shadow(0 4px 12px rgba(108, 92, 231, 0.4));
+}
+
+/* Wrapper for the avatar image with glow */
+.player-avatar-ring {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6C5CE7, #a29bfe);
+    padding: 3px;
+    box-shadow:
+        0 0 0 3px rgba(108, 92, 231, 0.3),
+        0 0 20px rgba(108, 92, 231, 0.4);
+    animation: avatar-glow 2.5s ease-in-out infinite;
+}
+
+/* The actual avatar image */
+.player-avatar-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: #dfe6e9;
+    border: 2px solid #fff;
+}
+
+/* Pulsing ring around avatar */
+.player-avatar-pulse {
+    position: absolute;
+    top: -6px;
+    left: -6px;
+    right: -6px;
+    bottom: -6px;
+    border-radius: 50%;
+    border: 2px solid rgba(108, 92, 231, 0.5);
+    animation: avatar-pulse 2s ease-out infinite;
+}
+
+/* Direction indicator (small arrow/triangle below avatar) */
+.player-avatar-pointer {
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid #6C5CE7;
+    margin-top: -2px;
+}
+
+/* Player name label below avatar */
+.player-avatar-name {
+    margin-top: 2px;
+    padding: 2px 8px;
+    background: rgba(108, 92, 231, 0.9);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: 'Inter', system-ui, sans-serif;
+    border-radius: 10px;
+    white-space: nowrap;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* ==============================
+   Animations
+   ============================== */
+
+@keyframes avatar-glow {
+    0%, 100% {
+        box-shadow:
+            0 0 0 3px rgba(108, 92, 231, 0.3),
+            0 0 20px rgba(108, 92, 231, 0.4);
+    }
+    50% {
+        box-shadow:
+            0 0 0 5px rgba(108, 92, 231, 0.15),
+            0 0 30px rgba(108, 92, 231, 0.5);
+    }
+}
+
+@keyframes avatar-pulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+    70% {
+        transform: scale(1.6);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1.6);
+        opacity: 0;
+    }
+}

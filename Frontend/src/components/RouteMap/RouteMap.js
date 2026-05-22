@@ -1,7 +1,13 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './RouteMap.css';
+
+// Feature 2: Player Avatar
+import { createPlayerAvatarIcon } from '../PlayerAvatar/PlayerAvatar';
+
+// Feature 3: Fog of War
+import { createFogLayer } from '../FogOfWar/FogOfWar';
 
 // --- Fix Leaflet default icon issue with bundlers ---
 delete L.Icon.Default.prototype._getIconUrl;
@@ -53,10 +59,36 @@ function createStopIcon(order, status) {
     });
 }
 
-const RouteMap = ({ stops = [], routes = [], userLocation = null }) => {
+// --- Feature 1: Tính khoảng cách giữa 2 tọa độ (Haversine formula) ---
+function haversineDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371000; // bán kính Trái Đất (mét)
+    const toRad = (deg) => (deg * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * Format khoảng cách cho hiển thị
+ */
+function formatDistance(meters) {
+    if (meters < 1000) return `${Math.round(meters)}m`;
+    return `${(meters / 1000).toFixed(1)}km`;
+}
+
+const RouteMap = ({ stops = [], routes = [], userLocation = null, user = null, nextStop = null }) => {
     const mapRef = useRef(null);
     const mapInstanceRef = useRef(null);
     const userMarkerRef = useRef(null);
+    const fogLayerRef = useRef(null);
+    const checkinCirclesRef = useRef([]);
+    const userLineRef = useRef(null);
+    const distanceBadgeRef = useRef(null);
+
+    // Feature 3: Fog toggle — mặc định BẬT, người dùng có thể tắt
+    const [fogEnabled, setFogEnabled] = useState(true);
 
     // useEffect 1: Khởi tạo map + vẽ routes/stops (CHỈ khi stops hoặc routes thay đổi)
     useEffect(() => {
@@ -67,6 +99,10 @@ const RouteMap = ({ stops = [], routes = [], userLocation = null }) => {
             mapInstanceRef.current.remove();
             mapInstanceRef.current = null;
             userMarkerRef.current = null;
+            fogLayerRef.current = null;
+            checkinCirclesRef.current = [];
+            userLineRef.current = null;
+            distanceBadgeRef.current = null;
         }
 
         // --- Init map ---
@@ -159,7 +195,37 @@ const RouteMap = ({ stops = [], routes = [], userLocation = null }) => {
             `);
 
             allLatLngs.push([lat, lng]);
+
+            // ===== Feature 1: Vòng tròn bán kính check-in =====
+            const checkinRadius = stop.checkin_radius || 100; // mét
+            const circleColor = stop.status === 'COMPLETED' ? '#00b894' :
+                                stop.status === 'VISITING'  ? '#f39c12' : '#0984e3';
+            
+            const circle = L.circle([lat, lng], {
+                radius: checkinRadius,
+                color: circleColor,
+                fillColor: circleColor,
+                fillOpacity: stop.status === 'COMPLETED' ? 0.08 : 0.12,
+                weight: stop.status === 'COMPLETED' ? 1 : 1.5,
+                dashArray: stop.status === 'COMPLETED' ? null : '6 4',
+                className: 'checkin-radius-circle',
+            }).addTo(map);
+
+            circle.bindTooltip(`Bán kính check-in: ${checkinRadius}m`, {
+                direction: 'bottom',
+                className: 'checkin-radius-tooltip',
+                opacity: 0.8,
+            });
+
+            checkinCirclesRef.current.push(circle);
         });
+
+        // ===== Feature 3: Fog of War (chỉ thêm nếu fog đang bật) =====
+        if (fogEnabled) {
+            const fogLayer = createFogLayer(stops, null);
+            fogLayer.addTo(map);
+            fogLayerRef.current = fogLayer;
+        }
 
         // --- Auto zoom để thấy toàn bộ route ---
         if (allLatLngs.length > 0) {
@@ -173,6 +239,10 @@ const RouteMap = ({ stops = [], routes = [], userLocation = null }) => {
                 mapInstanceRef.current.remove();
                 mapInstanceRef.current = null;
                 userMarkerRef.current = null;
+                fogLayerRef.current = null;
+                checkinCirclesRef.current = [];
+                userLineRef.current = null;
+                distanceBadgeRef.current = null;
             }
         };
     }, [stops, routes]);
@@ -188,38 +258,157 @@ const RouteMap = ({ stops = [], routes = [], userLocation = null }) => {
             userMarkerRef.current = null;
         }
 
+        // Xóa đường nối cũ
+        if (userLineRef.current) {
+            userLineRef.current.remove();
+            userLineRef.current = null;
+        }
+
+        // Xóa distance badge cũ
+        if (distanceBadgeRef.current) {
+            distanceBadgeRef.current.remove();
+            distanceBadgeRef.current = null;
+        }
+
         // Thêm marker mới nếu có vị trí user
         if (userLocation && userLocation.lat && userLocation.lng) {
-            const userIcon = L.divIcon({
-                className: 'user-location-icon',
-                html: `<div style="background-color: #F44336; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(244, 67, 54, 0.6); position: relative;">
-                        <div style="position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px; border-radius: 50%; border: 2px solid #F44336; opacity: 0.5;"></div>
-                       </div>`,
-                iconSize: [20, 20],
-                iconAnchor: [10, 10],
-            });
-            userMarkerRef.current = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon })
-                .bindPopup('📍 Vị trí của bạn')
+            // ===== Feature 2: Player Avatar thay vì chấm đỏ =====
+            const avatarIcon = createPlayerAvatarIcon(user);
+            userMarkerRef.current = L.marker([userLocation.lat, userLocation.lng], { 
+                icon: avatarIcon,
+                zIndexOffset: 1000, // Đảm bảo avatar luôn trên cùng
+            })
+                .bindPopup(`
+                    <div class="player-popup">
+                        <strong>📍 ${user?.full_name || 'Vị trí của bạn'}</strong><br/>
+                        <small>${userLocation.lat.toFixed(5)}, ${userLocation.lng.toFixed(5)}</small>
+                    </div>
+                `)
                 .addTo(map);
+
+            // ===== Feature 1: Đường nối dashed từ user → next stop =====
+            if (nextStop) {
+                const nextLat = parseFloat(nextStop.latitude);
+                const nextLng = parseFloat(nextStop.longitude);
+                if (!isNaN(nextLat) && !isNaN(nextLng)) {
+                    // Vẽ đường nối dashed
+                    userLineRef.current = L.polyline(
+                        [[userLocation.lat, userLocation.lng], [nextLat, nextLng]],
+                        {
+                            color: '#f39c12',
+                            weight: 2.5,
+                            dashArray: '8 6',
+                            opacity: 0.7,
+                            className: 'user-to-next-line',
+                        }
+                    ).addTo(map);
+
+                    // Tính khoảng cách
+                    const distance = haversineDistance(
+                        userLocation.lat, userLocation.lng,
+                        nextLat, nextLng
+                    );
+
+                    // Hiển thị badge khoảng cách ở giữa đường nối
+                    const midLat = (userLocation.lat + nextLat) / 2;
+                    const midLng = (userLocation.lng + nextLng) / 2;
+                    
+                    distanceBadgeRef.current = L.marker([midLat, midLng], {
+                        icon: L.divIcon({
+                            className: 'distance-badge-container',
+                            html: `<div class="distance-badge">
+                                        <span class="distance-icon">🏃</span>
+                                        <span class="distance-value">${formatDistance(distance)}</span>
+                                   </div>`,
+                            iconSize: [90, 30],
+                            iconAnchor: [45, 15],
+                        }),
+                        interactive: false,
+                    }).addTo(map);
+                }
+            }
+
+            // ===== Feature 3: Cập nhật fog quanh user =====
+            if (fogLayerRef.current) {
+                fogLayerRef.current.updateUserLocation(userLocation);
+            }
         }
-    }, [userLocation]);
+    }, [userLocation, user, nextStop]);
+
+    // useEffect 3: Cập nhật fog khi stops thay đổi status (check-in mới)
+    useEffect(() => {
+        if (fogLayerRef.current) {
+            fogLayerRef.current.updateStops(stops);
+        }
+    }, [stops]);
+
+    // useEffect 4: Bật/tắt fog layer khi toggle
+    useEffect(() => {
+        const map = mapInstanceRef.current;
+        if (!map) return;
+
+        if (fogEnabled) {
+            // Bật fog: tạo layer mới nếu chưa có
+            if (!fogLayerRef.current) {
+                const fogLayer = createFogLayer(stops, userLocation);
+                fogLayer.addTo(map);
+                fogLayerRef.current = fogLayer;
+            }
+        } else {
+            // Tắt fog: xóa layer
+            if (fogLayerRef.current) {
+                fogLayerRef.current.remove();
+                fogLayerRef.current = null;
+            }
+        }
+    }, [fogEnabled]);
 
     if (stops.length === 0) return null;
+
+    // Đếm số điểm đã completed
+    const completedCount = stops.filter(s => s.status === 'COMPLETED').length;
+    const totalCount = stops.length;
+    const explorationPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
     return (
         <div className="route-map-container">
             <div className="route-map-header">
                 <span className="map-icon">🗺️</span>
                 <h3>Bản đồ lộ trình</h3>
+                {/* Feature 3: Thanh tiến trình khám phá + Toggle fog */}
+                {fogEnabled && (
+                    <div className="exploration-badge">
+                        <span className="exploration-icon">🔍</span>
+                        <span className="exploration-text">{explorationPercent}%</span>
+                    </div>
+                )}
+                <button
+                    className={`fog-toggle-btn ${fogEnabled ? 'fog-on' : 'fog-off'}`}
+                    onClick={() => setFogEnabled(prev => !prev)}
+                    title={fogEnabled ? 'Tắt sương mù' : 'Bật sương mù'}
+                >
+                    {fogEnabled ? '🌫️' : '☀️'}
+                </button>
             </div>
             <div className="route-map-wrapper">
                 <div ref={mapRef} className="route-map" />
             </div>
-            {routes.length > 0 && (
-                <div className="route-map-legend">
+            <div className="route-map-footer">
+                {routes.length > 0 && (
                     <span className="legend-hint">📍 Nhấn vào đường để xem khoảng cách & thời gian</span>
-                </div>
-            )}
+                )}
+                {/* Feature 3: Fog legend (chỉ hiện khi fog bật) */}
+                {fogEnabled && (
+                    <div className="fog-legend">
+                        <span className="fog-legend-item">
+                            <span className="fog-dot fog-dot-hidden"></span> Đã khám phá
+                        </span>
+                        <span className="fog-legend-item">
+                            <span className="fog-dot fog-dot-fog"></span> Chưa khám phá
+                        </span>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

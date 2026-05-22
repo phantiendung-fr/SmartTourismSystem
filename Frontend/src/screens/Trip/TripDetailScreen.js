@@ -3,7 +3,7 @@ import { getTripDetail, getDeviationStatus, checkinStop, completeTrip, cancelTri
 import RouteMap from '../../components/RouteMap/RouteMap';
 import './TripDetailScreen.css';
 
-const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate }) => {
+const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate, user }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [tripDetail, setTripDetail] = useState(null);
@@ -439,6 +439,8 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate }) => {
                 stops={allStops} 
                 routes={tripDetail.routes || []} 
                 userLocation={userLocation}
+                user={user}
+                nextStop={nextStop}
             />
         </div>
     );
