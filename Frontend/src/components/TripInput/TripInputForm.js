@@ -70,8 +70,11 @@ const TripInputForm = ({ onSubmitPlan, onCancel }) => {
         end.setDate(start.getDate() + tripData.days - 1);
         const end_day = end.toISOString().split('T')[0];
 
+        const selectedCity = cities.find(c => c.city_id === tripData.city_id);
+
         const payload = {
             city_id: tripData.city_id,
+            city_name: selectedCity ? selectedCity.city_name : '',
             start_day: tripData.start_day,
             end_day: end_day,
             budget: tripData.budget,

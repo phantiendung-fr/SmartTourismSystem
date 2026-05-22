@@ -10,6 +10,7 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate, user, refreshUs
     const [error, setError] = useState(null);
     const [tripDetail, setTripDetail] = useState(null);
     const [userLocation, setUserLocation] = useState(null);
+    const [mapViewMode, setMapViewMode] = useState('island'); // 'island' | 'route'
 
     // Deviation state — updated by click (demo) OR by fetching from backend (real)
     const [selectedStop, setSelectedStop] = useState(null);
@@ -439,24 +440,40 @@ const TripDetailScreen = ({ itineraryId, onBack, onPointsUpdate, user, refreshUs
                 <div className="checkin-toast">{checkinMsg}</div>
             )}
 
-            {/* Bản đồ Đảo (Island Map) thay thế RouteMap */}
-            <div className="island-map-section">
-                {/* <p className="map-instruction">Nhấn vào các công trình trên đảo để xem chi tiết.</p> */}
-                <IslandMap
-                    stops={allStops}
-                    onBuildingClick={setSelectedStop}
-                />
+            {/* Toggle chế độ bản đồ */}
+            <div className="map-view-toggle">
+                <button
+                    className={`map-toggle-btn ${mapViewMode === 'island' ? 'active' : ''}`}
+                    onClick={() => setMapViewMode('island')}
+                >
+                    🏝️ Bản đồ đảo
+                </button>
+                <button
+                    className={`map-toggle-btn ${mapViewMode === 'route' ? 'active' : ''}`}
+                    onClick={() => setMapViewMode('route')}
+                >
+                    🗺️ Bản đồ thực tế
+                </button>
             </div>
 
-            {/* 🗺️ Bản đồ lộ trình với đường đi thực tế từ OSRM */}
-            <RouteMap 
-                stops={allStops} 
-                routes={tripDetail.routes || []} 
-                userLocation={userLocation}
-                user={user}
-                nextStop={nextStop}
-                onStopClick={setSelectedStop}
-            />
+            {/* Hiển thị bản đồ theo chế độ đã chọn */}
+            {mapViewMode === 'island' ? (
+                <div className="island-map-section">
+                    <IslandMap
+                        stops={allStops}
+                        onBuildingClick={setSelectedStop}
+                    />
+                </div>
+            ) : (
+                <RouteMap 
+                    stops={allStops} 
+                    routes={tripDetail.routes || []} 
+                    userLocation={userLocation}
+                    user={user}
+                    nextStop={nextStop}
+                    onStopClick={setSelectedStop}
+                />
+            )}
         </div>
     );
 };

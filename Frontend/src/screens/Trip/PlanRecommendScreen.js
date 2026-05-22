@@ -83,7 +83,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
 
                 const tripPayload = {
                     session_id: sessionData.session_id,
-                    name: "Chuyến đi tuyệt vời",
+                    name: planPayload.city_name ? `Lộ trình ${planPayload.city_name}` : `Lộ trình ${planPayload.start_day || 'mới'}`,
                     location_ids: selectedLocations,
                     start_date: planPayload.start_day,
                     end_date: planPayload.end_day,
@@ -105,7 +105,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
                 // Nếu không lấy được GPS, vẫn cho tạo lộ trình nhưng không có start_lat/lon
                 const tripPayload = {
                     session_id: sessionData.session_id,
-                    name: "Chuyến đi tuyệt vời",
+                    name: planPayload.city_name ? `Lộ trình ${planPayload.city_name}` : `Lộ trình ${planPayload.start_day || 'mới'}`,
                     location_ids: selectedLocations,
                     start_date: planPayload.start_day,
                     end_date: planPayload.end_day
