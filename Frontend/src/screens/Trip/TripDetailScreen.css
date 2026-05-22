@@ -527,7 +527,6 @@
     animation: fadeSlide 0.3s ease;
 }
 
-
 /* ========== Cloud Transition Overlay ========== */
 .cloud-transition-container {
     position: fixed;
@@ -595,4 +594,44 @@
 }
 .cloud-transition-container.out .cloud-right {
     transform: translateX(150%);
+}
+
+/* ========== Map View Toggle ========== */
+.map-view-toggle {
+    display: flex;
+    gap: 0;
+    margin: 10px 20px;
+    background: #e9ecef;
+    border-radius: 12px;
+    padding: 4px;
+    position: relative;
+}
+
+.map-toggle-btn {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #636e72;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.map-toggle-btn.active {
+    background: #fff;
+    color: #2d3436;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.map-toggle-btn:not(.active):hover {
+    color: #2d3436;
+    background: rgba(255, 255, 255, 0.4);
 }

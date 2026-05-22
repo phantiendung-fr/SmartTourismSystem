@@ -11,6 +11,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
     const [error, setError] = useState(null);
     const [tripDetail, setTripDetail] = useState(null);
     const [userLocation, setUserLocation] = useState(null);
+    const [mapViewMode, setMapViewMode] = useState('island'); // 'island' | 'route'
 
     // Deviation state — updated by click (demo) OR by fetching from backend (real)
     const [selectedStop, setSelectedStop] = useState(null);
