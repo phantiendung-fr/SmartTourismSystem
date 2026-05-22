@@ -306,7 +306,7 @@ const IslandMap = ({ stops = [], onBuildingClick }) => {
                                 pointerEvents: 'auto'
                             }}
                         >
-                            {isCompleted && <div className="checkin-flag" title="Đã check-in">🚩</div>}
+                            {isCompleted && <div className="checkin-flag" title="Đã check-in"><i className="fas fa-flag"></i></div>}
                             <div 
                                 className="hotspot-image-wrapper"
                                 onClick={() => onBuildingClick && onBuildingClick(stop)}

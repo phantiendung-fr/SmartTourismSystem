@@ -25,6 +25,7 @@
     font-size: 16px;
     font-weight: 700;
     letter-spacing: 0.3px;
+    flex: 1;
 }
 
 .route-map-wrapper {
@@ -35,6 +36,17 @@
     width: 100%;
     height: 500px;
     z-index: 1;
+}
+
+.route-map-footer {
+    padding: 10px 18px;
+    background: #f8f9fa;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .route-map-legend {
@@ -159,4 +171,187 @@
     font-size: 9px !important;
     background: rgba(255,255,255,0.7) !important;
     border-radius: 4px 0 0 0 !important;
+}
+
+/* ==============================
+   Feature 1: Coordinate Processing
+   ============================== */
+
+/* Check-in radius circle tooltip */
+.checkin-radius-tooltip {
+    background: rgba(45, 52, 54, 0.85) !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+    font-family: 'Inter', system-ui, sans-serif !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.checkin-radius-tooltip::before {
+    border-bottom-color: rgba(45, 52, 54, 0.85) !important;
+}
+
+/* Distance badge from user to next stop */
+.distance-badge-container {
+    background: none !important;
+    border: none !important;
+}
+
+.distance-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(243, 156, 18, 0.92);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Inter', system-ui, sans-serif;
+    box-shadow: 0 2px 10px rgba(243, 156, 18, 0.35);
+    white-space: nowrap;
+    animation: badge-bounce 2s ease-in-out infinite;
+}
+
+.distance-icon {
+    font-size: 12px;
+}
+
+.distance-value {
+    letter-spacing: 0.3px;
+}
+
+@keyframes badge-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+
+/* User-to-next dashed line */
+.user-to-next-line {
+    animation: dash-flow 1.5s linear infinite;
+}
+
+@keyframes dash-flow {
+    to {
+        stroke-dashoffset: -28;
+    }
+}
+
+/* Player popup styling */
+.player-popup {
+    text-align: center;
+}
+
+.player-popup strong {
+    color: #6C5CE7;
+    font-size: 14px;
+}
+
+.player-popup small {
+    color: #636e72;
+    font-size: 11px;
+}
+
+/* ==============================
+   Feature 3: Fog of War
+   ============================== */
+
+/* Exploration progress badge in header */
+.exploration-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    backdrop-filter: blur(4px);
+}
+
+.exploration-icon {
+    font-size: 13px;
+}
+
+.exploration-text {
+    letter-spacing: 0.5px;
+}
+
+/* Fog legend in footer */
+.fog-legend {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.fog-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: #636e72;
+    font-family: 'Inter', system-ui, sans-serif;
+}
+
+.fog-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.fog-dot-hidden {
+    background: linear-gradient(135deg, #00b894, #55efc4);
+    box-shadow: 0 0 4px rgba(0, 184, 148, 0.4);
+}
+
+.fog-dot-fog {
+    background: rgba(20, 20, 40, 0.55);
+    border: 1px solid rgba(20, 20, 40, 0.3);
+}
+
+/* Player avatar container — remove leaflet default styles */
+.player-avatar-container {
+    background: none !important;
+    border: none !important;
+}
+
+/* ==============================
+   Fog Toggle Button
+   ============================== */
+
+.fog-toggle-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 28px;
+    backdrop-filter: blur(4px);
+}
+
+.fog-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.35);
+    transform: scale(1.1);
+}
+
+.fog-toggle-btn:active {
+    transform: scale(0.95);
+}
+
+.fog-toggle-btn.fog-on {
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+.fog-toggle-btn.fog-off {
+    background: rgba(255, 215, 0, 0.25);
+    border-color: rgba(255, 215, 0, 0.4);
 }

@@ -37,8 +37,8 @@
     transition: opacity 0.3s ease;
 }
 
-.island-hotspot.completed {
-    opacity: 0.5; /* Làm mờ địa điểm đã hoàn thành */
+.island-hotspot.completed .hotspot-image-wrapper {
+    opacity: 0.6; /* Làm mờ địa điểm đã hoàn thành, nhưng giữ nguyên độ nét của cờ */
 }
 
 /* Khu vực chứa ảnh đè lên map */
@@ -67,6 +67,20 @@
     /* Làm ảnh sáng hơn, đậm màu hơn để nổi bật trên nền bản đồ tối */
     filter: drop-shadow(0px 8px 10px rgba(0, 0, 0, 0.5)) drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.3)) saturate(1.25) contrast(1.15) brightness(1.15);
     pointer-events: auto;
+}
+
+/* Các địa điểm chưa check-in sẽ phát sáng xung quanh để dễ nhận diện */
+.island-hotspot:not(.completed) .hotspot-image {
+    animation: glowPulse 2s infinite alternate ease-in-out;
+}
+
+@keyframes glowPulse {
+    0% {
+        filter: drop-shadow(0px 8px 10px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 5px rgba(255, 235, 59, 0.5)) saturate(1.25) contrast(1.15) brightness(1.15);
+    }
+    100% {
+        filter: drop-shadow(0px 8px 10px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 20px rgba(255, 235, 59, 1)) saturate(1.35) contrast(1.2) brightness(1.3);
+    }
 }
 
 /* Vùng click fallback khi ảnh lỗi / chưa có */
@@ -140,6 +154,7 @@
     top: -20px;
     right: -10px;
     font-size: 28px;
+    color: #b30000; /* Màu đỏ đậm theo yêu cầu */
     z-index: 3;
     pointer-events: none;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));

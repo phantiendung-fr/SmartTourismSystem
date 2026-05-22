@@ -243,6 +243,9 @@ function App() {
                     <TripDetailScreen
                         itineraryId={currentItineraryId}
                         onBack={() => setCurrentScreen('main')}
+                        refreshUser={refreshUser}
+                        onPointsUpdate={fetchUserData}
+                        user={currentUser?.user || currentUser}
                     />
                 )}
 

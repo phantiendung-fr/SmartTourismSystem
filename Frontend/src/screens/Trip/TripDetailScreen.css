@@ -526,3 +526,73 @@
     box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     animation: fadeSlide 0.3s ease;
 }
+
+
+/* ========== Cloud Transition Overlay ========== */
+.cloud-transition-container {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 9999;
+    pointer-events: none;
+    overflow: hidden;
+}
+.cloud-transition-container.idle {
+    display: none;
+}
+.cloud {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 55%;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    background: white;
+}
+.cloud-left {
+    left: 0;
+    transform: translateX(-150%);
+}
+.cloud-left::before {
+    content: '';
+    position: absolute;
+    right: -30px; top: -50px;
+    width: 120px; height: 120px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 
+        10px 100px 0 20px white,
+        20px 220px 0 40px white,
+        5px 360px 0 10px white,
+        25px 480px 0 30px white,
+        10px 620px 0 50px white,
+        15px 760px 0 20px white,
+        0px 900px 0 40px white;
+}
+.cloud-right {
+    right: 0;
+    transform: translateX(150%);
+}
+.cloud-right::before {
+    content: '';
+    position: absolute;
+    left: -30px; top: -20px;
+    width: 130px; height: 130px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 
+        -10px 110px 0 30px white,
+        -25px 250px 0 10px white,
+        -5px 380px 0 40px white,
+        -20px 520px 0 20px white,
+        -10px 660px 0 50px white,
+        -15px 800px 0 30px white,
+        0px 940px 0 40px white;
+}
+.cloud-transition-container.in .cloud-left,
+.cloud-transition-container.in .cloud-right {
+    transform: translateX(0);
+}
+.cloud-transition-container.out .cloud-left {
+    transform: translateX(-150%);
+}
+.cloud-transition-container.out .cloud-right {
+    transform: translateX(150%);
+}

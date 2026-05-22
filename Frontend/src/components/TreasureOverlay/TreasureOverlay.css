@@ -1,0 +1,95 @@
+.treasure-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    animation: fadeInOverlay 0.3s forwards;
+    pointer-events: auto; /* Block clicks to map */
+}
+
+@keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.treasure-chest {
+    font-size: 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.treasure-chest.shaking .chest-emoji {
+    animation: intenseShake 0.4s infinite;
+}
+
+.treasure-chest.open .chest-emoji {
+    animation: popOpenChest 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    text-shadow: 0 0 40px rgba(255, 215, 0, 0.8);
+}
+
+@keyframes intenseShake {
+    0% { transform: rotate(-10deg) scale(1); }
+    25% { transform: rotate(10deg) scale(1.1); }
+    50% { transform: rotate(-10deg) scale(1); }
+    75% { transform: rotate(10deg) scale(1.1); }
+    100% { transform: rotate(-10deg) scale(1); }
+}
+
+@keyframes popOpenChest {
+    0% { transform: scale(0.5); opacity: 0; }
+    50% { transform: scale(1.5) translateY(-20px); opacity: 1; }
+    100% { transform: scale(1.2) translateY(0); opacity: 1; }
+}
+
+.reward-text {
+    color: white;
+    text-align: center;
+    font-family: sans-serif;
+    opacity: 0;
+}
+
+.reward-text p {
+    margin: 5px 0;
+    font-size: 18px;
+}
+
+.reward-text .location-name {
+    font-size: 22px;
+    font-weight: bold;
+    color: #4cd137;
+    margin-bottom: 15px;
+}
+
+.reward-text .points-earned {
+    font-size: 36px;
+    font-weight: 900;
+    color: #fbc531;
+    text-shadow: 0 4px 10px rgba(251, 197, 49, 0.5);
+    /* Tương thích gradient text */
+    background: linear-gradient(135deg, #fbc531, #e1b12c);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: floatUp 2s ease-out forwards;
+}
+
+.reward-text.show {
+    animation: slideUpFade 0.6s ease-out forwards;
+}
+
+@keyframes slideUpFade {
+    0% { opacity: 0; transform: translateY(30px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes floatUp {
+    0% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-10px) scale(1.1); }
+    100% { transform: translateY(-20px) scale(1); }
+}

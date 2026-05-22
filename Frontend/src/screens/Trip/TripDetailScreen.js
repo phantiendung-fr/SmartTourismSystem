@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getTripDetail, getDeviationStatus, checkinStop, completeTrip, cancelTrip } from '../../services/tripService';
 import IslandMap from '../../components/IslandMap/IslandMap';
-import LocationDetailMap from '../../components/LocationDetailMap/LocationDetailMap';
 import './TripDetailScreen.css';
+import RouteMap from '../../components/RouteMap/RouteMap';
+import Mascot from '../../components/Mascot/Mascot';
+import TreasureOverlay from '../../components/TreasureOverlay/TreasureOverlay';
 
-const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate }) => {
+const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, user }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [tripDetail, setTripDetail] = useState(null);
@@ -20,6 +22,46 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate }) 
     // Trip action states
     const [actionLoading, setActionLoading] = useState(false);
     const [actionMsg, setActionMsg] = useState('');
+
+    const [cloudState, setCloudState] = useState('idle');
+    const [mascotMessage, setMascotMessage] = useState('');
+    const [rewardData, setRewardData] = useState(null);
+
+    useEffect(() => {
+        if (!tripDetail) return;
+        if (tripDetail.status === 'COMPLETED') {
+            setMascotMessage(["Chúc mừng bạn đã hoàn thành trọn vẹn hành trình tuyệt vời này!"]);
+        } else {
+            const introSequence = [
+                " Chào mừng bạn đến với kỷ nguyên du lịch! Hãy cùng tôi khám phá mọi miền trên khắp đất nước Việt Nam.",
+                " Trên bản đồ đảo này, mỗi tòa nhà tượng trưng cho một địa điểm thú vị mà bạn sẽ đi qua.",
+                " Bạn có thể nhấn vào từng công trình để xem chi tiết và thực hiện check-in khi đến nơi.",
+                " Chúc bạn có một chuyến đi thật vui vẻ! Nếu cần trợ giúp, hãy nhấn vào tôi nhé!"
+            ];
+            // Truyền toàn bộ chuỗi để Mascot phát lần lượt
+            setMascotMessage(introSequence);
+        }
+    }, [tripDetail?.itinerary_id, tripDetail?.status]);
+
+    const handleBuildingClick = (stop) => {
+        if (cloudState !== 'idle') return;
+        setCloudState('in');
+        setTimeout(() => {
+            setSelectedStop(stop);
+            setCloudState('out');
+            setTimeout(() => setCloudState('idle'), 600);
+        }, 500);
+    };
+
+    const handleCloseDetail = () => {
+        if (cloudState !== 'idle') return;
+        setCloudState('in');
+        setTimeout(() => {
+            setSelectedStop(null);
+            setCloudState('out');
+            setTimeout(() => setCloudState('idle'), 600);
+        }, 500);
+    };
 
     const fetchDetail = async (silent = false) => {
         try {
@@ -199,43 +241,55 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate }) 
                 }, token);
 
                 clearTimeout(safetyTimer);
-                setCheckinMsg(result.message || '✅ Check-in thành công!');
+                
+                // Lấy điểm thưởng từ API (nếu có) hoặc từ thông tin trạm
+                const earnedPoints = result.reward_points || targetStop.reward || 50;
 
-                // Cập nhật lại stop đang chọn
-                setSelectedStop(null); // Đóng modal luôn sau khi checkin thành công
-
-                // OPTIMISTIC UPDATE: Cập nhật state local ngay lập tức
-                setTripDetail(prev => {
-                    if (!prev) return prev;
-                    const updatedStops = prev.stops.map(s =>
-                        s.stop_id === checkedStopId
-                            ? { ...s, status: 'COMPLETED' }
-                            : s
-                    );
-                    const allDone = updatedStops.every(s => s.status === 'COMPLETED');
-                    return {
-                        ...prev,
-                        stops: updatedStops,
-                        status: allDone ? 'COMPLETED' : prev.status
-                    };
+                // Hiển thị hiệu ứng rương kho báu đang rung
+                setRewardData({ 
+                    points: earnedPoints, 
+                    locationName: targetStop.location_name, 
+                    stage: 'shaking' 
                 });
 
-                checkinInProgress.current = false;
-                setCheckinLoading(false);
-                if (onPointsUpdate) onPointsUpdate();
-
-                setTimeout(() => setCheckinMsg(''), 2000);
-
+                // Mở rương sau 1.5 giây
                 setTimeout(() => {
-                    handleRefresh(true).catch(err =>
-                        console.warn('Background refresh failed:', err)
-                    );
+                    setRewardData(prev => prev ? { ...prev, stage: 'open' } : null);
                 }, 1500);
 
-                // Cập nhật lại tổng điểm người dùng ở App
-                if (typeof refreshUser === 'function') {
-                    refreshUser();
-                }
+                // Đóng hiệu ứng sau 4.5 giây và trở về bản đồ
+                setTimeout(() => {
+                    setRewardData(null);
+                    setCheckinMsg(''); // Xóa tin nhắn toast (nếu có)
+                    
+                    setSelectedStop(null); // Trở về map
+
+                    // OPTIMISTIC UPDATE: Cập nhật state local ngay lập tức
+                    setTripDetail(prev => {
+                        if (!prev) return prev;
+                        const updatedStops = prev.stops.map(s =>
+                            s.stop_id === checkedStopId
+                                ? { ...s, status: 'COMPLETED' }
+                                : s
+                        );
+                        const allDone = updatedStops.every(s => s.status === 'COMPLETED');
+                        return {
+                            ...prev,
+                            stops: updatedStops,
+                            status: allDone ? 'COMPLETED' : prev.status
+                        };
+                    });
+                    
+                    // Mascot chúc mừng
+                    setMascotMessage(`Chúc mừng bạn đã khám phá được địa điểm ${targetStop.location_name} trong hành trình du lịch của mình!`);
+
+                    checkinInProgress.current = false;
+                    setCheckinLoading(false);
+                    if (onPointsUpdate) onPointsUpdate();
+                    if (typeof refreshUser === 'function') {
+                        refreshUser();
+                    }
+                }, 4500);
 
             } catch (err) {
                 clearTimeout(safetyTimer);
@@ -272,13 +326,14 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate }) 
         );
     };
 
-    if (selectedStop) {
-        const isCheckedIn = selectedStop.status === 'COMPLETED';
+    const renderContent = () => {
+        if (selectedStop) {
+            const isCheckedIn = selectedStop.status === 'COMPLETED';
 
-        return (
-            <div className="trip-detail-screen location-detail-mode">
-                <div className="detail-header">
-                    <button className="btn-back-icon" onClick={() => setSelectedStop(null)}>
+            return (
+                <div className="trip-detail-screen location-detail-mode">
+                    <div className="detail-header">
+                        <button className="btn-back-icon" onClick={handleCloseDetail}>
                         <i className="fas fa-arrow-left"></i>
                     </button>
                     <h2>{selectedStop.location_name}</h2>
@@ -316,7 +371,14 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate }) 
 
                     <div className="location-map-section">
                         <h4>Bản đồ & Chỉ đường</h4>
-                        <LocationDetailMap stop={selectedStop} userLocation={userLocation} />
+                        <RouteMap 
+                            stops={[selectedStop]} 
+                            routes={[]} 
+                            userLocation={userLocation}
+                            user={user}
+                            nextStop={selectedStop}
+                            onStopClick={setSelectedStop}
+                        />
                     </div>
                     
                     <div className="location-action-bar">
@@ -439,14 +501,31 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate }) 
             )}
 
             {/* Bản đồ Đảo (Island Map) thay thế RouteMap */}
-            <div className="island-map-section">
+            <div className="island-map-section" style={{ position: 'relative' }}>
                 {/* <p className="map-instruction">Nhấn vào các công trình trên đảo để xem chi tiết.</p> */}
                 <IslandMap
                     stops={allStops}
-                    onBuildingClick={setSelectedStop}
+                    onBuildingClick={handleBuildingClick}
                 />
+                
+                {/* Mascot Layer */}
+                <Mascot message={mascotMessage} />
             </div>
         </div>
+        );
+    };
+
+    return (
+        <>
+            {renderContent()}
+            <div className={`cloud-transition-container ${cloudState}`}>
+                <div className="cloud cloud-left"></div>
+                <div className="cloud cloud-right"></div>
+            </div>
+            
+            {/* Treasure Overlay */}
+            <TreasureOverlay data={rewardData} />
+        </>
     );
 };
 
