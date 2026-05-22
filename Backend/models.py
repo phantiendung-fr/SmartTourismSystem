@@ -692,3 +692,112 @@ class SocialQuestPlayers(SQLModel, table=True):
     user_id: UUID = Field(foreign_key="users.user_id", index=True)
     is_completed: bool = Field(default=False)
     joined_at: datetime = Field(default_factory=datetime.utcnow)
+
+# ============================================================
+# GROUP 10: HIDDEN QUEST & DYNAMIC EVENTS
+# ============================================================
+
+class RarityEnum(str, enum.Enum):
+    COMMON = "COMMON"
+    RARE = "RARE"
+    EPIC = "EPIC"
+    LEGENDARY = "LEGENDARY"
+
+class QuestTypeEnum(str, enum.Enum):
+    PHOTO = "PHOTO"
+    QR = "QR"
+    QUIZ = "QUIZ"
+    CHECKIN = "CHECKIN"
+
+class SpawnStatusEnum(str, enum.Enum):
+    ACTIVE = "ACTIVE"
+    CLAIMED = "CLAIMED"
+    EXPIRED = "EXPIRED"
+
+class HiddenChests(SQLModel, table=True):
+    __tablename__ = "hidden_chests"
+
+    chest_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    title: str = Field(max_length=100)
+    description: Optional[str] = Field(default=None)
+    rarity: RarityEnum = Field(default=RarityEnum.COMMON)
+    min_exp: int = Field(default=10)
+    max_exp: int = Field(default=50)
+    min_coin: int = Field(default=5)
+    max_coin: int = Field(default=25)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class PlayerHiddenTasks(SQLModel, table=True):
+    __tablename__ = "player_hidden_tasks"
+
+    spawn_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    user_id: UUID = Field(foreign_key="users.user_id", index=True)
+    task_type: str = Field(description="CHEST hoặc DYNAMIC_QUEST", max_length=50)
+    target_id: UUID = Field(description="ID của HiddenChests hoặc EnterpriseEvents")
+    latitude: Decimal = Field(sa_column=Column(Numeric(10, 6), nullable=False))
+    longitude: Decimal = Field(sa_column=Column(Numeric(10, 6), nullable=False))
+    status: SpawnStatusEnum = Field(default=SpawnStatusEnum.ACTIVE)
+    rarity: RarityEnum = Field(default=RarityEnum.COMMON)
+    expires_at: datetime
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = Field(default=None)
+
+class EnterpriseEvents(SQLModel, table=True):
+    __tablename__ = "enterprise_events"
+
+    event_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    enterprise_id: UUID = Field(foreign_key="enterprise_profiles.enterprise_id", index=True)
+    title: str = Field(max_length=255)
+    description: str = Field(sa_column=Column(sa.TEXT, nullable=False))
+    quest_type: QuestTypeEnum = Field(default=QuestTypeEnum.CHECKIN)
+    latitude: Decimal = Field(sa_column=Column(Numeric(10, 6), nullable=False))
+    longitude: Decimal = Field(sa_column=Column(Numeric(10, 6), nullable=False))
+    radius_meters: int = Field(default=100)
+    reward_exp: int = Field(default=100)
+    reward_coin: int = Field(default=50)
+    multiplier: int = Field(default=1)
+    rarity: RarityEnum = Field(default=RarityEnum.COMMON)
+    start_time: datetime
+    end_time: datetime
+    is_active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class EnterpriseEventQR(SQLModel, table=True):
+    __tablename__ = "enterprise_event_qr"
+
+    qr_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    event_id: UUID = Field(foreign_key="enterprise_events.event_id", index=True)
+    qr_token: str = Field(max_length=255, unique=True, index=True)
+    max_scans: int = Field(default=100)
+    scanned_count: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class HiddenEventParticipants(SQLModel, table=True):
+    __tablename__ = "hidden_event_participants"
+
+    participation_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    user_id: UUID = Field(foreign_key="users.user_id", index=True)
+    event_id: UUID = Field(foreign_key="enterprise_events.event_id", index=True)
+    earned_exp: int
+    earned_coin: int
+    feedback_image_url: Optional[str] = Field(default=None)
+    completed_at: datetime = Field(default_factory=datetime.utcnow)
+
+class HiddenSpawnLogs(SQLModel, table=True):
+    __tablename__ = "hidden_spawn_logs"
+
+    log_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    user_id: UUID = Field(foreign_key="users.user_id", index=True)
+    action: str = Field(max_length=100)
+    target_id: UUID
+    latitude: Decimal = Field(sa_column=Column(Numeric(10, 6), nullable=False))
+    longitude: Decimal = Field(sa_column=Column(Numeric(10, 6), nullable=False))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class HiddenTaskCooldowns(SQLModel, table=True):
+    __tablename__ = "hidden_task_cooldowns"
+
+    cooldown_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    user_id: UUID = Field(foreign_key="users.user_id", index=True)
+    cooldown_until: datetime
+    created_at: datetime = Field(default_factory=datetime.utcnow)

@@ -75,6 +75,9 @@ app.add_middleware(
 
 from routers import auth, enterprise, location_router, gamification, task_router, social_quest
 from api import planning, locations, trips, reference
+# Import thêm router mới
+from routers import hidden_quest, enterprise_event
+
 
 app.include_router(auth.router, prefix="/api/auth")
 app.include_router(enterprise.router, prefix="/api")
@@ -86,6 +89,9 @@ app.include_router(planning.router)
 app.include_router(locations.router)
 app.include_router(trips.router)
 app.include_router(reference.router)
+# Thêm vào danh sách include_router
+app.include_router(hidden_quest.router)
+app.include_router(enterprise_event.router)
 
 
 # ============================================================

@@ -4,6 +4,9 @@ import { useSocialQuest } from './SocialQuestProvider';
 const LocationSimulator = () => {
     const { sendLocation, questState } = useSocialQuest();
     
+    // Trạng thái quản lý đóng/mở bảng điều khiển
+    const [isOpen, setIsOpen] = useState(false);
+
     // Tọa độ mặc định
     const [lat, setLat] = useState(10.772461);
     const [lng, setLng] = useState(106.698055);
@@ -15,17 +18,62 @@ const LocationSimulator = () => {
         }
     };
 
+    // ==========================================
+    // GIAO DIỆN 1: KHI ĐANG ĐÓNG (NÚT THU GỌN NẰM BÊN TRÁI)
+    // ==========================================
+    if (!isOpen) {
+        return (
+            <button
+                onClick={() => setIsOpen(true)}
+                style={{
+                    position: 'absolute',
+                    bottom: '100px',
+                    left: '20px',  /* Đã chuyển từ right sang left */
+                    zIndex: 9999,
+                    background: '#2c3e50',
+                    color: 'white',
+                    border: '2px solid rgba(255,255,255,0.2)',
+                    borderRadius: '50%',
+                    width: '45px',
+                    height: '45px',
+                    fontSize: '20px',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'transform 0.2s'
+                }}
+                title="Mở Mock GPS"
+            >
+                🛰️
+            </button>
+        );
+    }
+
+    // ==========================================
+    // GIAO DIỆN 2: KHI BẤM MỞ BẢNG ĐIỀU KHIỂN (NẰM BÊN TRÁI)
+    // ==========================================
     return (
         <div style={{
             position: 'absolute', 
-            bottom: '100px', /* SỬA TỪ 20px THÀNH 100px ĐỂ NÉ THANH BOTTOM TAB */
-            right: '20px', 
-            zIndex: 9999,    /* TĂNG Z-INDEX LÊN ĐỂ LUÔN NẰM TRÊN CÙNG */
-            background: 'rgba(0,0,0,0.8)', color: 'white', padding: '15px', borderRadius: '12px',
+            bottom: '100px', 
+            left: '20px',  /* Đã chuyển từ right sang left */
+            zIndex: 9999,
+            background: 'rgba(0,0,0,0.85)', color: 'white', padding: '15px', borderRadius: '12px',
             width: '180px', fontSize: '13px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
             border: '1px solid rgba(255,255,255,0.1)'
         }}>
-            <h4 style={{ margin: '0 0 10px 0', color: '#2ecc71', textAlign: 'center' }}>🛰️ DEV: MOCK GPS</h4>
+            {/* Header có nút Tắt (X) */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h4 style={{ margin: 0, color: '#2ecc71', fontSize: '14px' }}>🛰️ MOCK GPS</h4>
+                <button 
+                    onClick={() => setIsOpen(false)}
+                    style={{ background: 'none', border: 'none', color: '#ff7675', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
+                >
+                    ✕
+                </button>
+            </div>
             
             <div style={{ marginBottom: '8px' }}>
                 <label style={{color: '#aaa', fontSize: '11px'}}>Vĩ độ (Latitude):</label>
@@ -45,7 +93,6 @@ const LocationSimulator = () => {
                 />
             </div>
             
-            {/* ĐÃ XÓA DISABLED ĐỂ NÚT LUÔN BẤM ĐƯỢC */}
             <button 
                 onClick={handleSend} 
                 style={{

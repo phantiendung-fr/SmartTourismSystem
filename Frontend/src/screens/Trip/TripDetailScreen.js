@@ -5,6 +5,11 @@ import LocationTasks from './LocationTasks';
 import TaskDetail from './TaskDetail';
 import './TripDetailScreen.css';
 
+// Hidden Quest imports
+import { getActiveTasks, pingLocation, verifyQuest } from '../../services/hiddenQuestService';
+import ChestOpeningAnimation from '../../components/HiddenQuest/ChestOpeningAnimation';
+import HiddenQuestDebug from '../../components/HiddenQuest/HiddenQuestDebug';
+
 const TripDetailScreen = ({ itineraryId, user, onBack }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -13,6 +18,19 @@ const TripDetailScreen = ({ itineraryId, user, onBack }) => {
 
     // Gamification state variables
     const [selectedLocationForTasks, setSelectedLocationForTasks] = useState(null);
+
+    // Hidden Quest states
+    const [hiddenTasks, setHiddenTasks] = useState([]);
+    const [selectedHiddenTask, setSelectedHiddenTask] = useState(null);
+    const [showChestAnimation, setShowChestAnimation] = useState(false);
+    const [showQuestModal, setShowQuestModal] = useState(false);
+    const [qrTokenInput, setQrTokenInput] = useState('');
+    const [quizAnswer, setQuizAnswer] = useState('');
+    const [photoUploaded, setPhotoUploaded] = useState(false);
+    const [photoUrl, setPhotoUrl] = useState('');
+    const [questLoading, setQuestLoading] = useState(false);
+    const [questError, setQuestError] = useState('');
+    const [questSuccess, setQuestSuccess] = useState(null);
     const [selectedTaskForExecution, setSelectedTaskForExecution] = useState(null);
 
     const userId = user?.user_id || user?.id || '296be4b0-9556-42bb-9be1-fdb1277a06c2';
@@ -55,6 +73,54 @@ const TripDetailScreen = ({ itineraryId, user, onBack }) => {
         await Promise.all([fetchDetail(silent), fetchDeviationStatus()]);
     };
 
+    // Fetch active hidden tasks
+    const fetchHiddenTasks = async () => {
+        try {
+            const tasks = await getActiveTasks();
+            setHiddenTasks(tasks);
+        } catch (err) {
+            console.error('Lỗi lấy nhiệm vụ ẩn:', err);
+        }
+    };
+
+    // Handle hidden task click from map marker
+    const handleHiddenTaskClick = (task) => {
+        setSelectedHiddenTask(task);
+        if (task.task_type === 'CHEST') {
+            setShowChestAnimation(true);
+        } else if (task.task_type === 'DYNAMIC_QUEST') {
+            setShowQuestModal(true);
+        }
+    };
+
+    // Verify / Complete a dynamic quest
+    const handleVerifyQuest = async (extraData = {}) => {
+        if (!selectedHiddenTask || !userLocation) {
+            setQuestError('Không xác định được vị trí GPS hiện tại!');
+            return;
+        }
+        setQuestLoading(true);
+        setQuestError('');
+        try {
+            const res = await verifyQuest(
+                selectedHiddenTask.spawn_id,
+                userLocation.lat,
+                userLocation.lng,
+                selectedHiddenTask.quest_type,
+                extraData
+            );
+            setQuestSuccess(res);
+            fetchHiddenTasks();
+        } catch (err) {
+            setQuestError(err.message || 'Xác thực thất bại');
+        } finally {
+            setQuestLoading(false);
+        }
+    };
+
+    const userLocationRef = useRef(userLocation);
+    useEffect(() => { userLocationRef.current = userLocation; }, [userLocation]);
+
     useEffect(() => {
         // Reset trạng thái check-in khi chuyển trip (tránh khóa nút từ trip cũ)
         checkinInProgress.current = false;
@@ -65,6 +131,7 @@ const TripDetailScreen = ({ itineraryId, user, onBack }) => {
         if (itineraryId) {
             fetchDetail();
             fetchDeviationStatus();
+            fetchHiddenTasks();
         }
 
         // Theo dõi vị trí hiện tại của người dùng
@@ -83,7 +150,26 @@ const TripDetailScreen = ({ itineraryId, user, onBack }) => {
             }
         );
 
-        return () => navigator.geolocation.clearWatch(watchId);
+        // Ping GPS định kỳ mỗi 30 giây để kích hoạt spawn
+        const pingInterval = setInterval(async () => {
+            const currentLoc = userLocationRef.current;
+            if (currentLoc && currentLoc.lat && currentLoc.lng) {
+                try {
+                    const res = await pingLocation(currentLoc.lat, currentLoc.lng);
+                    if (res.spawned) {
+                        fetchHiddenTasks();
+                    }
+                } catch (err) {
+                    console.error('Lỗi ping vị trí:', err);
+                }
+            }
+        }, 30000);
+
+        return () => {
+            navigator.geolocation.clearWatch(watchId);
+            clearInterval(pingInterval);
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [itineraryId]);
 
     // Determine if trip is ongoing (can be completed/cancelled)
@@ -91,7 +177,7 @@ const TripDetailScreen = ({ itineraryId, user, onBack }) => {
     const isTripCompleted = tripDetail && tripDetail.status === 'COMPLETED';
     const isTripCancelled = tripDetail && tripDetail.status === 'CANCELLED';
 
-    const getStatusLabel = () => {
+    const getStatusLabel = () => { // eslint-disable-line no-unused-vars
         if (isTripCompleted) return { text: '✅ Hoàn thành', className: 'status-completed' };
         if (isTripCancelled) return { text: '❌ Đã hủy', className: 'status-cancelled' };
         return { text: '🔄 Đang diễn ra', className: 'status-ongoing' };
@@ -468,12 +554,24 @@ const TripDetailScreen = ({ itineraryId, user, onBack }) => {
                 ))}
             </div>
 
-            {/* 🗺️ Bản đồ lộ trình với đường đi thực tế từ OSRM */}
-            <RouteMap 
-                stops={allStops} 
-                routes={tripDetail.routes || []} 
-                userLocation={userLocation}
-            />
+            {/* 🗺️ Bản đồ lộ trình với đường đi thực tế từ OSRM + Nhiệm vụ ẩn */}
+            <div style={{ position: 'relative' }}>
+                <RouteMap 
+                    stops={allStops} 
+                    routes={tripDetail.routes || []} 
+                    userLocation={userLocation}
+                    hiddenTasks={hiddenTasks}
+                    onHiddenTaskClick={handleHiddenTaskClick}
+                />
+                <HiddenQuestDebug
+                    userLocation={userLocation}
+                    onSpawnSuccess={fetchHiddenTasks}
+                    onTestClaim={(testTask) => {
+                        setSelectedHiddenTask(testTask);
+                        setShowChestAnimation(true);
+                    }}
+                />
+            </div>
 
             {/* GAMIFICATION OVERLAYS */}
             {selectedLocationForTasks && (
@@ -513,6 +611,134 @@ const TripDetailScreen = ({ itineraryId, user, onBack }) => {
                         handleRefresh(true);
                     }}
                 />
+            )}
+
+            {/* --- Hidden Quest Overlays --- */}
+            {showChestAnimation && selectedHiddenTask && (
+                <ChestOpeningAnimation 
+                    task={selectedHiddenTask} 
+                    userLocation={userLocation}
+                    onClose={() => {
+                        setShowChestAnimation(false);
+                        setSelectedHiddenTask(null);
+                    }}
+                    onClaim={(rewards) => {
+                        alert(`🎉 Chúc mừng! Bạn nhận được +${rewards.reward_exp} EXP và +${rewards.reward_coin} Coin!`);
+                        fetchHiddenTasks();
+                    }}
+                />
+            )}
+
+            {showQuestModal && selectedHiddenTask && (
+                <div className="quest-modal-overlay">
+                    <div className="quest-modal-content">
+                        <div className="quest-modal-header">
+                            <h3>🔮 {selectedHiddenTask.title || 'Sự kiện Doanh nghiệp'}</h3>
+                            <button className="quest-close-btn" onClick={() => {
+                                setShowQuestModal(false);
+                                setQuestError('');
+                                setQuestSuccess(null);
+                                setQrTokenInput('');
+                                setQuizAnswer('');
+                                setPhotoUploaded(false);
+                                setPhotoUrl('');
+                            }}>✕</button>
+                        </div>
+                        
+                        <div className="quest-modal-body">
+                            {!questSuccess ? (
+                                <>
+                                    <p className="quest-desc">{selectedHiddenTask.description || 'Hoàn thành thử thách để nhận quà từ doanh nghiệp.'}</p>
+                                    
+                                    <div className="quest-meta-info">
+                                        <span>📍 Bán kính: {selectedHiddenTask.radius_meters}m</span>
+                                        <span>⭐ {selectedHiddenTask.reward_exp} EXP | 🪙 {selectedHiddenTask.reward_coin} Coin</span>
+                                    </div>
+
+                                    {/* CHECKIN */}
+                                    {selectedHiddenTask.quest_type === 'CHECKIN' && (
+                                        <div className="quest-action-area">
+                                            <p className="quest-instruction">📍 Hệ thống sẽ xác thực vị trí GPS của bạn.</p>
+                                            <button className="quest-action-btn" onClick={() => handleVerifyQuest()} disabled={questLoading}>
+                                                {questLoading ? 'Đang xác thực...' : '📍 Check-in ngay'}
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* QR */}
+                                    {selectedHiddenTask.quest_type === 'QR' && (
+                                        <div className="quest-action-area">
+                                            <p className="quest-instruction">🔳 Nhập mã token hoặc quét QR:</p>
+                                            <input type="text" className="quest-input" placeholder="QR_EVENT_TOKEN_123" value={qrTokenInput} onChange={(e) => setQrTokenInput(e.target.value)} />
+                                            <button className="quest-action-btn" onClick={() => handleVerifyQuest({ qr_token: qrTokenInput })} disabled={questLoading || !qrTokenInput.trim()}>
+                                                {questLoading ? 'Đang xác thực...' : '✔️ Xác nhận mã QR'}
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* QUIZ */}
+                                    {selectedHiddenTask.quest_type === 'QUIZ' && (
+                                        <div className="quest-action-area">
+                                            <p className="quest-instruction">❓ Trả lời câu hỏi:</p>
+                                            <div className="quiz-options-grid">
+                                                {[
+                                                    { code: 'A', text: 'Dịch vụ lưu trú & Tour trọn gói' },
+                                                    { code: 'B', text: 'Cho thuê phương tiện di chuyển' },
+                                                    { code: 'C', text: 'Bán quà lưu niệm thủ công' },
+                                                    { code: 'D', text: 'Ăn uống & Ẩm thực đường phố' }
+                                                ].map((opt) => (
+                                                    <button key={opt.code} className={`quiz-option-card ${quizAnswer === opt.code ? 'selected' : ''}`} onClick={() => setQuizAnswer(opt.code)}>
+                                                        <span className="option-code">{opt.code}</span>
+                                                        <span className="option-text">{opt.text}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <button className="quest-action-btn" onClick={() => handleVerifyQuest({ answer: quizAnswer, correct_answer: 'A' })} disabled={questLoading || !quizAnswer} style={{ marginTop: '15px' }}>
+                                                {questLoading ? 'Đang gửi...' : '✔️ Nộp đáp án'}
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* PHOTO */}
+                                    {selectedHiddenTask.quest_type === 'PHOTO' && (
+                                        <div className="quest-action-area">
+                                            <p className="quest-instruction">📷 Chụp ảnh check-in:</p>
+                                            {photoUploaded ? (
+                                                <div className="photo-preview-box">
+                                                    <img src={photoUrl} alt="Preview" />
+                                                    <button className="photo-reset" onClick={() => { setPhotoUploaded(false); setPhotoUrl(''); }}>✕ Xóa</button>
+                                                </div>
+                                            ) : (
+                                                <div className="photo-upload-placeholder" onClick={() => { setPhotoUrl('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500'); setPhotoUploaded(true); }}>
+                                                    <span style={{ fontSize: '32px' }}>📷</span>
+                                                    <span>Chạm để tải lên / Chụp ảnh</span>
+                                                </div>
+                                            )}
+                                            <button className="quest-action-btn" onClick={() => handleVerifyQuest({ image_url: photoUrl })} disabled={questLoading || !photoUploaded} style={{ marginTop: '15px' }}>
+                                                {questLoading ? 'Đang xác thực...' : '✔️ Xác nhận ảnh'}
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {questError && <div className="quest-error-msg">⚠️ {questError}</div>}
+                                </>
+                            ) : (
+                                <div className="quest-success-screen">
+                                    <div className="success-icon">🎉</div>
+                                    <h4>Thử thách hoàn thành!</h4>
+                                    <p>Chúc mừng bạn đã nhận được phần thưởng:</p>
+                                    <div className="success-reward-card">
+                                        <div className="success-reward-item"><span style={{ fontSize: '24px' }}>🔥</span><span><strong>+{questSuccess.reward_exp}</strong> EXP</span></div>
+                                        <div className="success-reward-item"><span style={{ fontSize: '24px' }}>🪙</span><span><strong>+{questSuccess.reward_coin}</strong> Coin</span></div>
+                                    </div>
+                                    <button className="quest-close-success-btn" onClick={() => { setShowQuestModal(false); setQuestSuccess(null); setQrTokenInput(''); setQuizAnswer(''); setPhotoUploaded(false); setPhotoUrl(''); }}>
+                                        Tuyệt vời! Tiếp tục hành trình
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
 
