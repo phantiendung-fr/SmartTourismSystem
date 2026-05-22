@@ -663,3 +663,32 @@ class UserTaskHistory(SQLModel, table=True):
         # Chống việc một user làm đi làm lại một task tĩnh trong ngày (Anti-cheat)
         Index("idx_user_task_daily", "user_id", "task_id"),
     )
+
+# ============================================================
+# SOCIAL QUEST
+# ============================================================
+
+class SocialQuestStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    ACTIVE = "ACTIVE"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    EXPIRED = "EXPIRED"
+
+class SocialQuestInstances(SQLModel, table=True):
+    __tablename__ = "social_quest_instances"
+
+    instance_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    quest_id: UUID = Field(description="ID của nhiệm vụ (không có khóa ngoại để linh hoạt)")
+    status: SocialQuestStatus = Field(default=SocialQuestStatus.PENDING)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    expired_at: datetime
+
+class SocialQuestPlayers(SQLModel, table=True):
+    __tablename__ = "social_quest_players"
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    instance_id: UUID = Field(foreign_key="social_quest_instances.instance_id", index=True)
+    user_id: UUID = Field(foreign_key="users.user_id", index=True)
+    is_completed: bool = Field(default=False)
+    joined_at: datetime = Field(default_factory=datetime.utcnow)
