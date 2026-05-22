@@ -3,7 +3,6 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './RouteMap.css';
 
-// --- Fix Leaflet default icon issue with bundlers ---
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -11,7 +10,6 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-// --- Decode Google/OSRM encoded polyline (Algorithm from Google) ---
 function decodePolyline(encoded) {
     const points = [];
     let index = 0, lat = 0, lng = 0;
@@ -31,195 +29,181 @@ function decodePolyline(encoded) {
             shift += 5;
         } while (byte >= 0x20);
         lng += (result & 1) ? ~(result >> 1) : (result >> 1);
-
         points.push([lat / 1e5, lng / 1e5]);
     }
     return points;
 }
 
-// --- Màu sắc cho các route theo ngày ---
-const DAY_COLORS = ['#6C5CE7', '#00B894', '#E17055', '#0984E3', '#FDCB6E', '#E84393'];
-
-// --- Custom icon cho marker ---
-function createStopIcon(order, status) {
-    const bgColor = status === 'COMPLETED' ? '#00b894' :
-                    status === 'VISITING'  ? '#f39c12' : '#0984e3';
-    return L.divIcon({
-        className: 'custom-marker',
-        html: `<div class="marker-pin" style="background:${bgColor}"><span>${order}</span></div>`,
-        iconSize: [30, 42],
-        iconAnchor: [15, 42],
-        popupAnchor: [0, -45],
-    });
-}
-
-const RouteMap = ({ stops = [], routes = [], userLocation = null }) => {
+// BỔ SUNG THÊM PROP: userLocation
+const RouteMap = ({ stops = [], routes = [], hiddenTasks = [], userLocation = null, onHiddenTaskClick = null }) => {
     const mapRef = useRef(null);
-    const mapInstanceRef = useRef(null);
-    const userMarkerRef = useRef(null);
+    const mapInstance = useRef(null);
+    
+    // Thêm Layer thứ 3 dành riêng cho Vị trí người dùng
+    const routeLayerRef = useRef(null);
+    const hiddenTasksLayerRef = useRef(null);
+    const userLayerRef = useRef(null);
 
-    // useEffect 1: Khởi tạo map + vẽ routes/stops (CHỈ khi stops hoặc routes thay đổi)
+    // 1. VẼ LỘ TRÌNH TĨNH
     useEffect(() => {
-        if (!mapRef.current || stops.length === 0) return;
+        if (stops.length === 0 || !mapRef.current) return;
 
-        // Destroy previous map if it exists
-        if (mapInstanceRef.current) {
-            mapInstanceRef.current.remove();
-            mapInstanceRef.current = null;
-            userMarkerRef.current = null;
+        if (!mapInstance.current) {
+            const startLat = parseFloat(stops[0].latitude);
+            const startLng = parseFloat(stops[0].longitude);
+
+            const map = L.map(mapRef.current, {
+                zoomControl: true,
+                attributionControl: false
+            }).setView([startLat, startLng], 14);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+            routeLayerRef.current = L.layerGroup().addTo(map);
+            hiddenTasksLayerRef.current = L.layerGroup().addTo(map);
+            userLayerRef.current = L.layerGroup().addTo(map); // Khởi tạo layer vị trí
+
+            mapInstance.current = map;
         }
 
-        // --- Init map ---
-        const map = L.map(mapRef.current, {
-            zoomControl: true,
-            attributionControl: true,
-        });
-        mapInstanceRef.current = map;
+        const routeLayer = routeLayerRef.current;
+        routeLayer.clearLayers(); 
+        const bounds = [];
 
-        // OpenStreetMap tiles (miễn phí)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 18,
-        }).addTo(map);
-
-        const allLatLngs = [];
-
-        // --- Vẽ routes (polyline) ---
-        routes.forEach((route) => {
-            // Tìm stop tương ứng để lấy day_order cho màu
-            const fromStop = stops.find(s => s.stop_id === route.from_stop_id);
-            const dayIndex = fromStop ? (fromStop.day_order || 1) - 1 : 0;
-            const color = DAY_COLORS[dayIndex % DAY_COLORS.length];
-
-            let routeCoords;
-            try {
-                routeCoords = decodePolyline(route.polyline_data);
-            } catch (e) {
-                // Fallback: nếu polyline không decode được, vẽ đường thẳng
-                const toStop = stops.find(s => s.stop_id === route.to_stop_id);
-                if (fromStop && toStop) {
-                    routeCoords = [
-                        [parseFloat(fromStop.latitude), parseFloat(fromStop.longitude)],
-                        [parseFloat(toStop.latitude), parseFloat(toStop.longitude)]
-                    ];
-                } else {
-                    return;
-                }
-            }
-
-            if (routeCoords.length > 0) {
-                const polyline = L.polyline(routeCoords, {
-                    color: color,
-                    weight: 4,
-                    opacity: 0.8,
-                    dashArray: null,
-                    lineJoin: 'round',
-                });
-                polyline.addTo(map);
-
-                // Popup hiển thị thông tin route
-                const midIdx = Math.floor(routeCoords.length / 2);
-                const midPoint = routeCoords[midIdx];
-                L.popup({ closeButton: false, autoClose: true, className: 'route-popup' })
-                    .setLatLng(midPoint)
-                    .setContent(`<b>${route.distance} km</b> · ${route.travel_time} phút`);
-                
-                // Nhấn vào route sẽ hiện popup
-                polyline.on('click', (e) => {
-                    L.popup({ className: 'route-popup' })
-                        .setLatLng(e.latlng)
-                        .setContent(`<b>${route.distance} km</b> · ${route.travel_time} phút`)
-                        .openOn(map);
-                });
-
-                routeCoords.forEach(c => allLatLngs.push(c));
-            }
-        });
-
-        // --- Vẽ markers cho các trạm dừng ---
-        stops.forEach((stop) => {
+        stops.forEach((stop, index) => {
             const lat = parseFloat(stop.latitude);
             const lng = parseFloat(stop.longitude);
             if (isNaN(lat) || isNaN(lng)) return;
+            
+            bounds.push([lat, lng]);
 
-            const icon = createStopIcon(stop.stop_order, stop.status);
-            const marker = L.marker([lat, lng], { icon }).addTo(map);
-
-            const priceStr = stop.min_price
-                ? `${new Intl.NumberFormat('vi-VN').format(stop.min_price)}đ`
-                : '';
-
-            marker.bindPopup(`
-                <div class="stop-popup">
-                    <strong>${stop.location_name}</strong><br/>
-                    <span>🕐 ${stop.arrival_time?.slice(0, 5)} - ${stop.departure_time?.slice(0, 5)}</span>
-                    ${priceStr ? `<br/><span>💰 ${priceStr}</span>` : ''}
-                    ${stop.status === 'COMPLETED' ? '<br/><span style="color:#00b894">✅ Đã check-in</span>' : ''}
-                </div>
-            `);
-
-            allLatLngs.push([lat, lng]);
+            const stopMarker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'custom-stop-icon',
+                    html: `<div style="background:#1976d2;color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)">${index + 1}</div>`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                })
+            });
+            stopMarker.bindPopup(`<b>${stop.location_name || 'Trạm dừng'}</b>`);
+            stopMarker.addTo(routeLayer);
         });
 
-        // --- Auto zoom để thấy toàn bộ route ---
-        if (allLatLngs.length > 0) {
-            const bounds = L.latLngBounds(allLatLngs);
-            map.fitBounds(bounds, { padding: [40, 40] });
-        }
-
-        // Cleanup
-        return () => {
-            if (mapInstanceRef.current) {
-                mapInstanceRef.current.remove();
-                mapInstanceRef.current = null;
-                userMarkerRef.current = null;
+        routes.forEach((route) => {
+            if (route.polyline_data) {
+                const coordinates = decodePolyline(route.polyline_data);
+                const polyline = L.polyline(coordinates, { color: '#2196f3', weight: 5, opacity: 0.75 });
+                polyline.bindPopup(`<b>Khoảng cách:</b> ${route.distance} km<br/><b>Thời gian:</b> ${route.travel_time} phút`);
+                polyline.addTo(routeLayer);
             }
-        };
+        });
+
+        if (bounds.length > 0) {
+            mapInstance.current.fitBounds(bounds, { padding: [40, 40] });
+        }
+        
+        setTimeout(() => { if (mapInstance.current) mapInstance.current.invalidateSize(); }, 200);
     }, [stops, routes]);
 
-    // useEffect 2: Cập nhật vị trí user RIÊNG BIỆT (không destroy map)
+    // 2. VẼ RƯƠNG ẨN
     useEffect(() => {
-        const map = mapInstanceRef.current;
-        if (!map) return;
+        if (!mapInstance.current || !hiddenTasksLayerRef.current) return;
 
-        // Xóa marker cũ nếu có
-        if (userMarkerRef.current) {
-            userMarkerRef.current.remove();
-            userMarkerRef.current = null;
-        }
+        const tasksLayer = hiddenTasksLayerRef.current;
+        tasksLayer.clearLayers(); 
 
-        // Thêm marker mới nếu có vị trí user
-        if (userLocation && userLocation.lat && userLocation.lng) {
-            const userIcon = L.divIcon({
-                className: 'user-location-icon',
-                html: `<div style="background-color: #F44336; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(244, 67, 54, 0.6); position: relative;">
-                        <div style="position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px; border-radius: 50%; border: 2px solid #F44336; opacity: 0.5;"></div>
-                       </div>`,
-                iconSize: [20, 20],
-                iconAnchor: [10, 10],
+        hiddenTasks.forEach((task) => {
+            const lat = parseFloat(task.latitude);
+            const lng = parseFloat(task.longitude);
+            if (isNaN(lat) || isNaN(lng)) return;
+
+            let emojiIcon = '📦'; 
+            let glowColor = '#7f8c8d'; 
+
+            if (task.task_type === 'CHEST') {
+                if (task.rarity === 'LEGENDARY') { emojiIcon = '🏆'; glowColor = '#f1c40f'; }
+                else if (task.rarity === 'EPIC') { emojiIcon = '👑'; glowColor = '#9b59b6'; }
+                else if (task.rarity === 'RARE') { emojiIcon = '💎'; glowColor = '#3498db'; }
+            } else {
+                emojiIcon = '🔮'; 
+                glowColor = '#e74c3c';
+            }
+
+            const taskMarker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'hidden-task-marker-wrapper',
+                    html: `
+                        <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; cursor: pointer;">
+                            <div style="position: absolute; width: 32px; height: 32px; background: ${glowColor}; opacity: 0.4; border-radius: 50%; animation: pulse-glow-ring 2s infinite ease-in-out;"></div>
+                            <span style="font-size: 26px; z-index: 2; position: relative;">${emojiIcon}</span>
+                        </div>
+                    `,
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                })
             });
-            userMarkerRef.current = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon })
-                .bindPopup('📍 Vị trí của bạn')
-                .addTo(map);
+
+            taskMarker.bindPopup(`<div style="text-align:center;"><strong>${task.title}</strong><br/><small>${task.rarity}</small></div>`);
+            taskMarker.on('click', () => { if (onHiddenTaskClick) onHiddenTaskClick(task); });
+            taskMarker.addTo(tasksLayer);
+        });
+        mapInstance.current.invalidateSize();
+    }, [hiddenTasks, onHiddenTaskClick]);
+
+    // =========================================================================
+    // 3. VẼ CHẤM ĐỎ VỊ TRÍ NGƯỜI DÙNG
+    // =========================================================================
+    useEffect(() => {
+        if (!mapInstance.current || !userLayerRef.current) return;
+        const userLayer = userLayerRef.current;
+        userLayer.clearLayers();
+
+        if (userLocation && typeof userLocation.lat !== 'undefined' && typeof userLocation.lng !== 'undefined') {
+            const userMarker = L.marker([userLocation.lat, userLocation.lng], {
+                icon: L.divIcon({
+                    className: 'user-location-marker',
+                    html: `<div style="background:#e74c3c; width:16px; height:16px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(231,76,60,0.8); animation: pulse-red 1.5s infinite;"></div>`,
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11]
+                })
+            });
+            userMarker.bindPopup('<b style="color:#e74c3c">📍 Vị trí của bạn</b>');
+            userMarker.addTo(userLayer);
         }
     }, [userLocation]);
 
     if (stops.length === 0) return null;
 
     return (
-        <div className="route-map-container">
-            <div className="route-map-header">
-                <span className="map-icon">🗺️</span>
-                <h3>Bản đồ lộ trình</h3>
+        <div className="route-map-container" style={{ width: '100%', marginBottom: '20px' }}>
+            <div className="route-map-header" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                <span className="map-icon" style={{ fontSize: '20px' }}>🗺️</span>
+                <h3 style={{ margin: 0, fontSize: '16px', color: '#2d3436', fontWeight: 'bold' }}>Bản đồ lộ trình</h3>
             </div>
-            <div className="route-map-wrapper">
-                <div ref={mapRef} className="route-map" />
+            
+            <div className="route-map-wrapper" style={{ height: '380px', width: '100%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.08)', background: '#e0e0e0' }}>
+                <div ref={mapRef} style={{ height: '100%', width: '100%' }} />
             </div>
+            
             {routes.length > 0 && (
-                <div className="route-map-legend">
-                    <span className="legend-hint">📍 Nhấn vào đường để xem khoảng cách & thời gian</span>
+                <div className="route-map-legend" style={{ marginTop: '8px', textAlign: 'center' }}>
+                    <span className="legend-hint" style={{ fontSize: '12px', color: '#b2bec3' }}>📍 Nhấn vào đường đi hoặc rương báu để tương tác</span>
                 </div>
             )}
+            
+            <style>{`
+                @keyframes pulse-glow-ring {
+                    0% { transform: scale(0.6); opacity: 0.6; }
+                    50% { transform: scale(1.3); opacity: 0.1; }
+                    100% { transform: scale(0.6); opacity: 0.6; }
+                }
+                /* Bổ sung hiệu ứng tỏa sóng đỏ cho user */
+                @keyframes pulse-red {
+                    0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+                    70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+                }
+            `}</style>
         </div>
     );
 };

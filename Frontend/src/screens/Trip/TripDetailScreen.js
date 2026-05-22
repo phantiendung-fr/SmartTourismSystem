@@ -561,7 +561,11 @@ const TripDetailScreen = ({ itineraryId, user, onBack }) => {
                     routes={tripDetail.routes || []} 
                     userLocation={userLocation}
                     hiddenTasks={hiddenTasks}
-                    onHiddenTaskClick={handleHiddenTaskClick}
+                    //onHiddenTaskClick={handleHiddenTaskClick}
+                    onHiddenTaskClick={(task) => {
+                        setSelectedHiddenTask(task);
+                        setShowChestAnimation(true);
+                    }}
                 />
                 <HiddenQuestDebug
                     userLocation={userLocation}

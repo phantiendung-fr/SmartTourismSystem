@@ -377,14 +377,26 @@ def claim_chest(
     final_exp = base_exp * multiplier
     final_coin = base_coin * multiplier
     
-    profile = db.exec(select(UserProfiles).where(UserProfiles.user_id == target_user_id)).first()
+    profile = db.exec(select(UserProfiles).where(UserProfiles.user_id == user.user_id)).first()
     
-    # ❌ LỖI HỒ SƠ TÀI KHOẢN (Frontend dựa vào từ khóa 'user_profiles' hoặc 'hồ sơ')
+    # --- CƠ CHẾ TỰ ĐỘNG TẠO PROFILE VỚI GIÁ TRỊ MẶC ĐỊNH AN TOÀN ---
     if not profile:
-        raise HTTPException(
-            status_code=404, 
-            detail="Hệ thống không tìm thấy hồ sơ cá nhân (user_profiles) tương ứng với tài khoản của bạn."
+        print(f"⚠️ Đang khởi tạo Profile an toàn cho user: {user.email}")
+        
+        from datetime import date
+        
+        profile = UserProfiles(
+            user_id=user.user_id,
+            full_name=getattr(user, 'full_name', 'Người dùng mới'),
+            date_of_birth=date(1990, 1, 1), # Giá trị mặc định để vượt qua NotNull constraint
+            gender='OTHER',                 # Giá trị mặc định để vượt qua NotNull constraint
+            total_points=0,
+            points_balance=0
         )
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+    # -----------------------------------------------------------
         
     profile.total_points = (profile.total_points or 0) + final_exp
     profile.points_balance = (profile.points_balance or 0) + final_coin
