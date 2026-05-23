@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { useGeolocation } from '../../hooks/useGeolocation';
+import { API_BASE } from '../../config/api';
 import './TaskDetail.css';
 
 // =========================================================================
@@ -77,7 +78,7 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
       try {
         setStarting(true);
         const response = await fetch(
-          `http://127.0.0.1:8000/api/gamification/tasks/${task.task_id}/start?user_id=${userId}&itinerary_id=${itineraryId}`,
+          `${API_BASE}/api/gamification/tasks/${task.task_id}/start?user_id=${userId}&itinerary_id=${itineraryId}`,
           { method: 'POST' }
         );
         if (!response.ok) throw new Error('Không thể đăng ký thực hiện thử thách.');
@@ -112,7 +113,7 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
         formData.append('longitude', longitude.toString());
         formData.append('photo', imageFile);
 
-        const response = await fetch('http://127.0.0.1:8000/api/gamification/submissions/submit-photo', {
+        const response = await fetch(`${API_BASE}/api/gamification/submissions/submit-photo`, {
           method: 'POST',
           body: formData,
         });
@@ -123,7 +124,7 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
 
       } else if (task.task_type === 'QA') {
         if (!selectedOption) throw new Error('Vui lòng chọn một đáp án.');
-        const response = await fetch('http://127.0.0.1:8000/api/v1/tasks/qa/submit', {
+        const response = await fetch(`${API_BASE}/api/v1/tasks/qa/submit`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -152,7 +153,7 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
         const tokenToSubmit = qrScannedToken || qrTokenInput;
         if (!tokenToSubmit) throw new Error('Vui lòng nhập hoặc quét mã QR.');
 
-        const response = await fetch('http://127.0.0.1:8000/api/v1/tasks/qr/scan', {
+        const response = await fetch(`${API_BASE}/api/v1/tasks/qr/scan`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

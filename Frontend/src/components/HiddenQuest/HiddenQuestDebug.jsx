@@ -1,5 +1,6 @@
 // src/components/HiddenQuest/HiddenQuestDebug.jsx
 import React, { useState } from 'react';
+import { API_BASE } from '../../config/api';
 import './HiddenQuestDebug.css';
 
 const HiddenQuestDebug = ({ userLocation, onSpawnSuccess, onTestClaim }) => {
@@ -37,7 +38,7 @@ const HiddenQuestDebug = ({ userLocation, onSpawnSuccess, onTestClaim }) => {
                 throw new Error("Vui lòng đăng nhập trước");
             }
 
-            const response = await fetch('http://localhost:8000/api/v1/hidden/debug-spawn', {
+            const response = await fetch(`${API_BASE}/api/v1/hidden/debug-spawn`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

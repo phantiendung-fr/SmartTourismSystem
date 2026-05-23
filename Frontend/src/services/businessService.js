@@ -1,5 +1,7 @@
 // src/services/businessService.js
-const BASE_URL = 'http://127.0.0.1:8000/api';
+import { API_BASE } from '../config/api';
+
+const BASE_URL = `${API_BASE}/api`;
 
 // Hàm lấy Token từ localStorage để làm "Giấy thông hành"
 const getAuthHeaders = () => {

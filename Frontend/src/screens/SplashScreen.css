@@ -1,7 +1,7 @@
 .splash-container {
     height: 100vh;
-    max-width: 480px;
-    margin: 0 auto;
+    height: 100dvh;
+    width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;

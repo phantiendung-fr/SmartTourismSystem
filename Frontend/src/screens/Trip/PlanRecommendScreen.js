@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPlanningSession, getRecommendations } from '../../services/planService';
 import { createTrip } from '../../services/tripService';
+import { API_BASE } from '../../config/api';
 import './PlanRecommendScreen.css';
-
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocationDetail, onSessionExpired }) => {
     const [loading, setLoading] = useState(true);
@@ -76,8 +75,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
         try {
             const token = localStorage.getItem('access_token');
 
-
-            // Lấy GPS hiện tại để gửi lên Backend làm điểm xuất phát
+            // Lấy GPS hiện tại để gửi lên Backend làm điểm xuất phát (Thêm timeout để tránh bị treo trên Emulator/Webview)
             navigator.geolocation.getCurrentPosition(async (position) => {
                 const { latitude, longitude } = position.coords;
 
@@ -118,6 +116,10 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
                 } finally {
                     setCreatingTrip(false);
                 }
+            }, {
+                enableHighAccuracy: false,
+                timeout: 5000,
+                maximumAge: 10000
             });
 
         } catch (err) {
@@ -179,9 +181,9 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
         .filter(loc => selectedLocations.includes(loc.location_id))
         .reduce((sum, loc) => sum + parseFloat(loc.min_price || 0), 0);
 
-    const budgetLimit = planPayload.budget || 0;
+    const budgetLimit = Number(planPayload.budget) || 0;
     const isOverBudget = totalBudgetUsed > budgetLimit;
-    const budgetPercentage = Math.min(100, (totalBudgetUsed / budgetLimit) * 100);
+    const budgetPercentage = budgetLimit > 0 ? Math.min(100, (totalBudgetUsed / budgetLimit) * 100) : 0;
 
     return (
         <div className="recommend-screen">

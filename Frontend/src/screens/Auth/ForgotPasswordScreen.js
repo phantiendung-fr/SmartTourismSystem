@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { API_BASE } from '../../config/api';
+import './LoginScreen.css';
 
 const ForgotPasswordScreen = ({ onBack, onSwitchToLogin }) => {
     const [step, setStep] = useState(1); // Bước 1: Nhập Email | Bước 2: Nhập OTP + Pass mới
@@ -10,7 +12,7 @@ const ForgotPasswordScreen = ({ onBack, onSwitchToLogin }) => {
     const handleSendOTP = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/auth/forgot-password', {
+            const response = await fetch(`${API_BASE}/api/auth/forgot-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: email })
@@ -29,7 +31,7 @@ const ForgotPasswordScreen = ({ onBack, onSwitchToLogin }) => {
     const handleResetPassword = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/auth/reset-password', {
+            const response = await fetch(`${API_BASE}/api/auth/reset-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -50,43 +52,43 @@ const ForgotPasswordScreen = ({ onBack, onSwitchToLogin }) => {
     };
 
     return (
-        <div style={{ padding: '20px', paddingTop: '40px' }}>
-            <div style={{ cursor: 'pointer', marginBottom: '20px', color: '#555', fontWeight: 'bold' }} onClick={onBack}>
+        <div className="login-container">
+            <div className="auth-back" onClick={onBack}>
                 ⬅️ Quay lại
             </div>
 
-            <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>Khôi phục mật khẩu</h2>
+            <h2 className="login-title">Khôi phục mật khẩu</h2>
 
             {step === 1 && (
-                <form onSubmit={handleSendOTP} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    <p style={{ fontSize: '14px', color: '#747d8c', textAlign: 'center' }}>
+                <form onSubmit={handleSendOTP} className="auth-form-stack">
+                    <p className="auth-helper-text">
                         Nhập email bạn đã đăng ký, chúng tôi sẽ gửi mã xác nhận cho bạn.
                     </p>
                     <input 
                         type="email" placeholder="Nhập Email của bạn" required
                         value={email} onChange={(e) => setEmail(e.target.value)}
-                        style={{ padding: '12px', borderRadius: '10px', border: '1px solid #ccc' }}
+                        className="login-input"
                     />
-                    <button type="submit" style={{ padding: '12px', borderRadius: '10px', background: '#0abde3', color: '#fff', border: 'none', fontWeight: 'bold' }}>
+                    <button type="submit" className="login-button forgot-submit-btn">
                         Gửi mã xác nhận
                     </button>
                 </form>
             )}
 
             {step === 2 && (
-                <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    <p style={{ color: 'green', fontSize: '14px', textAlign: 'center', fontWeight: 'bold' }}>{message}</p>
+                <form onSubmit={handleResetPassword} className="auth-form-stack">
+                    <p className="auth-success-msg">{message}</p>
                     <input 
                         type="text" placeholder="Nhập mã OTP 6 số" required
                         value={otp} onChange={(e) => setOtp(e.target.value)}
-                        style={{ padding: '12px', borderRadius: '10px', border: '1px solid #ccc' }}
+                        className="login-input"
                     />
                     <input 
                         type="password" placeholder="Mật khẩu mới" required
                         value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
-                        style={{ padding: '12px', borderRadius: '10px', border: '1px solid #ccc' }}
+                        className="login-input"
                     />
-                    <button type="submit" style={{ padding: '12px', borderRadius: '10px', background: '#2ed573', color: '#fff', border: 'none', fontWeight: 'bold' }}>
+                    <button type="submit" className="login-button reset-submit-btn">
                         Cập nhật mật khẩu
                     </button>
                 </form>

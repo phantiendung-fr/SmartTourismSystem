@@ -1,5 +1,6 @@
 // src/components/HiddenQuest/ChestOpeningAnimation.jsx
 import React, { useState, useEffect, useRef } from 'react';
+import { API_BASE } from '../../config/api';
 import './ChestOpeningAnimation.css';
 
 const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) => {
@@ -151,7 +152,7 @@ const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) 
                 throw new Error("📍 Lỗi định vị: Chưa nhận được dữ liệu GPS. Vui lòng bật định vị để mở rương!");
             }
 
-            const response = await fetch('http://localhost:8000/api/v1/hidden/claim-chest', {
+            const response = await fetch(`${API_BASE}/api/v1/hidden/claim-chest`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

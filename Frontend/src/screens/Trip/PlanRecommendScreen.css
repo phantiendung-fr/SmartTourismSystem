@@ -1,5 +1,6 @@
 .recommend-screen {
     padding: 20px;
+    padding-top: calc(20px + env(safe-area-inset-top, 0px));
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -12,6 +13,7 @@
     align-items: center;
     gap: 15px;
     margin-bottom: 10px;
+    flex-shrink: 0;
 }
 
 .recommend-header h2 {
@@ -26,12 +28,15 @@
     font-size: 20px;
     cursor: pointer;
     padding: 5px;
+    min-width: 44px;
+    min-height: 44px;
 }
 
 .recommend-subtitle {
     color: #636e72;
     font-size: 14px;
     margin-bottom: 20px;
+    flex-shrink: 0;
 }
 
 .loading-state, .error-state {
@@ -45,24 +50,28 @@
 
 .locations-list {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    padding-bottom: 20px;
+    gap: 10px;
+    padding: 2px 0 14px;
 }
 
 .location-card {
     background: white;
-    border-radius: 12px;
-    padding: 15px;
+    border-radius: 10px;
+    padding: 12px 14px;
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+    gap: 12px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     cursor: pointer;
     border: 2px solid transparent;
     transition: all 0.2s;
+    flex-shrink: 0;
+    min-height: 92px;
 }
 
 .location-card.selected {
@@ -74,6 +83,12 @@
     margin: 0 0 5px 0;
     color: #2d3436;
     font-size: 16px;
+    line-height: 1.25;
+}
+
+.loc-info {
+    flex: 1;
+    min-width: 0;
 }
 
 .loc-tags {
@@ -81,12 +96,14 @@
     font-size: 12px;
     color: #0abde3;
     font-weight: 500;
+    line-height: 1.3;
 }
 
 .loc-price {
     margin: 0 0 5px 0;
     font-size: 13px;
     color: #636e72;
+    line-height: 1.3;
 }
 
 .loc-score {
@@ -101,17 +118,22 @@
 
 .loc-checkbox {
     font-size: 24px;
+    line-height: 1;
+    flex: 0 0 auto;
+    margin-top: 2px;
 }
 
 .recommend-footer {
     margin-top: 15px;
     padding: 15px;
+    padding-bottom: calc(15px + env(safe-area-inset-bottom, 0px));
     background: white;
     border-radius: 16px;
     box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
     display: flex;
     flex-direction: column;
     gap: 12px;
+    flex-shrink: 0;
 }
 
 .budget-tracker {
@@ -124,6 +146,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 8px;
     font-size: 13px;
     color: #2d3436;
 }
@@ -133,6 +156,7 @@
     padding: 2px 8px;
     border-radius: 12px;
     font-size: 11px;
+    white-space: nowrap;
 }
 
 .status-ok {
@@ -169,6 +193,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
 }
 
 .selected-count {
@@ -187,6 +212,8 @@
     cursor: pointer;
     box-shadow: 0 4px 15px rgba(10, 189, 227, 0.3);
     transition: all 0.2s;
+    min-height: 44px;
+    flex-shrink: 0;
 }
 
 .btn-create-trip:disabled {

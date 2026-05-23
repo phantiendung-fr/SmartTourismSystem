@@ -1,10 +1,32 @@
-body {
+/* ===== GLOBAL RESET & RESPONSIVE FOUNDATION ===== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
   margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #f8f9fa;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
 }
 
 code {
@@ -12,11 +34,9 @@ code {
     monospace;
 }
 
-/* Tùy chỉnh thanh cuộn (Scrollbar) cho toàn bộ App */
-/* Ẩn thanh cuộn cho Chrome, Safari và Opera */
+/* An scrollbar nhung van scroll duoc */
 ::-webkit-scrollbar {
   width: 0px;
-  /* Có thể để 0 để ẩn hoàn toàn, hoặc chỉnh màu trùng nền */
   background: transparent;
 }
 
@@ -24,10 +44,21 @@ code {
   background: transparent;
 }
 
-/* Ẩn thanh cuộn cho Firefox, IE và Edge */
 * {
   scrollbar-width: none;
-  /* Firefox */
   -ms-overflow-style: none;
-  /* IE và Edge */
+}
+
+/* Touch highlight disable cho mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Cai thien text rendering tren mobile */
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+  font-size: 16px;
 }

@@ -8,7 +8,7 @@
     font-family: 'Inter', -apple-system, sans-serif;
     color: #2f3542;
     overflow-y: auto;
-    padding-bottom: 90px; /* Space for the sticky user card and bottom nav */
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); /* Space for the sticky user card and bottom nav */
     scrollbar-width: none; /* Firefox */
 }
 
@@ -71,6 +71,7 @@
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.3s ease;
+    min-height: 44px;
 }
 
 .tab-btn.active {
@@ -107,6 +108,8 @@
     cursor: pointer;
     transition: all 0.2s ease;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+    min-height: 44px;
+    font-size: 16px;
 }
 
 .filter-select:focus {
@@ -355,7 +358,7 @@
 /* Sticky Personal Rank Card */
 .my-rank-sticky-card {
     position: absolute;
-    bottom: 60px; /* Positioned perfectly above bottom-nav */
+    bottom: calc(60px + env(safe-area-inset-bottom, 0px)); /* Positioned perfectly above bottom-nav */
     left: 0;
     right: 0;
     margin: 0 16px;

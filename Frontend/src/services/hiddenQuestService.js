@@ -1,7 +1,9 @@
 // src/services/hiddenQuestService.js
 // API service layer for the Hidden Quest & Dynamic Event gamification system
 
-const BASE_URL = 'http://localhost:8000';
+import { API_BASE } from '../config/api';
+
+const BASE_URL = API_BASE;
 
 const getAuthHeader = () => {
     const token = localStorage.getItem('access_token');

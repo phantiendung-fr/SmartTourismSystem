@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import './App.css';
 import SplashScreen from './screens/SplashScreen';
 import WelcomeScreen from './screens/WelcomeScreen';
 import RegisterScreen from './screens/Auth/RegisterScreen';
@@ -15,6 +16,7 @@ import HistoryScreen from './screens/Trip/HistoryScreen';
 import PlanRecommendScreen from './screens/Trip/PlanRecommendScreen';
 import TripDetailScreen from './screens/Trip/TripDetailScreen';
 import LocationDetailScreen from './screens/Trip/LocationDetailScreen';
+import { API_BASE } from './config/api';
 
 // Import Context và Overlay của Social Quest
 import { SocialQuestProvider } from './components/SocialQuest/SocialQuestProvider';
@@ -34,7 +36,7 @@ function App() {
         const token = localStorage.getItem('access_token');
         if (!token) return;
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/auth/me', {
+            const res = await fetch(`${API_BASE}/api/auth/me`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -54,7 +56,7 @@ function App() {
             const token = localStorage.getItem('access_token');
             if (token) {
                 try {
-                    const res = await fetch('http://127.0.0.1:8000/api/auth/me', {
+                    const res = await fetch(`${API_BASE}/api/auth/me`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     if (res.ok) {
@@ -88,20 +90,8 @@ function App() {
     // =========================================================================
     return (
         <SocialQuestProvider user={currentUser?.user || currentUser}>
-            <div style={{ backgroundColor: '#e4e5e6', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <div className="app-container" style={{
-                    width: '390px',
-                    height: '844px',
-                    backgroundColor: '#fff',
-                    borderRadius: '40px',
-                    boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-                    overflow: 'hidden',
-                    position: 'relative',
-                    overflowY: 'auto',
-                    transform: 'scale(0.8)',
-                    transformOrigin: 'center',
-                    msOverflowStyle: 'none', scrollbarWidth: 'none'
-                }}>
+            <div className="app-outer">
+                <div className="app-container">
                     
                     {/* Overlay sẽ luôn chạy ngầm và hiển thị Popup đè lên trên cùng khi có Quest */}
                     <SocialQuestOverlay />
@@ -148,7 +138,7 @@ function App() {
                     )}
 
                     {currentScreen === 'main' && (
-                        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                        <div className="app-main-screen">
                             {userRole === 'ENTERPRISE' ? (
                                 <EnterpriseTabs
                                     user={currentUser?.user || currentUser}

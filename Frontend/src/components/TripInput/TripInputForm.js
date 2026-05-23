@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE } from '../../config/api';
 import './TripInputForm.css';
-
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 // Nhận vào hàm onSubmit từ component cha 
 const TripInputForm = ({ onSubmitPlan, onCancel }) => {

@@ -1,5 +1,7 @@
 // locationService.js
-const API_URL = 'http://127.0.0.1:8000/api/v1/locations';
+import { API_BASE } from '../config/api';
+
+const API_URL = `${API_BASE}/api/v1/locations`;
 
 export const locationService = {
     registerLocation: async (locationData) => {

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SmartTourism</string>
+    <string name="title_activity_main">SmartTourism</string>
+    <string name="package_name">com.smarttourism.app</string>
+    <string name="custom_url_scheme">com.smarttourism.app</string>
+</resources>
