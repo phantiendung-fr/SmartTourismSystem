@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { createPlanningSession, getRecommendations } from '../../services/planService';
 import { createTrip } from '../../services/tripService';
 import { API_BASE } from '../../config/api';
+import { getCurrentPosition } from '../../platform/location';
+import { showAlert } from '../../platform/dialog';
+import { storageGet } from '../../platform/storage';
 import './PlanRecommendScreen.css';
 
 const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocationDetail, onSessionExpired }) => {
@@ -16,38 +19,37 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
         const fetchPlanAndRecommendations = async () => {
             try {
                 setLoading(true);
-                const token = localStorage.getItem('access_token');
+                const token = await storageGet('access_token');
 
-                // 1. Khởi tạo phiên
                 const sessionRes = await createPlanningSession(planPayload, token);
                 setSessionData(sessionRes);
 
-                // 2. Lấy tag names từ backend để map tag_ids -> tag_names
-                let preferred_tags = [];
+                let preferredTags = [];
                 try {
                     const tagsRes = await fetch(`${API_BASE}/api/reference/tags`);
                     const tagsData = await tagsRes.json();
                     const tagMap = {};
-                    tagsData.forEach(t => { tagMap[t.tag_id] = t.tag_name; });
-                    preferred_tags = (planPayload.tag_ids || []).map(id => tagMap[id]).filter(Boolean);
-                } catch (e) {
-                    console.warn("Không thể lấy danh sách tags, bỏ qua preferred_tags");
+                    tagsData.forEach((tag) => {
+                        tagMap[tag.tag_id] = tag.tag_name;
+                    });
+                    preferredTags = (planPayload.tag_ids || []).map((id) => tagMap[id]).filter(Boolean);
+                } catch (tagError) {
+                    console.warn('Không thể tải danh sách tags, bỏ qua preferred_tags.');
                 }
+
                 const suggestPayload = {
                     city_id: planPayload.city_id,
                     budget: planPayload.budget,
-                    preferred_tags: preferred_tags,
-                    max_results: 15
+                    preferred_tags: preferredTags,
+                    max_results: 15,
                 };
                 const suggestRes = await getRecommendations(suggestPayload);
 
                 setRecommendations(suggestRes.locations || []);
-                // Mặc định chọn 5 địa điểm điểm cao nhất
-                const top5 = (suggestRes.locations || []).slice(0, 5).map(loc => loc.location_id);
+                const top5 = (suggestRes.locations || []).slice(0, 5).map((loc) => loc.location_id);
                 setSelectedLocations(top5);
-
             } catch (err) {
-                setError(err.message || "Có lỗi xảy ra khi tải dữ liệu.");
+                setError(err.message || 'Có lỗi xảy ra khi tải dữ liệu.');
             } finally {
                 setLoading(false);
             }
@@ -60,7 +62,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
 
     const toggleSelection = (locationId) => {
         if (selectedLocations.includes(locationId)) {
-            setSelectedLocations(selectedLocations.filter(id => id !== locationId));
+            setSelectedLocations(selectedLocations.filter((id) => id !== locationId));
         } else {
             setSelectedLocations([...selectedLocations, locationId]);
         }
@@ -68,63 +70,45 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
 
     const handleCreateTrip = async () => {
         if (selectedLocations.length === 0) {
-            alert("Vui lòng chọn ít nhất 1 địa điểm.");
+            await showAlert('Vui lòng chọn ít nhất 1 địa điểm.');
             return;
         }
+
         setCreatingTrip(true);
         try {
-            const token = localStorage.getItem('access_token');
+            const token = await storageGet('access_token');
+            const basePayload = {
+                session_id: sessionData.session_id,
+                name: planPayload.city_name ? `Lộ trình ${planPayload.city_name}` : `Lộ trình ${planPayload.start_day || 'mới'}`,
+                location_ids: selectedLocations,
+                start_date: planPayload.start_day,
+                end_date: planPayload.end_day,
+            };
 
-            // Lấy GPS hiện tại để gửi lên Backend làm điểm xuất phát (Thêm timeout để tránh bị treo trên Emulator/Webview)
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                const { latitude, longitude } = position.coords;
+            let tripPayload = basePayload;
+            try {
+                const position = await getCurrentPosition({
+                    enableHighAccuracy: false,
+                    timeout: 5000,
+                    maximumAge: 10000,
+                });
 
-                const tripPayload = {
-                    session_id: sessionData.session_id,
-                    name: planPayload.city_name ? `Lộ trình ${planPayload.city_name}` : `Lộ trình ${planPayload.start_day || 'mới'}`,
-                    location_ids: selectedLocations,
-                    start_date: planPayload.start_day,
-                    end_date: planPayload.end_day,
-                    start_lat: latitude,
-                    start_lon: longitude
+                tripPayload = {
+                    ...basePayload,
+                    start_lat: position.latitude,
+                    start_lon: position.longitude,
                 };
+            } catch (geoError) {
+                console.warn('Không lấy được GPS, tiếp tục tạo lộ trình không có điểm xuất phát:', geoError);
+            }
 
-                try {
-                    const result = await createTrip(tripPayload, token);
-                    alert("Tạo lộ trình thành công!");
-                    onTripCreated(result.itinerary_id);
-                } catch (err) {
-                    alert("Lỗi khi tạo lộ trình: " + err.message);
-                } finally {
-                    setCreatingTrip(false);
-                }
-            }, async (geoError) => {
-                console.warn("Không lấy được GPS, tạo lộ trình không có điểm bắt đầu thực tế:", geoError);
-                // Nếu không lấy được GPS, vẫn cho tạo lộ trình nhưng không có start_lat/lon
-                const tripPayload = {
-                    session_id: sessionData.session_id,
-                    name: planPayload.city_name ? `Lộ trình ${planPayload.city_name}` : `Lộ trình ${planPayload.start_day || 'mới'}`,
-                    location_ids: selectedLocations,
-                    start_date: planPayload.start_day,
-                    end_date: planPayload.end_day
-                };
-                try {
-                    const result = await createTrip(tripPayload, token);
-                    onTripCreated(result.itinerary_id);
-                } catch (err) {
-                    alert("Lỗi khi tạo lộ trình: " + err.message);
-                } finally {
-                    setCreatingTrip(false);
-                }
-            }, {
-                enableHighAccuracy: false,
-                timeout: 5000,
-                maximumAge: 10000
-            });
-
+            const result = await createTrip(tripPayload, token);
+            await showAlert('Tạo lộ trình thành công!');
+            onTripCreated(result.itinerary_id);
         } catch (err) {
             const msg = typeof err.message === 'string' ? err.message : JSON.stringify(err.message);
-            alert("Lỗi hệ thống: " + msg);
+            await showAlert(`Lỗi hệ thống: ${msg}`);
+        } finally {
             setCreatingTrip(false);
         }
     };
@@ -141,9 +125,11 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
     }
 
     if (error) {
-        const isTokenExpired = error.toLowerCase().includes('hết hạn') ||
-            error.toLowerCase().includes('expired') ||
-            error.toLowerCase().includes('unauthorized') ||
+        const normalized = error.toLowerCase();
+        const isTokenExpired =
+            normalized.includes('hết hạn') ||
+            normalized.includes('expired') ||
+            normalized.includes('unauthorized') ||
             error.includes('401');
 
         return (
@@ -178,7 +164,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
     }
 
     const totalBudgetUsed = recommendations
-        .filter(loc => selectedLocations.includes(loc.location_id))
+        .filter((loc) => selectedLocations.includes(loc.location_id))
         .reduce((sum, loc) => sum + parseFloat(loc.min_price || 0), 0);
 
     const budgetLimit = Number(planPayload.budget) || 0;
@@ -197,7 +183,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
             </p>
 
             <div className="locations-list">
-                {recommendations.map(loc => (
+                {recommendations.map((loc) => (
                     <div
                         key={loc.location_id}
                         className={`location-card ${selectedLocations.includes(loc.location_id) ? 'selected' : ''}`}
@@ -237,7 +223,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
                         <div
                             className={`budget-bar ${isOverBudget ? 'bar-over' : 'bar-ok'}`}
                             style={{ width: `${budgetPercentage}%` }}
-                        ></div>
+                        />
                     </div>
                 </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getTripHistory } from '../services/tripService';
+import { storageGet } from '../platform/storage';
 import './Travel_trip.css';
 
 const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpenLocationRegister, onOpenProfileEdit, onOpenHistory, onOpenTripDetail }) => {
@@ -11,7 +12,7 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
     useEffect(() => {
         const fetchOngoingTrips = async () => {
             if (isGuest || !user) return;
-            const token = localStorage.getItem('access_token');
+            const token = await storageGet('access_token');
             if (!token) return;
 
             setLoadingTrips(true);

@@ -11,6 +11,9 @@ import TreasureOverlay from '../../components/TreasureOverlay/TreasureOverlay';
 import { getActiveTasks, pingLocation, verifyQuest } from '../../services/hiddenQuestService';
 import ChestOpeningAnimation from '../../components/HiddenQuest/ChestOpeningAnimation';
 import HiddenQuestDebug from '../../components/HiddenQuest/HiddenQuestDebug';
+import { storageGet } from '../../platform/storage';
+import { showAlert, showConfirm } from '../../platform/dialog';
+import { getCurrentPosition, startWatchingPosition } from '../../platform/location';
 
 const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, user }) => {
     const [loading, setLoading] = useState(true);
@@ -92,7 +95,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
     const fetchDetail = async (silent = false) => {
         try {
             if (!silent) setLoading(true);
-            const token = localStorage.getItem('access_token');
+            const token = await storageGet('access_token');
             const data = await getTripDetail(itineraryId, token);
             setTripDetail(data);
         } catch (err) {
@@ -104,7 +107,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
 
     const fetchDeviationStatus = async () => {
         try {
-            const token = localStorage.getItem('access_token');
+            const token = await storageGet('access_token');
             const result = await getDeviationStatus(itineraryId, token);
             setIsDeviated(result.is_deviated);
         } catch (err) {
@@ -178,20 +181,20 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
         }
 
         // Theo dõi vị trí hiện tại của người dùng
-        const watchId = navigator.geolocation.watchPosition(
-            (pos) => {
+        const stopWatching = startWatchingPosition({
+            onSuccess: (position) => {
                 setUserLocation({
-                    lat: pos.coords.latitude,
-                    lng: pos.coords.longitude
+                    lat: position.latitude,
+                    lng: position.longitude
                 });
             },
-            (err) => console.warn("Không thể lấy vị trí:", err),
-            {
+            onError: (geoError) => console.warn("Không thể lấy vị trí:", geoError),
+            options: {
                 enableHighAccuracy: false,
                 timeout: 20000,
                 maximumAge: 60000
             }
-        );
+        });
 
         // Ping GPS định kỳ mỗi 30 giây để kích hoạt spawn
         const pingInterval = setInterval(async () => {
@@ -209,7 +212,9 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
         }, 30000);
 
         return () => {
-            navigator.geolocation.clearWatch(watchId);
+            if (typeof stopWatching === 'function') {
+                stopWatching();
+            }
             clearInterval(pingInterval);
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -227,12 +232,17 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
     };
 
     const handleCompleteTrip = async () => {
-        if (!window.confirm('Bạn có chắc chắn muốn hoàn thành chuyến đi này không?')) return;
+        const confirmed = await showConfirm('Bạn có chắc chắn muốn hoàn thành chuyến đi này không?', {
+            title: 'Hoàn thành lịch trình',
+            okButtonTitle: 'Xác nhận',
+            cancelButtonTitle: 'Huỷ'
+        });
+        if (!confirmed) return;
 
         setActionLoading(true);
         setActionMsg('');
         try {
-            const token = localStorage.getItem('access_token');
+            const token = await storageGet('access_token');
             const result = await completeTrip(itineraryId, token);
             setActionMsg(`✅ ${result.detail}`);
             // Refresh trip detail to get updated status
@@ -246,12 +256,17 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
     };
 
     const handleCancelTrip = async () => {
-        if (!window.confirm('Bạn có chắc chắn muốn hủy chuyến đi này không? Hành động này không thể hoàn tác.')) return;
+        const confirmed = await showConfirm('Bạn có chắc chắn muốn hủy chuyến đi này không? Hành động này không thể hoàn tác.', {
+            title: 'Huỷ chuyến đi',
+            okButtonTitle: 'Xác nhận',
+            cancelButtonTitle: 'Huỷ'
+        });
+        if (!confirmed) return;
 
         setActionLoading(true);
         setActionMsg('');
         try {
-            const token = localStorage.getItem('access_token');
+            const token = await storageGet('access_token');
             const result = await cancelTrip(itineraryId, token);
             setActionMsg(`⚠️ ${result.detail}`);
             // Refresh trip detail to get updated status
@@ -323,7 +338,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
 
         const executeCheckinAPI = async (lat, lng) => {
             try {
-                const token = localStorage.getItem('access_token');
+                const token = await storageGet('access_token');
                 const checkedStopId = targetStop.stop_id;
 
                 // Gửi tọa độ lên Backend (có thể null nếu fallback)
@@ -397,16 +412,29 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
         };
 
         // 1. Lấy vị trí thực tế
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const { latitude, longitude } = position.coords;
-                setUserLocation({ lat: latitude, lng: longitude });
-                executeCheckinAPI(latitude, longitude);
-            },
-            (error) => {
+        (async () => {
+            try {
+                const position = await getCurrentPosition({
+                    enableHighAccuracy: false,
+                    timeout: 8000,
+                    maximumAge: 10000
+                });
+
+                setUserLocation({ lat: position.latitude, lng: position.longitude });
+                executeCheckinAPI(position.latitude, position.longitude);
+            } catch (error) {
                 // FALLBACK: Khi lỗi vị trí (như timeout trên máy tính), cho phép check-in không cần tọa độ
-                console.warn("Lỗi lấy vị trí: ", error.message);
-                if (window.confirm(`Không thể lấy vị trí tự động (${error.message}). Bạn có muốn tiếp tục Check-in bỏ qua xác thực vị trí không?`)) {
+                console.warn("Lỗi lấy vị trí:", error?.message || error);
+                const confirmed = await showConfirm(
+                    `Không thể lấy vị trí tự động (${error?.message || 'Unknown error'}). Bạn có muốn tiếp tục Check-in bỏ qua xác thực vị trí không?`,
+                    {
+                        title: 'Xác thực vị trí',
+                        okButtonTitle: 'Tiếp tục',
+                        cancelButtonTitle: 'Huỷ'
+                    }
+                );
+
+                if (confirmed) {
                     executeCheckinAPI(parseFloat(targetStop.latitude) || 0, parseFloat(targetStop.longitude) || 0);
                 } else {
                     clearTimeout(safetyTimer);
@@ -414,13 +442,8 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                     setCheckinLoading(false);
                     setCheckinMsg('❌ Đã hủy check-in');
                 }
-            },
-            {
-                enableHighAccuracy: false,
-                timeout: 8000,
-                maximumAge: 10000
             }
-        );
+        })();
     };
 
     const renderContent = () => {
@@ -439,7 +462,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                 <div className="location-detail-content">
                     {/* Ảnh minh họa giả lập (mock image) */}
                     <div className="location-cover-image" style={{ 
-                        backgroundImage: `url('https://images.unsplash.com/photo-1599839619722-39751411ea63?auto=format&fit=crop&w=800&q=80')` 
+                        backgroundImage: `url('/assets/island/map-dao.png')` 
                     }}>
                         {isCheckedIn && (
                             <div className="status-badge checked-in-badge">
@@ -715,7 +738,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                         setSelectedHiddenTask(null);
                     }}
                     onClaim={(rewards) => {
-                        alert(`🎉 Chúc mừng! Bạn nhận được +${rewards.reward_exp} EXP và +${rewards.reward_coin} Coin!`);
+                        void showAlert(`🎉 Chúc mừng! Bạn nhận được +${rewards.reward_exp} EXP và +${rewards.reward_coin} Coin!`);
                         fetchHiddenTasks();
                     }}
                 />
@@ -801,7 +824,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                                                     <button className="photo-reset" onClick={() => { setPhotoUploaded(false); setPhotoUrl(''); }}>✕ Xóa</button>
                                                 </div>
                                             ) : (
-                                                <div className="photo-upload-placeholder" onClick={() => { setPhotoUrl('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500'); setPhotoUploaded(true); }}>
+                                                <div className="photo-upload-placeholder" onClick={() => { setPhotoUrl('/assets/island/map-dao.png'); setPhotoUploaded(true); }}>
                                                     <span style={{ fontSize: '32px' }}>📷</span>
                                                     <span>Chạm để tải lên / Chụp ảnh</span>
                                                 </div>

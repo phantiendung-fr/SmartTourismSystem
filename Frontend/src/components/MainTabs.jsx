@@ -12,6 +12,9 @@ import { getActiveTasks, pingLocation, verifyQuest } from '../services/hiddenQue
 import ChestOpeningAnimation from './HiddenQuest/ChestOpeningAnimation';
 import HiddenQuestDebug from './HiddenQuest/HiddenQuestDebug';
 import { API_BASE } from '../config/api';
+import { storageGet } from '../platform/storage';
+import { showAlert } from '../platform/dialog';
+import { getCurrentPosition, startWatchingPosition } from '../platform/location';
 
 const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenLocationRegister, onOpenProfileEdit, onOpenHistory, onOpenTripDetail }) => {
     // State quản lý tab đang hiển thị
@@ -27,7 +30,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
         if (isGuest) return;
         setLoadingAch(true);
         try {
-            const token = localStorage.getItem('access_token');
+            const token = await storageGet('access_token');
             const res = await fetch(`${API_BASE}/api/achievements`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -124,20 +127,16 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
         // Initial fetch of active items on tab switch
         fetchActiveTasks();
 
-        let watchId = null;
-        if (navigator.geolocation) {
-            watchId = navigator.geolocation.watchPosition(
-                (pos) => {
-                    const newLoc = {
-                        lat: pos.coords.latitude,
-                        lng: pos.coords.longitude
-                    };
-                    setUserLocation(newLoc);
-                },
-                (err) => console.warn("Watch position error:", err),
-                { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
-            );
-        }
+        const stopWatching = startWatchingPosition({
+            onSuccess: (position) => {
+                setUserLocation({
+                    lat: position.latitude,
+                    lng: position.longitude
+                });
+            },
+            onError: (geoError) => console.warn("Watch position error:", geoError),
+            options: { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
+        });
 
         const pingInterval = setInterval(async () => {
             const currentLoc = userLocationRef.current;
@@ -145,7 +144,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                 try {
                     const res = await pingLocation(currentLoc.lat, currentLoc.lng);
                     if (res.spawned) {
-                        alert(`🔮 Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện gần bạn!`);
+                        void showAlert(`🔮 Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện gần bạn!`);
                         fetchActiveTasks();
                     }
                 } catch (err) {
@@ -155,8 +154,8 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
         }, 30000);
 
         return () => {
-            if (watchId !== null && navigator.geolocation) {
-                navigator.geolocation.clearWatch(watchId);
+            if (typeof stopWatching === 'function') {
+                stopWatching();
             }
             clearInterval(pingInterval);
         };
@@ -164,31 +163,35 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
     }, [activeTab, isGuest]);
 
     // Lấy vị trí khi chuyển sang tab Location
-    const handleTabChange = (tab) => {
+    const handleTabChange = async (tab) => {
         setActiveTab(tab);
         if (tab === 'location') {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const loc = {
-                        lat: pos.coords.latitude,
-                        lng: pos.coords.longitude
-                    };
-                    setUserLocation(loc);
-                    
-                    if (!isGuest) {
-                        pingLocation(loc.lat, loc.lng)
-                            .then((res) => {
-                                if (res.spawned) {
-                                    alert(`🔮 Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện!`);
-                                }
-                                fetchActiveTasks();
-                            })
-                            .catch((err) => console.error(err));
-                    }
-                },
-                (err) => console.warn("Lỗi lấy vị trí:", err),
-                { enableHighAccuracy: false, timeout: 10000 }
-            );
+            try {
+                const position = await getCurrentPosition({
+                    enableHighAccuracy: false,
+                    timeout: 10000,
+                    maximumAge: 10000
+                });
+
+                const loc = {
+                    lat: position.latitude,
+                    lng: position.longitude
+                };
+                setUserLocation(loc);
+
+                if (!isGuest) {
+                    pingLocation(loc.lat, loc.lng)
+                        .then((res) => {
+                            if (res.spawned) {
+                                void showAlert(`🔮 Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện!`);
+                            }
+                            fetchActiveTasks();
+                        })
+                        .catch((err) => console.error(err));
+                }
+            } catch (geoError) {
+                console.warn("Lỗi lấy vị trí:", geoError);
+            }
         }
     };
 
@@ -263,9 +266,13 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
             {/* Khu vực hiển thị Avatar và Tên */}
             <div className="profile-user-card">
                 <img
-                    src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
+                    src={user?.avatar_url || '/mascot.png'}
                     alt="Avatar"
                     className="profile-avatar"
+                    onError={(event) => {
+                        event.currentTarget.onerror = null;
+                        event.currentTarget.src = '/mascot.png';
+                    }}
                 />
                 <div>
                     <h3 className="profile-name">{user?.full_name || 'Khách du lịch'}</h3>
@@ -543,7 +550,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                         setSelectedTask(null);
                     }}
                     onClaim={(rewards) => {
-                        alert(`🎉 Chúc mừng! Bạn nhận được +${rewards.reward_exp} EXP và +${rewards.reward_coin} Coin!`);
+                        void showAlert(`🎉 Chúc mừng! Bạn nhận được +${rewards.reward_exp} EXP và +${rewards.reward_coin} Coin!`);
                         fetchActiveTasks();
                     }}
                 />
@@ -656,7 +663,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                                                 </div>
                                             ) : (
                                                 <div className="photo-upload-placeholder" onClick={() => {
-                                                    setPhotoUrl("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500");
+                                                    setPhotoUrl("/assets/island/map-dao.png");
                                                     setPhotoUploaded(true);
                                                 }}>
                                                     <span className="photo-camera-icon">📷</span>

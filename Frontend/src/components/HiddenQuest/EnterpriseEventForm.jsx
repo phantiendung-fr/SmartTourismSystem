@@ -1,6 +1,9 @@
 // src/components/HiddenQuest/EnterpriseEventForm.jsx
 import React, { useState, useEffect, useRef } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { getEnterpriseEvents, createEnterpriseEvent, deleteEnterpriseEvent } from '../../services/hiddenQuestService';
+import { showAlert, showConfirm } from '../../platform/dialog';
 import './EnterpriseEventForm.css';
 
 export const EnterpriseEventForm = ({ onClose }) => {
@@ -32,6 +35,34 @@ export const EnterpriseEventForm = ({ onClose }) => {
     const mapInstanceRef = useRef(null);
     const markerRef = useRef(null);
 
+    const createPickerIcon = () =>
+        L.divIcon({
+            className: 'enterprise-map-pin',
+            html: `
+                <div style="
+                    width: 26px;
+                    height: 26px;
+                    border-radius: 50%;
+                    background: #6c5ce7;
+                    border: 3px solid #ffffff;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+                    position: relative;
+                ">
+                    <span style="
+                        position: absolute;
+                        left: 50%;
+                        top: 50%;
+                        transform: translate(-50%, -50%);
+                        color: #fff;
+                        font-size: 12px;
+                        line-height: 1;
+                    ">📍</span>
+                </div>
+            `,
+            iconSize: [26, 26],
+            iconAnchor: [13, 13]
+        });
+
     // Load active events
     const fetchEvents = async () => {
         setEventsLoading(true);
@@ -61,19 +92,20 @@ export const EnterpriseEventForm = ({ onClose }) => {
 
     // Leaflet map setup for coordinates selection
     useEffect(() => {
-        if (!isFormOpen || !mapContainerRef.current || !window.L) return;
+        if (!isFormOpen || !mapContainerRef.current) return;
 
         // Initialize Map
         if (!mapInstanceRef.current) {
-            mapInstanceRef.current = window.L.map(mapContainerRef.current).setView([latitude, longitude], 14);
+            mapInstanceRef.current = L.map(mapContainerRef.current).setView([latitude, longitude], 14);
 
-            window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap'
             }).addTo(mapInstanceRef.current);
 
             // Add marker
-            markerRef.current = window.L.marker([latitude, longitude], {
-                draggable: true
+            markerRef.current = L.marker([latitude, longitude], {
+                draggable: true,
+                icon: createPickerIcon()
             }).addTo(mapInstanceRef.current);
 
             // Update state on marker drag end
@@ -183,12 +215,17 @@ export const EnterpriseEventForm = ({ onClose }) => {
     };
 
     const handleDeleteEvent = async (eventId) => {
-        if (!window.confirm('Bạn có chắc chắn muốn hủy kích hoạt sự kiện này không? Người chơi sẽ không thể thấy hay claim nó nữa.')) return;
+        const confirmed = await showConfirm('Bạn có chắc chắn muốn hủy kích hoạt sự kiện này không? Người chơi sẽ không thể thấy hay claim nó nữa.', {
+            title: 'Hủy sự kiện',
+            okButtonTitle: 'Xác nhận',
+            cancelButtonTitle: 'Không'
+        });
+        if (!confirmed) return;
         try {
             await deleteEnterpriseEvent(eventId);
             fetchEvents();
         } catch (err) {
-            alert(err.message || 'Lỗi khi hủy sự kiện');
+            await showAlert(err.message || 'Lỗi khi hủy sự kiện');
         }
     };
 
@@ -206,40 +243,32 @@ export const EnterpriseEventForm = ({ onClose }) => {
     };
 
     return (
-        <div style={{ padding: '20px', paddingBottom: '100px', backgroundColor: '#0d1225', color: '#fff', minHeight: '100%' }}>
+        <div className="enterprise-event-root">
             
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <div className="enterprise-event-header">
                 <div>
-                    <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 800, background: 'linear-gradient(to right, #a29bfe, #fd79a8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                    <h2 className="enterprise-event-title">
                         Sự kiện Động ẩn 🔮
                     </h2>
-                    <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#a4b0be' }}>
+                    <p className="enterprise-event-subtitle">
                         Tạo rương báu hoặc sự kiện để thu hút khách ghé thăm cửa hàng của bạn.
                     </p>
                 </div>
                 {onClose && (
-                    <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff', borderRadius: '8px', padding: '8px 12px', cursor: 'pointer', fontSize: '14px' }}>
+                    <button onClick={onClose} className="enterprise-event-back-btn">
                         Quay lại
                     </button>
                 )}
             </div>
 
             {/* Dashboard Action Button */}
-            <button 
-                onClick={() => setIsFormOpen(true)}
-                style={{ 
-                    width: '100%', padding: '16px', background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', 
-                    color: 'white', border: 'none', borderRadius: '16px', fontWeight: 800, fontSize: '15px', 
-                    cursor: 'pointer', marginBottom: '25px', boxShadow: '0 8px 20px rgba(108, 92, 231, 0.3)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-                }}
-            >
+            <button onClick={() => setIsFormOpen(true)} className="enterprise-event-create-btn">
                 <span>➕</span> Tạo Sự Kiện Động / Rương Báu Mới
             </button>
 
             {/* Active Events List */}
-            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#a4b0be', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+            <h3 className="enterprise-event-section-title">
                 Danh sách sự kiện đang mở ({events.length})
             </h3>
 
@@ -255,7 +284,7 @@ export const EnterpriseEventForm = ({ onClose }) => {
                     <p style={{ margin: 0, fontSize: '13px', color: '#a4b0be' }}>Hãy nhấn nút phía trên để tạo sự kiện quảng bá đầu tiên của bạn!</p>
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div className="enterprise-event-list">
                     {events.map((ev) => (
                         <div key={ev.event_id} className="event-card">
                             {ev.is_active ? (
@@ -300,7 +329,7 @@ export const EnterpriseEventForm = ({ onClose }) => {
                                             <button 
                                                 onClick={() => {
                                                     navigator.clipboard.writeText(ev.qr_token);
-                                                    alert('Đã sao chép mã QR token vào Clipboard!');
+                                                    void showAlert('Đã sao chép mã QR token vào Clipboard!');
                                                 }}
                                                 style={{ background: '#fdcb6e', color: '#000', border: 'none', borderRadius: '4px', fontSize: '9px', fontWeight: 'bold', padding: '3px 6px', cursor: 'pointer' }}
                                             >
@@ -487,7 +516,7 @@ export const EnterpriseEventForm = ({ onClose }) => {
                                         type="button"
                                         onClick={() => {
                                             navigator.clipboard.writeText(createdQrData.qr_token);
-                                            alert('Đã sao chép mã QR token vào Clipboard!');
+                                            void showAlert('Đã sao chép mã QR token vào Clipboard!');
                                         }}
                                         style={{ background: '#6c5ce7', color: '#fff', border: 'none', borderRadius: '8px', padding: '6px 12px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
                                     >

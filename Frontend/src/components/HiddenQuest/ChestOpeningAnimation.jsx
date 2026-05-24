@@ -1,6 +1,8 @@
 // src/components/HiddenQuest/ChestOpeningAnimation.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { API_BASE } from '../../config/api';
+import { storageGet } from '../../platform/storage';
+import { getCurrentPosition } from '../../platform/location';
 import './ChestOpeningAnimation.css';
 
 const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) => {
@@ -118,7 +120,7 @@ const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) 
 
         try {
             // Retrieve token
-            const token = localStorage.getItem('access_token');
+            const token = await storageGet('access_token');
             if (!token) {
                 throw new Error("Vui lòng đăng nhập trước khi nhận rương");
             }
@@ -133,14 +135,13 @@ const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) 
             } else {
                 // 2. Nếu không có sẵn, tiến hành định vị GPS từ trình duyệt
                 try {
-                    const pos = await new Promise((resolve, reject) => {
-                        navigator.geolocation.getCurrentPosition(resolve, reject, { 
-                            enableHighAccuracy: true,
-                            timeout: 8000 
-                        });
+                    const position = await getCurrentPosition({
+                        enableHighAccuracy: true,
+                        timeout: 8000,
+                        maximumAge: 10000
                     });
-                    latitude = pos.coords.latitude;
-                    longitude = pos.coords.longitude;
+                    latitude = position.latitude;
+                    longitude = position.longitude;
                 } catch (gpsErr) {
                     console.error("Lỗi lấy GPS:", gpsErr);
                     throw new Error("📍 Lỗi định vị: Không thể xác định vị trí GPS của bạn. Vui lòng bật định vị và cho phép trình duyệt truy cập vị trí để mở rương!");

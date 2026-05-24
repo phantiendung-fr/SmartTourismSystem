@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getTripDetail } from '../../services/tripService';
+import { storageGet } from '../../platform/storage';
 import './TripDetailScreen.css';
 
 const HistoryDetail = ({ itineraryId, onBack }) => {
@@ -11,7 +12,7 @@ const HistoryDetail = ({ itineraryId, onBack }) => {
         const fetchDetail = async () => {
             try {
                 setLoading(true);
-                const token = localStorage.getItem('access_token');
+                const token = await storageGet('access_token');
                 const data = await getTripDetail(itineraryId, token);
                 setTripDetail(data);
             } catch (err) {

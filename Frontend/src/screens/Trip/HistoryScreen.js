@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getTripHistory } from '../../services/tripService';
+import { storageGet } from '../../platform/storage';
 import HistoryDetail from './HistoryDetail';
 import './HistoryScreen.css';
 
@@ -15,7 +16,7 @@ const HistoryScreen = ({ onBack }) => {
 
     useEffect(() => {
         const fetchHistory = async () => {
-            const token = localStorage.getItem('access_token');
+            const token = await storageGet('access_token');
             if (token) {
                 const data = await getTripHistory(token);
                 setHistory(data);

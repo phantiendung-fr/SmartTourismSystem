@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE } from '../config/api';
+import { storageGet } from '../platform/storage';
 import './UserProfile.css';
 
 const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
@@ -57,7 +58,7 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
     const handleSaveProfile = async (e) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('access_token');
+            const token = await storageGet('access_token');
             const response = await fetch(`${API_BASE}/api/auth/update-profile`, {
                 method: 'PUT',
                 headers: {
