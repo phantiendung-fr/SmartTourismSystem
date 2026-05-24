@@ -23,7 +23,8 @@ import { showConfirm } from './platform/dialog';
 
 import { SocialQuestProvider } from './components/SocialQuest/SocialQuestProvider';
 import SocialQuestOverlay from './components/SocialQuest/SocialQuestOverlay';
-import LocationSimulator from './components/SocialQuest/LocationSimulator';
+// Bỏ comment nếu muốn test giả lập tương tác
+//import LocationSimulator from './components/SocialQuest/LocationSimulator';
 
 const NativeApp = registerPlugin('App');
 const EXIT_GUARD_SCREENS = new Set([
@@ -196,7 +197,8 @@ function App() {
             <div className="app-outer">
                 <div className="app-container">
                     <SocialQuestOverlay />
-                    <LocationSimulator />
+                    {/* ❌ XÓA HOẶC COMMENT DÒNG NÀY ĐỂ ẨN BẢNG GIẢ LẬP: */}
+                    {/* <LocationSimulator /> */}
 
                     {currentScreen === 'splash' && (
                         <SplashScreen onFinish={() => navigateTo('welcome', { resetHistory: true })} />

@@ -6,11 +6,10 @@ const SocialQuestContext = createContext();
 export const useSocialQuest = () => useContext(SocialQuestContext);
 
 export const SocialQuestProvider = ({ children, user }) => {
-    // Các trạng thái: IDLE, MATCHING, WAITING, IN_QUEST, SUCCESS
     const [questState, setQuestState] = useState('IDLE'); 
     const [currentQuest, setCurrentQuest] = useState(null);
     const [questMessage, setQuestMessage] = useState('');
-    const [rendezvous, setRendezvous] = useState(null); // Lưu tọa độ điểm hẹn chung
+    const [rendezvous, setRendezvous] = useState(null); 
     
     const wsRef = useRef(null);
     const userId = user?.user_id || user?.id;
@@ -19,52 +18,75 @@ export const SocialQuestProvider = ({ children, user }) => {
         if (!userId) return;
 
         let ws;
+        let watchId; // Biến lưu ID của trình theo dõi GPS
+
         try {
             ws = new WebSocket(`${WS_BASE}/ws/social_quest/${userId}`);
             wsRef.current = ws;
         } catch (e) {
             console.error('❌ Failed to construct WebSocket:', e);
-            setQuestMessage('Không thể kết nối đến máy chủ Social Quest (Lỗi bảo mật/Mạng).');
+            setQuestMessage('Không thể kết nối đến máy chủ Social Quest.');
             return;
         }
 
-        ws.onopen = () => console.log('🟢 Social Quest Radar: ONLINE');
+        ws.onopen = () => {
+            console.log('🟢 Social Quest Radar: ONLINE');
+            
+            // 🚀 BẮT ĐẦU THEO DÕI GPS THẬT KHI WEBSOCKET ĐÃ MỞ
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        // Tự động bắn tọa độ lên Server mỗi khi người dùng di chuyển
+                        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                            wsRef.current.send(JSON.stringify({ 
+                                action: 'update_location', 
+                                payload: { lat: latitude, lng: longitude } 
+                            }));
+                            console.log(`📍 Đang cập nhật GPS lên radar: ${latitude}, ${longitude}`);
+                        }
+                    },
+                    (error) => {
+                        console.warn("⚠️ Không thể lấy GPS thật:", error.message);
+                    },
+                    {
+                        enableHighAccuracy: true, // BẮT BUỘC TRUE để lấy sai số thấp (<15m)
+                        timeout: 10000,
+                        maximumAge: 5000 // Cập nhật tối đa mỗi 5 giây
+                    }
+                );
+            }
+        };
 
         ws.onmessage = (event) => {
             try {
                 const payload = JSON.parse(event.data);
                 const { event: eventName, data, message, reason } = payload;
                 
-                // 1. Nhận lời mời ghép cặp
                 if (eventName === 'quest_spawn_request') {
                     setCurrentQuest(data);
                     setQuestState('MATCHING');
                     setQuestMessage(data.message || 'Có người chơi đang ở gần!');
                 } 
-                // 2. Chờ đối phương xác nhận
                 else if (eventName === 'waiting_for_partner') {
                     setQuestState('WAITING');
                     setQuestMessage('Đang chờ đối phương xác nhận...');
                 } 
-                // 3. Cả 2 đã đồng ý -> Bắt đầu di chuyển đến điểm hẹn
                 else if (eventName === 'quest_start') {
                     setQuestState('IN_QUEST');
                     setRendezvous({ lat: data.rendezvous_lat, lng: data.rendezvous_lng });
                     setQuestMessage(data.message || 'Hãy di chuyển đến điểm hẹn!');
                 } 
-                // 4. Tương tác thành công (đứng đủ gần)
                 else if (eventName === 'quest_success') {
                     setQuestState('SUCCESS');
                     setQuestMessage(message || 'Hoàn thành xuất sắc!');
                 } 
-                // 5. Nhiệm vụ bị hủy (đối phương từ chối hoặc mất kết nối)
                 else if (eventName === 'quest_cancelled') {
                     alert(`Nhiệm vụ bị hủy: ${reason}`);
                     resetQuest();
                 } 
-                // 6. Lỗi khi tương tác (đứng quá xa)
                 else if (eventName === 'error') {
-                    setQuestMessage(message); // Hiển thị lỗi "Các bạn đang cách nhau X mét..."
+                    setQuestMessage(message);
                 }
             } catch (err) {
                 console.error("Lỗi parse dữ liệu WebSocket:", err);
@@ -73,10 +95,10 @@ export const SocialQuestProvider = ({ children, user }) => {
 
         ws.onclose = () => console.log('🔴 Social Quest Radar: OFFLINE');
 
+        // Dọn dẹp cả WebSocket lẫn GPS Watcher khi Component Unmount
         return () => {
-            if (ws) {
-                ws.close();
-            }
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+            if (ws) ws.close();
         };
     }, [userId]);
 
@@ -87,6 +109,7 @@ export const SocialQuestProvider = ({ children, user }) => {
         setQuestMessage('');
     };
 
+    // Hàm sendLocation thủ công vẫn giữ lại phòng trường hợp bạn muốn test
     const sendLocation = (lat, lng) => {
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ action: 'update_location', payload: { lat, lng } }));
@@ -107,7 +130,6 @@ export const SocialQuestProvider = ({ children, user }) => {
     };
 
     const interact = () => {
-        // Gửi lệnh tương tác để Server đo khoảng cách
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ action: 'social_interact' }));
         }
