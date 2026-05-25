@@ -9,6 +9,8 @@
     z-index: 10000;
     animation: fadeInOverlay 0.3s forwards;
     pointer-events: auto; /* Block clicks to map */
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
 }
 
 @keyframes fadeInOverlay {

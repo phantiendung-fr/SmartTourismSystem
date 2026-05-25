@@ -1,9 +1,15 @@
 // src/services/businessService.js
-const BASE_URL = 'http://127.0.0.1:8000/api';
+import { API_BASE } from '../config/api';
+import { storageGet } from '../platform/storage';
 
-// Hàm lấy Token từ localStorage để làm "Giấy thông hành"
-const getAuthHeaders = () => {
-    const token = localStorage.getItem('access_token');
+const BASE_URL = `${API_BASE}/api`;
+
+// Hàm lấy token từ storage tương thích web/native để làm "Giấy thông hành"
+const getAuthHeaders = async () => {
+    const token = await storageGet('access_token');
+    if (!token) {
+        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+    }
     return {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}` // Gắn token vào Header
@@ -15,7 +21,7 @@ export const businessService = {
     registerLocation: async (locationData) => {
         const response = await fetch(`${BASE_URL}/v1/locations/register`, {
             method: 'POST',
-            headers: getAuthHeaders(),
+            headers: await getAuthHeaders(),
             body: JSON.stringify(locationData)
         });
         

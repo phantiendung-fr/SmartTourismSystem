@@ -17,6 +17,8 @@
     color: #ffffff;
     font-family: 'Outfit', 'Inter', sans-serif;
     user-select: none;
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
 }
 
 @keyframes fadeIn {
@@ -27,6 +29,7 @@
     position: relative;
     width: 90%;
     max-width: 450px;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 20px);
     background: rgba(20, 25, 45, 0.7);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 28px;
@@ -38,6 +41,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    overflow-y: auto;
 }
 
 /* Glowing background behind chest */

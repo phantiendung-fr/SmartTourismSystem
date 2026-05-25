@@ -1,10 +1,16 @@
 // locationService.js
-const API_URL = 'http://127.0.0.1:8000/api/v1/locations';
+import { API_BASE } from '../config/api';
+import { storageGet } from '../platform/storage';
+
+const API_URL = `${API_BASE}/api/v1/locations`;
 
 export const locationService = {
     registerLocation: async (locationData) => {
-        // 1. Lấy token từ nơi bạn đã lưu lúc Login
-        const token = localStorage.getItem('access_token'); 
+        // 1. Lấy token từ lớp storage tương thích web/native
+        const token = await storageGet('access_token');
+        if (!token) {
+            throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        }
 
         // 2. Gửi request kèm Token
         const response = await fetch(`${API_URL}/register`, {

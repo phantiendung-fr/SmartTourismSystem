@@ -11,6 +11,10 @@ import Leaderboard from './Leaderboard';
 import { getActiveTasks, pingLocation, verifyQuest } from '../services/hiddenQuestService';
 import ChestOpeningAnimation from './HiddenQuest/ChestOpeningAnimation';
 import HiddenQuestDebug from './HiddenQuest/HiddenQuestDebug';
+import { API_BASE } from '../config/api';
+import { storageGet } from '../platform/storage';
+import { showAlert } from '../platform/dialog';
+import { getCurrentPosition, startWatchingPosition } from '../platform/location';
 
 const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenLocationRegister, onOpenProfileEdit, onOpenHistory, onOpenTripDetail }) => {
     // State quản lý tab đang hiển thị
@@ -26,8 +30,8 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
         if (isGuest) return;
         setLoadingAch(true);
         try {
-            const token = localStorage.getItem('access_token');
-            const res = await fetch('http://127.0.0.1:8000/api/achievements', {
+            const token = await storageGet('access_token');
+            const res = await fetch(`${API_BASE}/api/achievements`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -123,20 +127,16 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
         // Initial fetch of active items on tab switch
         fetchActiveTasks();
 
-        let watchId = null;
-        if (navigator.geolocation) {
-            watchId = navigator.geolocation.watchPosition(
-                (pos) => {
-                    const newLoc = {
-                        lat: pos.coords.latitude,
-                        lng: pos.coords.longitude
-                    };
-                    setUserLocation(newLoc);
-                },
-                (err) => console.warn("Watch position error:", err),
-                { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
-            );
-        }
+        const stopWatching = startWatchingPosition({
+            onSuccess: (position) => {
+                setUserLocation({
+                    lat: position.latitude,
+                    lng: position.longitude
+                });
+            },
+            onError: (geoError) => console.warn("Watch position error:", geoError),
+            options: { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
+        });
 
         const pingInterval = setInterval(async () => {
             const currentLoc = userLocationRef.current;
@@ -144,7 +144,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                 try {
                     const res = await pingLocation(currentLoc.lat, currentLoc.lng);
                     if (res.spawned) {
-                        alert(`🔮 Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện gần bạn!`);
+                        void showAlert(`🔮 Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện gần bạn!`);
                         fetchActiveTasks();
                     }
                 } catch (err) {
@@ -154,8 +154,8 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
         }, 30000);
 
         return () => {
-            if (watchId !== null && navigator.geolocation) {
-                navigator.geolocation.clearWatch(watchId);
+            if (typeof stopWatching === 'function') {
+                stopWatching();
             }
             clearInterval(pingInterval);
         };
@@ -163,38 +163,42 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
     }, [activeTab, isGuest]);
 
     // Lấy vị trí khi chuyển sang tab Location
-    const handleTabChange = (tab) => {
+    const handleTabChange = async (tab) => {
         setActiveTab(tab);
         if (tab === 'location') {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const loc = {
-                        lat: pos.coords.latitude,
-                        lng: pos.coords.longitude
-                    };
-                    setUserLocation(loc);
-                    
-                    if (!isGuest) {
-                        pingLocation(loc.lat, loc.lng)
-                            .then((res) => {
-                                if (res.spawned) {
-                                    alert(`🔮 Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện!`);
-                                }
-                                fetchActiveTasks();
-                            })
-                            .catch((err) => console.error(err));
-                    }
-                },
-                (err) => console.warn("Lỗi lấy vị trí:", err),
-                { enableHighAccuracy: false, timeout: 10000 }
-            );
+            try {
+                const position = await getCurrentPosition({
+                    enableHighAccuracy: false,
+                    timeout: 10000,
+                    maximumAge: 10000
+                });
+
+                const loc = {
+                    lat: position.latitude,
+                    lng: position.longitude
+                };
+                setUserLocation(loc);
+
+                if (!isGuest) {
+                    pingLocation(loc.lat, loc.lng)
+                        .then((res) => {
+                            if (res.spawned) {
+                                void showAlert(`🔮 Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện!`);
+                            }
+                            fetchActiveTasks();
+                        })
+                        .catch((err) => console.error(err));
+                }
+            } catch (geoError) {
+                console.warn("Lỗi lấy vị trí:", geoError);
+            }
         }
     };
 
     // Các trang giả định (Placeholder) cho các tab chưa code
     const LocationScreen = () => (
-        <div style={{ padding: '20px', backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
-            <h2 style={{ marginBottom: '20px', color: '#2f3542' }}>📍 Vị trí hiện tại</h2>
+        <div className="location-screen">
+            <h2>📍 Vị trí hiện tại</h2>
 
             <MapComponent 
                 userLocation={userLocation} 
@@ -215,122 +219,92 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
             )}
 
             {userLocation ? (
-                <div style={{
-                    backgroundColor: 'white', padding: '15px', borderRadius: '12px',
-                    boxShadow: '0 4px 10px rgba(0,0,0,0.05)', marginTop: '10px'
-                }}>
-                    <p style={{ margin: '0 0 5px 0', color: '#747d8c', fontSize: '14px' }}>Tọa độ của bạn:</p>
-                    <div style={{ display: 'flex', gap: '20px' }}>
+                <div className="location-coords-card">
+                    <p>Tọa độ của bạn:</p>
+                    <div className="location-coords-row">
                         <div><small>Vĩ độ:</small> <strong>{userLocation.lat.toFixed(6)}</strong></div>
                         <div><small>Kinh độ:</small> <strong>{userLocation.lng.toFixed(6)}</strong></div>
                     </div>
                 </div>
             ) : (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#747d8c' }}>
+                <div className="location-loading">
                     🛰️ Đang xác định vị trí của bạn...
                 </div>
             )}
 
-            <div style={{ marginTop: '25px', padding: '15px', background: '#e1f5fe', borderRadius: '12px' }}>
-                <h4 style={{ margin: '0 0 10px 0', color: '#01579b' }}>💡 Mẹo nhỏ</h4>
-                <p style={{ margin: 0, fontSize: '14px', color: '#0277bd', lineHeight: '1.5' }}>
+            <div className="location-tip-box">
+                <h4>💡 Mẹo nhỏ</h4>
+                <p>
                     Bản đồ này sẽ giúp bạn theo dõi vị trí của mình trong suốt hành trình. Khi bạn bắt đầu một chuyến đi, lịch trình sẽ hiển thị trực tiếp tại đây!
                 </p>
             </div>
         </div>
     );
-    const FriendsScreen = () => <div style={{ padding: '20px' }}><h2>👥 Bạn bè & Cộng đồng</h2><p>Ghép đôi và danh sách bạn bè...</p></div>;
-    const FavoritesScreen = () => <div style={{ padding: '20px' }}><h2>❤️ Yêu thích</h2><p>Các địa điểm, bài đăng đã lưu...</p></div>;
+    const FriendsScreen = () => <div className="placeholder-screen"><h2>👥 Bạn bè & Cộng đồng</h2><p>Ghép đôi và danh sách bạn bè...</p></div>;
+    const FavoritesScreen = () => <div className="placeholder-screen"><h2>❤️ Yêu thích</h2><p>Các địa điểm, bài đăng đã lưu...</p></div>;
     const GuestPlaceholder = ({ title, icon }) => (
-        <div style={{ padding: '40px 20px', textAlign: 'center', marginTop: '10vh' }}>
-            <div style={{ fontSize: '60px', marginBottom: '20px' }}>{icon}</div>
-            <h2 style={{ color: '#2f3542', marginBottom: '10px' }}>{title}</h2>
-            <p style={{ color: '#747d8c', marginBottom: '30px', lineHeight: '1.6' }}>
+        <div className="guest-placeholder">
+            <div className="guest-placeholder-icon">{icon}</div>
+            <h2>{title}</h2>
+            <p>
                 Tính năng này yêu cầu đăng nhập. Hãy tạo tài khoản để lưu lại hành trình của riêng bạn nhé!
             </p>
             <button
                 onClick={onRequireLogin} // Gọi hàm quay về trang đăng nhập
-                style={{
-                    background: 'linear-gradient(135deg, #0abde3 0%, #22a6b3 100%)',
-                    color: 'white', padding: '14px 30px', borderRadius: '16px',
-                    border: 'none', fontWeight: 'bold', fontSize: '16px',
-                    cursor: 'pointer', boxShadow: '0 8px 20px rgba(10, 189, 227, 0.3)'
-                }}
+                className="guest-login-btn"
             >
                 Đăng nhập ngay 🚀
             </button>
         </div>
     );
-    const menuBtnStyle = {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '15px',
-        width: '100%',
-        padding: '16px 20px',
-        backgroundColor: '#ffffff',
-        border: '1px solid #f1f2f6',
-        borderRadius: '14px',
-        cursor: 'pointer',
-        textAlign: 'left',
-        boxShadow: '0 2px 5px rgba(0,0,0,0.02)',
-        transition: 'all 0.2s ease',
-        marginBottom: '12px'
-    };
 
     // Màn hình Cá nhân (Profile) đã được lột xác
     const ProfileScreen = () => (
-        <div style={{ padding: '20px', backgroundColor: '#f8f9fa', minHeight: '100vh', paddingBottom: '100px' }}>
-            <h2 style={{ textAlign: 'center', marginBottom: '25px', color: '#2f3542' }}>Hồ sơ cá nhân</h2>
+        <div className="profile-screen">
+            <h2>Hồ sơ cá nhân</h2>
 
             {/* Khu vực hiển thị Avatar và Tên */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', backgroundColor: '#fff', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+            <div className="profile-user-card">
                 <img
-                    src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
+                    src={user?.avatar_url || '/mascot.png'}
                     alt="Avatar"
-                    style={{ width: '65px', height: '65px', borderRadius: '50%', objectFit: 'cover', marginRight: '15px' }}
+                    className="profile-avatar"
+                    onError={(event) => {
+                        event.currentTarget.onerror = null;
+                        event.currentTarget.src = '/mascot.png';
+                    }}
                 />
                 <div>
-                    <h3 style={{ margin: 0, fontSize: '18px', color: '#2f3542' }}>{user?.full_name || 'Khách du lịch'}</h3>
-                    <p style={{ margin: '5px 0 0', color: '#747d8c', fontSize: '14px' }}>{user?.email || 'Chưa cập nhật email'}</p>
+                    <h3 className="profile-name">{user?.full_name || 'Khách du lịch'}</h3>
+                    <p className="profile-email">{user?.email || 'Chưa cập nhật email'}</p>
                 </div>
             </div>
 
             {/* Thống kê & Bảo mật (Layout chuyên nghiệp giống TripSummary) */}
-            <div style={{
-                display: 'flex', justifyContent: 'space-around', alignItems: 'center',
-                backgroundColor: '#fff', padding: '20px 15px', borderRadius: '16px',
-                marginBottom: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
-            }}>
+            <div className="profile-stats-card">
                 {/* Điểm thưởng */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                        fontSize: '24px', background: '#fff4e6', padding: '10px',
-                        borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
+                <div className="profile-stat-item">
+                    <div className="profile-stat-icon reward">
                         ⭐
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <small style={{ color: '#636e72', fontSize: '12px', fontWeight: '500' }}>Điểm thưởng</small>
-                        <strong style={{ color: '#f39c12', fontSize: '18px' }}>
-                            {(user?.points_balance || 0) + (user?.total_points || 0)} <span style={{ fontSize: '12px', color: '#b2bec3', fontWeight: '500' }}>pts</span>
+                    <div className="profile-stat-text">
+                        <small className="profile-stat-label">Điểm thưởng</small>
+                        <strong className="profile-points-value">
+                            {(user?.points_balance || 0) + (user?.total_points || 0)} <span className="profile-points-unit">pts</span>
                         </strong>
                     </div>
                 </div>
 
-                <div style={{ width: '1px', height: '40px', backgroundColor: '#dfe6e9' }}></div>
+                <div className="profile-divider"></div>
 
                 {/* Trạng thái bảo mật */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                        fontSize: '24px',
-                        background: user?.kyc_status === 'APPROVED' ? '#e8f8f5' : '#fdf2e9',
-                        padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
+                <div className="profile-stat-item">
+                    <div className={`profile-stat-icon ${user?.kyc_status === 'APPROVED' ? 'approved' : 'pending'}`}>
                         {user?.kyc_status === 'APPROVED' ? '🛡️' : '⚠️'}
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <small style={{ color: '#636e72', fontSize: '12px', fontWeight: '500' }}>Trạng thái</small>
-                        <strong style={{ color: user?.kyc_status === 'APPROVED' ? '#2ecc71' : '#e67e22', fontSize: '15px' }}>
+                    <div className="profile-stat-text">
+                        <small className="profile-stat-label">Trạng thái</small>
+                        <strong className={`profile-status-value ${user?.kyc_status === 'APPROVED' ? 'approved' : 'pending'}`}>
                             {user?.kyc_status === 'APPROVED' ? 'Đã bảo mật' : 'Chưa bảo mật'}
                         </strong>
                     </div>
@@ -338,70 +312,43 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
             </div>
 
             {/* Mạng xã hội liên kết */}
-            <div style={{
-                backgroundColor: '#fff', padding: '20px', borderRadius: '16px',
-                marginBottom: '30px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-            }}>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <h4 style={{ margin: '0 0 4px 0', color: '#2d3436', fontSize: '16px', fontWeight: 'bold' }}>Tài khoản liên kết</h4>
-                    <span style={{ fontSize: '12px', color: '#636e72' }}>Kết nối để đăng nhập nhanh</span>
+            <div className="profile-social-card">
+                <div className="profile-stat-text">
+                    <h4 className="profile-social-title">Tài khoản liên kết</h4>
+                    <span className="profile-social-subtitle">Kết nối để đăng nhập nhanh</span>
                 </div>
 
-                <div style={{ display: 'flex', gap: '12px' }}>
+                <div className="profile-social-icons">
                     {/* Facebook (Đã liên kết giả định) */}
-                    <div style={{
-                        width: '42px', height: '42px', borderRadius: '50%', backgroundColor: '#e7f0fd',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                        color: '#1877f2', fontSize: '18px', border: '1px solid #d1e3fb'
-                    }} title="Đã liên kết Facebook">
+                    <div className="profile-social-icon linked" title="Đã liên kết Facebook">
                         <i className="fab fa-facebook-f"></i>
                     </div>
                     {/* Instagram (Chưa liên kết) */}
-                    <div style={{
-                        width: '42px', height: '42px', borderRadius: '50%', backgroundColor: '#f1f2f6',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                        color: '#a4b0be', fontSize: '20px'
-                    }} title="Chưa liên kết Instagram">
+                    <div className="profile-social-icon unlinked" title="Chưa liên kết Instagram">
                         <i className="fab fa-instagram"></i>
                     </div>
                     {/* Twitter (Chưa liên kết) */}
-                    <div style={{
-                        width: '42px', height: '42px', borderRadius: '50%', backgroundColor: '#f1f2f6',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                        color: '#a4b0be', fontSize: '20px'
-                    }} title="Chưa liên kết Twitter">
+                    <div className="profile-social-icon unlinked" title="Chưa liên kết Twitter">
                         <i className="fab fa-twitter"></i>
                     </div>
                 </div>
             </div>
 
             {/* THÀNH TỰU & HUY HIỆU */}
-            <div style={{
-                backgroundColor: '#fff', padding: '20px', borderRadius: '16px',
-                marginBottom: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
-            }}>
-                <h4 style={{ margin: '0 0 15px 0', color: '#2d3436', fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="achievements-card">
+                <h4 className="achievements-title">
                     🏆 Huy hiệu thám hiểm ({achievements.filter(a => a.is_unlocked).length}/{achievements.length})
                 </h4>
                 
                 {/* Thanh bộ lọc thành tựu */}
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+                <div className="achievements-filter-row">
                     {['all', 'unlocked', 'locked'].map((f) => {
-                        const label = f === 'all' ? 'Tất cả' : f === 'unlocked' ? 'Đã đạt ✨' : 'Đang làm 🏃';
                         const isActive = achFilter === f;
                         return (
                             <button
                                 key={f}
                                 onClick={() => setAchFilter(f)}
-                                style={{
-                                    flex: 1, padding: '10px 6px', borderRadius: '12px', border: 'none',
-                                    fontWeight: 'bold', fontSize: '12px', cursor: 'pointer',
-                                    backgroundColor: isActive ? '#0abde3' : '#f1f2f6',
-                                    color: isActive ? '#fff' : '#576574',
-                                    boxShadow: isActive ? '0 4px 10px rgba(10, 189, 227, 0.2)' : 'none',
-                                    transition: 'all 0.2s ease'
-                                }}
+                                className={`achievements-filter-btn ${isActive ? 'active' : 'inactive'}`}
                             >
                                 {f === 'unlocked' ? `Đã đạt (${achievements.filter(a => a.is_unlocked).length})` : f === 'locked' ? `Đang làm (${achievements.filter(a => !a.is_unlocked).length})` : 'Tất cả'}
                             </button>
@@ -410,15 +357,15 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                 </div>
                 
                 {loadingAch ? (
-                    <div style={{ textAlign: 'center', padding: '10px', color: '#747d8c' }}>
+                    <div className="profile-loading">
                         🔄 Đang tải thành tựu...
                     </div>
                 ) : achievements.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '10px', color: '#747d8c' }}>
+                    <div className="profile-empty">
                         Chưa có dữ liệu thành tựu.
                     </div>
                 ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div className="achievements-list">
                         {achievements
                             .filter((ach) => {
                                 if (achFilter === 'unlocked') return ach.is_unlocked;
@@ -430,54 +377,39 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                             return (
                                 <div 
                                     key={ach.achievement_id}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '15px',
-                                        padding: '12px', borderRadius: '12px',
-                                        backgroundColor: ach.is_unlocked ? '#f1fcf4' : '#fafafa',
-                                        border: ach.is_unlocked ? '1px solid #d4edda' : '1px solid #f1f2f6',
-                                        opacity: ach.is_unlocked ? 1 : 0.85
-                                    }}
+                                    className={`achievement-item ${ach.is_unlocked ? 'unlocked' : 'locked'}`}
                                 >
                                     {/* Icon Huy hiệu */}
-                                    <div style={{
-                                        fontSize: '28px', width: '48px', height: '48px',
-                                        borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        backgroundColor: ach.is_unlocked ? '#e8f8f5' : '#e4e5e6',
-                                        boxShadow: ach.is_unlocked ? '0 4px 8px rgba(46, 204, 113, 0.15)' : 'none'
-                                    }}>
+                                    <div className={`achievement-icon ${ach.is_unlocked ? 'unlocked' : 'locked'}`}>
                                         {ach.badge_icon}
                                     </div>
                                     
                                     {/* Chi tiết thành tựu */}
-                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <strong style={{ color: '#2d3436', fontSize: '14px' }}>{ach.title}</strong>
-                                            <span style={{
-                                                fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '20px',
-                                                backgroundColor: ach.is_unlocked ? '#2ecc71' : '#ffeaa7',
-                                                color: ach.is_unlocked ? '#fff' : '#d63031'
-                                            }}>
+                                    <div className="achievement-details">
+                                        <div className="achievement-header">
+                                            <strong className="achievement-name">{ach.title}</strong>
+                                            <span className={`achievement-badge ${ach.is_unlocked ? 'unlocked' : 'locked'}`}>
                                                 {ach.is_unlocked ? `+${ach.points_reward} pts` : `Đang khóa`}
                                             </span>
                                         </div>
                                         
-                                        <span style={{ fontSize: '12px', color: '#636e72', textAlign: 'left' }}>{ach.description}</span>
+                                        <span className="achievement-desc">{ach.description}</span>
                                         
                                         {/* Tiến trình bar */}
                                         {!ach.is_unlocked && (
-                                            <div style={{ marginTop: '5px' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#b2bec3', marginBottom: '2px' }}>
+                                            <div className="achievement-progress">
+                                                <div className="achievement-progress-header">
                                                     <span>Tiến trình</span>
                                                     <span>{ach.current_progress}/{ach.condition_value}</span>
                                                 </div>
-                                                <div style={{ width: '100%', height: '6px', backgroundColor: '#dfe6e9', borderRadius: '3px', overflow: 'hidden' }}>
-                                                    <div style={{ width: `${percent}%`, height: '100%', backgroundColor: '#0abde3', borderRadius: '3px' }}></div>
+                                                <div className="achievement-progress-bar">
+                                                    <div className="achievement-progress-fill" style={{ width: `${percent}%` }}></div>
                                                 </div>
                                             </div>
                                         )}
                                         
                                         {ach.is_unlocked && ach.unlocked_at && (
-                                            <span style={{ fontSize: '11px', color: '#2ecc71', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                                            <span className="achievement-unlock-date">
                                                 ✨ Đạt được ngày {new Date(ach.unlocked_at).toLocaleDateString('vi-VN')}
                                             </span>
                                         )}
@@ -490,36 +422,32 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
             </div>
 
             {/* Danh sách các nút chức năng */}
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="profile-menu-list">
                 <button
-                    className="menu-btn"
+                    className="profile-menu-btn"
                     onClick={onOpenProfileEdit} // Khi nhấn sẽ đổi currentScreen sang 'profile_edit'
                 >
-                    <span style={{ color: '#a29bfe' }}>⚙️</span> Cài đặt quyền riêng tư
+                    <span className="profile-menu-icon settings">⚙️</span>
+                    <span className="profile-menu-label">Cài đặt quyền riêng tư</span>
                 </button>
 
-                <button style={menuBtnStyle}>
-                    <span style={{ fontSize: '20px' }}>❓</span>
-                    <span style={{ fontSize: '16px', fontWeight: '500', color: '#4b4b4b' }}>Trợ giúp và hỗ trợ</span>
+                <button className="profile-menu-btn">
+                    <span className="profile-menu-icon">❓</span>
+                    <span className="profile-menu-label">Trợ giúp và hỗ trợ</span>
                 </button>
 
-                <button style={menuBtnStyle}>
-                    <span style={{ fontSize: '20px' }}>💬</span>
-                    <span style={{ fontSize: '16px', fontWeight: '500', color: '#4b4b4b' }}>Đóng góp ý kiến</span>
+                <button className="profile-menu-btn">
+                    <span className="profile-menu-icon">💬</span>
+                    <span className="profile-menu-label">Đóng góp ý kiến</span>
                 </button>
 
                 {/* Nút Đăng xuất nổi bật */}
                 <button
                     onClick={onLogout}
-                    style={{
-                        ...menuBtnStyle,
-                        backgroundColor: '#fff0f0', // Nền đỏ nhạt
-                        border: '1px solid #ffcccc', // Viền đỏ nhạt
-                        marginTop: '10px'
-                    }}
+                    className="profile-menu-btn profile-logout-btn"
                 >
-                    <span style={{ fontSize: '20px' }}>🚪</span>
-                    <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#e84118' }}>Đăng xuất</span>
+                    <span className="profile-menu-icon">🚪</span>
+                    <span className="logout-text">Đăng xuất</span>
                 </button>
             </div>
         </div>
@@ -585,7 +513,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                         <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
                         <path d="M4 22h16"></path>
                         <path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34"></path>
-                        <path d="M12 2a6 6 0 0 1 6 6v5a6 6 0 0 1-6 6 6 6 6 0 0 1-6-6V8a6 6 0 0 1 6-6z"></path>
+                        <path d="M12 2a6 6 0 0 1 6 6v5a6 6 0 0 1-6 6 a6 6 0 0 1-6-6V8a6 6 0 0 1 6-6z"></path>
                     </svg>
                     <span className="nav-label">Xếp hạng</span>
                 </div>
@@ -622,7 +550,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                         setSelectedTask(null);
                     }}
                     onClaim={(rewards) => {
-                        alert(`🎉 Chúc mừng! Bạn nhận được +${rewards.reward_exp} EXP và +${rewards.reward_coin} Coin!`);
+                        void showAlert(`🎉 Chúc mừng! Bạn nhận được +${rewards.reward_exp} EXP và +${rewards.reward_coin} Coin!`);
                         fetchActiveTasks();
                     }}
                 />
@@ -714,10 +642,9 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                                                 ))}
                                             </div>
                                             <button 
-                                                className="quest-action-btn"
                                                 onClick={() => handleVerifyQuest({ answer: quizAnswer, correct_answer: 'A' })}
                                                 disabled={questLoading || !quizAnswer}
-                                                style={{ marginTop: '15px' }}
+                                                className="quest-action-btn with-top-margin"
                                             >
                                                 {questLoading ? 'Đang gửi đáp án...' : '✔️ Nộp đáp án'}
                                             </button>
@@ -736,20 +663,19 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                                                 </div>
                                             ) : (
                                                 <div className="photo-upload-placeholder" onClick={() => {
-                                                    setPhotoUrl("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500");
+                                                    setPhotoUrl("/assets/island/map-dao.png");
                                                     setPhotoUploaded(true);
                                                 }}>
-                                                    <span style={{ fontSize: '32px' }}>📷</span>
+                                                    <span className="photo-camera-icon">📷</span>
                                                     <span>Chạm để tải lên / Chụp ảnh check-in</span>
-                                                    <small style={{ color: '#a4b0be' }}>(Mô phỏng tự động chọn ảnh chất lượng cao)</small>
+                                                    <small className="photo-helper-text">(Mô phỏng tự động chọn ảnh chất lượng cao)</small>
                                                 </div>
                                             )}
 
                                             <button 
-                                                className="quest-action-btn"
                                                 onClick={() => handleVerifyQuest({ image_url: photoUrl })}
                                                 disabled={questLoading || !photoUploaded}
-                                                style={{ marginTop: '15px' }}
+                                                className="quest-action-btn with-top-margin"
                                             >
                                                 {questLoading ? 'Đang xác thực ảnh...' : '✔️ Xác nhận ảnh chụp'}
                                             </button>
@@ -770,11 +696,11 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                                     
                                     <div className="success-reward-card">
                                         <div className="success-reward-item">
-                                            <span style={{ fontSize: '24px' }}>🔥</span>
+                                            <span className="success-reward-icon">🔥</span>
                                             <span><strong>+{questSuccess.reward_exp}</strong> EXP</span>
                                         </div>
                                         <div className="success-reward-item">
-                                            <span style={{ fontSize: '24px' }}>🪙</span>
+                                            <span className="success-reward-icon">🪙</span>
                                             <span><strong>+{questSuccess.reward_coin}</strong> Coin</span>
                                         </div>
                                     </div>

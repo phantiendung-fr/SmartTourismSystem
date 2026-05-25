@@ -1,5 +1,7 @@
 // src/components/HiddenQuest/HiddenQuestDebug.jsx
 import React, { useState } from 'react';
+import { API_BASE } from '../../config/api';
+import { storageGet } from '../../platform/storage';
 import './HiddenQuestDebug.css';
 
 const HiddenQuestDebug = ({ userLocation, onSpawnSuccess, onTestClaim }) => {
@@ -32,12 +34,12 @@ const HiddenQuestDebug = ({ userLocation, onSpawnSuccess, onTestClaim }) => {
         setStatusMsg("⏳ Đang gửi yêu cầu sinh ảo...");
 
         try {
-            const token = localStorage.getItem('access_token');
+            const token = await storageGet('access_token');
             if (!token) {
                 throw new Error("Vui lòng đăng nhập trước");
             }
 
-            const response = await fetch('http://localhost:8000/api/v1/hidden/debug-spawn', {
+            const response = await fetch(`${API_BASE}/api/v1/hidden/debug-spawn`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

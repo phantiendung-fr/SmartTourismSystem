@@ -1,5 +1,7 @@
 .history-container {
     padding: 24px 20px;
+    padding-top: calc(24px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
     height: 100%;
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     overflow-y: auto;
@@ -15,7 +17,7 @@
 .back-btn {
     width: auto;
     padding: 0 15px;
-    height: 40px;
+    min-height: 44px;
     border-radius: 12px;
     border: none;
     background: #e3f2fd;
@@ -80,9 +82,10 @@
     border: 1px solid #dee2e6;
     background-color: #f8f9fa;
     color: #212529;
-    font-size: 14px;
+    font-size: 16px;
     transition: all 0.2s ease;
     width: 100%;
+    min-height: 44px;
 }
 
 .filter-select:focus,
@@ -111,6 +114,8 @@
     justify-content: center;
     cursor: pointer;
     font-size: 12px;
+    min-width: 24px;
+    min-height: 24px;
 }
 
 .reset-filter-btn {
@@ -122,6 +127,7 @@
     border-radius: 8px;
     cursor: pointer;
     font-size: 14px;
+    min-height: 44px;
 }
 
 .loading-state,

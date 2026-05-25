@@ -38,7 +38,7 @@ export function createPlayerAvatarIcon(user) {
                         class="player-avatar-img" 
                         src="${avatarUrl}" 
                         alt="${displayName}"
-                        onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=fallback'"
+                        onerror="this.onerror=null;this.src='/mascot.png'"
                     />
                 </div>
                 <div class="player-avatar-pointer"></div>

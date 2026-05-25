@@ -1,56 +1,85 @@
 import React, { useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { useGeolocation } from '../../hooks/useGeolocation';
+import { API_BASE } from '../../config/api';
+import { capturePhotoFile, pickPhotoFile, releasePreviewUrl } from '../../platform/camera';
+import { storageGet } from '../../platform/storage';
 import './TaskDetail.css';
 
-// =========================================================================
-// COMPONENT CON: XỬ LÝ CAMERA QUÉT QR
-// =========================================================================
-const QRCameraScanner = ({ onScanSuccess }) => {
-  useEffect(() => {
-    const scanner = new Html5QrcodeScanner(
-      "qr-reader",
-      { qrbox: { width: 250, height: 250 }, fps: 10 },
-      false
-    );
+const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
+  const isNative = Capacitor.isNativePlatform();
 
-    scanner.render(
-      (decodedText) => {
-        // Tắt camera ngay khi quét thành công
-        scanner.clear().catch((err) => console.error("Lỗi tắt camera:", err));
-        onScanSuccess(decodedText);
-      },
-      (error) => {
-        // Bỏ qua các lỗi không tìm thấy mã trong khung hình
-      }
-    );
+  useEffect(() => {
+    if (isNative) return undefined;
+
+    let scanner = null;
+    let isMounted = true;
+
+    try {
+      scanner = new Html5QrcodeScanner(
+        'qr-reader',
+        { qrbox: { width: 250, height: 250 }, fps: 10 },
+        false
+      );
+
+      scanner.render(
+        (decodedText) => {
+          if (!isMounted) return;
+          scanner.clear().catch(() => {});
+          onScanSuccess(decodedText);
+        },
+        (errorMessage) => {
+          // Only surface meaningful camera errors, ignore frame-noise.
+          if (!isMounted) return;
+          if (
+            typeof errorMessage === 'string' &&
+            (errorMessage.includes('NotAllowedError') ||
+              errorMessage.includes('Permission') ||
+              errorMessage.includes('NotFoundError'))
+          ) {
+            onScannerError('Không thể khởi động camera QR. Vui lòng cấp quyền camera hoặc nhập mã thủ công.');
+          }
+        }
+      );
+    } catch (error) {
+      onScannerError('Khởi tạo QR scanner thất bại. Bạn vẫn có thể nhập mã thủ công.');
+    }
 
     return () => {
-      scanner.clear().catch((err) => console.log("Cleanup camera:", err));
+      isMounted = false;
+      if (scanner) {
+        scanner.clear().catch(() => {});
+      }
     };
-  }, [onScanSuccess]);
+  }, [isNative, onScanSuccess, onScannerError]);
+
+  if (isNative) {
+    return (
+      <div className="submit-error-banner" style={{ width: '100%', marginTop: '10px' }}>
+        ⚠️ QR scanner web không ổn định trên WebView. Vui lòng dùng ô nhập mã thủ công bên dưới.
+      </div>
+    );
+  }
 
   return (
     <div className="qr-camera-wrapper" style={{ width: '100%', marginTop: '10px' }}>
-      <div 
-        id="qr-reader" 
-        style={{ 
-          width: '100%', 
-          borderRadius: '16px', 
-          overflow: 'hidden', 
+      <div
+        id="qr-reader"
+        style={{
+          width: '100%',
+          borderRadius: '16px',
+          overflow: 'hidden',
           background: '#1e293b',
-          border: '1px solid rgba(255,255,255,0.1)' 
+          border: '1px solid rgba(255,255,255,0.1)',
         }}
-      ></div>
+      />
     </div>
   );
 };
 
-// =========================================================================
-// COMPONENT CHÍNH
-// =========================================================================
 export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSuccess }) => {
-  const { latitude, longitude, accuracy, distance, error, loading } = useGeolocation(
+  const { latitude, longitude, distance, error, loading } = useGeolocation(
     task.target_latitude,
     task.target_longitude
   );
@@ -59,10 +88,11 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
   const [taskStatus, setTaskStatus] = useState(task.status);
   const [imageFile, setImageFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
-  
-  // State phục vụ bổ sung riêng cho QA và QR
+
   const [selectedOption, setSelectedOption] = useState('');
   const [qrTokenInput, setQrTokenInput] = useState('');
+  const [qrScannerError, setQrScannerError] = useState('');
+  const [photoHint, setPhotoHint] = useState('');
 
   const [starting, setStarting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -70,14 +100,15 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState(null);
 
-  // Chỉ kích hoạt vòng đời IN_PROGRESS riêng cho dạng toán Chụp ảnh thực địa
+  useEffect(() => () => releasePreviewUrl(previewUrl), [previewUrl]);
+
   useEffect(() => {
     const handleStartTask = async () => {
       if (task.task_type !== 'PHOTO') return;
       try {
         setStarting(true);
         const response = await fetch(
-          `http://127.0.0.1:8000/api/gamification/tasks/${task.task_id}/start?user_id=${userId}&itinerary_id=${itineraryId}`,
+          `${API_BASE}/api/gamification/tasks/${task.task_id}/start?user_id=${userId}&itinerary_id=${itineraryId}`,
           { method: 'POST' }
         );
         if (!response.ok) throw new Error('Không thể đăng ký thực hiện thử thách.');
@@ -96,7 +127,41 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
     }
   }, [task, userId, itineraryId, taskStatus]);
 
-  // Cập nhật hàm handleSubmit để nhận tham số qrScannedToken từ Camera
+  const updatePhotoSelection = (file, nextPreviewUrl) => {
+    releasePreviewUrl(previewUrl);
+    setImageFile(file);
+    setPreviewUrl(nextPreviewUrl);
+  };
+
+  const clearPhotoSelection = () => {
+    releasePreviewUrl(previewUrl);
+    setImageFile(null);
+    setPreviewUrl(null);
+  };
+
+  const handleCapturePhoto = async () => {
+    setSubmitError(null);
+    setPhotoHint('');
+    try {
+      const result = await capturePhotoFile({ quality: 85 });
+      updatePhotoSelection(result.file, result.previewUrl);
+    } catch (err) {
+      setPhotoHint('Nếu camera bị từ chối, hãy cấp quyền Camera trong cài đặt ứng dụng và thử lại.');
+      setSubmitError(err.message || 'Không thể mở camera.');
+    }
+  };
+
+  const handlePickPhoto = async () => {
+    setSubmitError(null);
+    setPhotoHint('');
+    try {
+      const result = await pickPhotoFile();
+      updatePhotoSelection(result.file, result.previewUrl);
+    } catch (err) {
+      setSubmitError(err.message || 'Không thể chọn ảnh từ thư viện.');
+    }
+  };
+
   const handleSubmit = async (qrScannedToken = null) => {
     setSubmitting(true);
     setSubmitError(null);
@@ -104,7 +169,7 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
     try {
       if (task.task_type === 'PHOTO') {
         if (!imageFile || latitude === null || longitude === null || !progressId) {
-          throw new Error('Vui lòng chụp ảnh và đợi tín hiệu GPS ổn định.');
+          throw new Error('Vui lòng chụp ảnh và đợi GPS ổn định trước khi gửi.');
         }
         const formData = new FormData();
         formData.append('progress_id', progressId);
@@ -112,7 +177,7 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
         formData.append('longitude', longitude.toString());
         formData.append('photo', imageFile);
 
-        const response = await fetch('http://127.0.0.1:8000/api/gamification/submissions/submit-photo', {
+        const response = await fetch(`${API_BASE}/api/gamification/submissions/submit-photo`, {
           method: 'POST',
           body: formData,
         });
@@ -120,59 +185,60 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
         if (!response.ok) throw new Error(data.detail || 'Xác thực hình ảnh không đạt yêu cầu.');
         setSuccessData(data);
         setShowSuccessModal(true);
-
       } else if (task.task_type === 'QA') {
         if (!selectedOption) throw new Error('Vui lòng chọn một đáp án.');
-        const response = await fetch('http://127.0.0.1:8000/api/v1/tasks/qa/submit', {
+        const token = await storageGet('access_token');
+        if (!token) throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        const response = await fetch(`${API_BASE}/api/v1/tasks/qa/submit`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
             task_id: task.task_id,
-            selected_option: selectedOption
-          })
+            selected_option: selectedOption,
+          }),
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || 'Gửi đáp án thất bại.');
         if (!data.success) throw new Error(data.message || 'Đáp án chưa chính xác, thử lại nhé!');
-        
+
         setSuccessData({
           message: data.message,
           exp_rewarded: data.reward_exp,
           confidence_score: 100,
           new_itinerary_exp: data.new_total_points,
-          new_level: Math.floor(data.new_total_points / 1000) + 1
+          new_level: Math.floor(data.new_total_points / 1000) + 1,
         });
         setShowSuccessModal(true);
-
       } else if (task.task_type === 'QR') {
-        // Ưu tiên dùng token từ camera quét được, nếu không có thì dùng input nhập tay
-        const tokenToSubmit = qrScannedToken || qrTokenInput;
+        const tokenToSubmit = (qrScannedToken || qrTokenInput || '').trim();
         if (!tokenToSubmit) throw new Error('Vui lòng nhập hoặc quét mã QR.');
 
-        const response = await fetch('http://127.0.0.1:8000/api/v1/tasks/qr/scan', {
+        const token = await storageGet('access_token');
+        if (!token) throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        const response = await fetch(`${API_BASE}/api/v1/tasks/qr/scan`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
             qr_token: tokenToSubmit,
-            latitude: latitude || 10.762622, // Tọa độ fallback an toàn khi giả lập
-            longitude: longitude || 106.660172
-          })
+            latitude: latitude || 10.762622,
+            longitude: longitude || 106.660172,
+          }),
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || 'Mã QR không trùng khớp hoặc ngoài phạm vi.');
-        
+
         setSuccessData({
           message: data.message,
           exp_rewarded: data.reward_exp,
           confidence_score: 100,
           new_itinerary_exp: data.new_total_points,
-          new_level: Math.floor(data.new_total_points / 1000) + 1
+          new_level: Math.floor(data.new_total_points / 1000) + 1,
         });
         setShowSuccessModal(true);
       }
@@ -195,10 +261,14 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
       <div className="task-detail-body-gami">
         <div className="task-target-card">
           <div className="target-img-container">
-            <img 
-              src={task.reference_image_url || 'https://images.unsplash.com/photo-1509060464153-4466739f78d0?w=600'} 
-              alt={task.title} 
+            <img
+              src={task.reference_image_url || '/assets/island/map-dao.png'}
+              alt={task.title}
               className="target-img"
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = '/assets/island/map-dao.png';
+              }}
             />
             <div className="reward-overlay">⭐ +{task.reward_exp} EXP</div>
           </div>
@@ -214,8 +284,8 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
             <div className="gps-status-box">
               <div className="gps-status-header">
                 <h4>📡 SÓNG ĐỊNH VỊ GPS THỜI GIAN THỰC</h4>
-                <span className={`gps-pill ${isWithinRadius ? 'valid' : 'invalid'}`}>
-                  {isWithinRadius ? 'Đã vào phạm vi' : 'Chưa đến điểm'}
+                <span className={`gps-pill ${loading ? 'loading' : isWithinRadius ? 'valid' : 'invalid'}`}>
+                  {loading ? 'Đang tìm GPS' : isWithinRadius ? 'Đã vào phạm vi' : 'Chưa đến điểm'}
                 </span>
               </div>
               <div className="gps-grid-data">
@@ -225,29 +295,46 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
                   <span className="stat-hint">Yêu cầu ≤ {task.radius_meters}m</span>
                 </div>
               </div>
+              {error && <div className="gps-error-alert">⚠️ {error}</div>}
             </div>
 
             <div className="camera-interact-box">
               <h4>📷 BÁO CÁO HÌNH ẢNH</h4>
               {!previewUrl ? (
                 <div className={`camera-dash-upload ${isWithinRadius ? 'unlocked' : 'locked'}`}>
-                  <input type="file" accept="image/*" capture="environment" onChange={(e) => {
-                    if (e.target.files?.[0]) {
-                      setImageFile(e.target.files[0]);
-                      setPreviewUrl(URL.createObjectURL(e.target.files[0]));
-                    }
-                  }} disabled={!isWithinRadius} id="cam-trigger" className="hidden-file-input" />
-                  <label htmlFor={isWithinRadius ? "cam-trigger" : ""} className="camera-upload-label">
+                  <div className="camera-upload-label">
                     <div className="camera-icon-circle">📷</div>
                     <h5>Chụp toàn cảnh kiến trúc</h5>
-                  </label>
+                    <p>Bạn cần ở trong bán kính check-in để mở camera.</p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', width: '100%', marginTop: '10px' }}>
+                    <button
+                      className="btn-submit-verification"
+                      type="button"
+                      onClick={handleCapturePhoto}
+                      disabled={!isWithinRadius || starting}
+                      style={{ flex: 1 }}
+                    >
+                      {starting ? 'Đang khởi tạo...' : 'Mở Camera'}
+                    </button>
+                    <button
+                      className="btn-submit-verification"
+                      type="button"
+                      onClick={handlePickPhoto}
+                      disabled={!isWithinRadius || starting}
+                      style={{ flex: 1 }}
+                    >
+                      Chọn Thư Viện
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="image-preview-card">
                   <img src={previewUrl} alt="Preview" className="preview-img" />
-                  <button className="btn-capture-again" onClick={() => { setImageFile(null); setPreviewUrl(null); }}>🔄 Chụp lại</button>
+                  <button className="btn-capture-again" onClick={clearPhotoSelection}>🔄 Chụp lại</button>
                 </div>
               )}
+              {photoHint && <div className="submit-error-banner">ℹ️ {photoHint}</div>}
               {submitError && <div className="submit-error-banner">⚠️ {submitError}</div>}
               {previewUrl && (
                 <button className={`btn-submit-verification ${submitting ? 'loading' : ''}`} onClick={() => handleSubmit()} disabled={submitting}>
@@ -262,7 +349,7 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
           <div className="camera-interact-box" style={{ gap: '15px' }}>
             <h4 style={{ color: '#34d399' }}>❓ TRẢ LỜI CÂU HỎI TRẮC NGHIỆM KHÁM PHÁ</h4>
             <p style={{ fontSize: '15px', fontWeight: 'bold', lineHeight: '1.4' }}>{task.question}</p>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
               {['A', 'B', 'C', 'D'].map((opt) => {
                 const optText = task[`option_${opt.toLowerCase()}`];
@@ -297,17 +384,23 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
               Hướng camera vào QR code hoặc nhập mã định danh:
             </p>
 
-            {/* Component Camera quét QR thật */}
-            <QRCameraScanner 
-              onScanSuccess={(token) => handleSubmit(token)} 
+            <QRCameraScanner
+              onScanSuccess={(token) => handleSubmit(token)}
+              onScannerError={(message) => setQrScannerError(message)}
             />
+
+            {qrScannerError && (
+              <div className="submit-error-banner" style={{ width: '100%', marginTop: '10px' }}>
+                ⚠️ {qrScannerError}
+              </div>
+            )}
 
             <div style={{ textAlign: 'center', margin: '15px 0', color: '#94a3b8', fontSize: '12px' }}>
               Hoặc nhập tay:
             </div>
-            
-            <input 
-              type="text" 
+
+            <input
+              type="text"
               placeholder="Nhập chuỗi QR Code (Ví dụ: QR_VANMIEU_TOKEN)"
               value={qrTokenInput}
               onChange={(e) => setQrTokenInput(e.target.value)}
@@ -317,11 +410,11 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
               }}
             />
             {submitError && <div className="submit-error-banner" style={{ width: '100%', marginTop: '10px' }}>⚠️ {submitError}</div>}
-            
-            <button 
-              className="btn-submit-verification" 
-              onClick={() => handleSubmit()} 
-              disabled={submitting || (!qrTokenInput && !submitting)}
+
+            <button
+              className="btn-submit-verification"
+              onClick={() => handleSubmit()}
+              disabled={submitting || !qrTokenInput.trim()}
               style={{ marginTop: '15px' }}
             >
               {submitting ? 'Hệ thống đang kiểm tra...' : '🔒 Xác thực mã QR'}
@@ -330,7 +423,6 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
         )}
       </div>
 
-      {/* THÔNG BÁO HOÀN THÀNH VINH DANH CHUNG */}
       {showSuccessModal && (
         <div className="success-gami-modal">
           <div className="modal-card">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getTripHistory } from '../services/tripService';
+import { storageGet } from '../platform/storage';
 import './Travel_trip.css';
 
 const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpenLocationRegister, onOpenProfileEdit, onOpenHistory, onOpenTripDetail }) => {
@@ -11,7 +12,7 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
     useEffect(() => {
         const fetchOngoingTrips = async () => {
             if (isGuest || !user) return;
-            const token = localStorage.getItem('access_token');
+            const token = await storageGet('access_token');
             if (!token) return;
 
             setLoadingTrips(true);
@@ -55,24 +56,12 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
     ];
 
     return (
-        <div className="home-container" style={{ position: 'relative' }}>
+        <div className="home-container">
 
             {/* =========================================================
                 KHU VỰC ĐƯỢC GHIM CỐ ĐỊNH Ở TRÊN CÙNG (STICKY HEADER) 
             ============================================================= */}
-            <div style={{
-                position: 'sticky',
-                top: 0,
-                zIndex: 100,
-                backgroundColor: '#ffffff',
-                paddingTop: '20px',
-                paddingBottom: '2px',
-                marginTop: '-20px',
-                marginLeft: '-20px',
-                marginRight: '-20px',
-                paddingLeft: '20px',
-                paddingRight: '10px',
-            }}>
+            <div className="home-sticky-header">
                 <div className="header">
                     <div className="greeting">
                         <p>{isGuest ? 'Chào bạn mới,' : getGreeting()}</p>
@@ -80,33 +69,24 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
                             {isGuest ? 'Khách du lịch 🎒' : `${user?.user?.full_name || user?.full_name || 'Bạn'} 🎒`}
                         </h2>
                         {!isGuest && (
-                            <div style={{ 
-                                display: 'inline-flex', 
-                                alignItems: 'center', 
-                                background: 'rgba(255, 244, 230, 0.8)', 
-                                padding: '4px 10px', 
-                                borderRadius: '10px', 
-                                marginTop: '4px',
-                                border: '1px solid #ffeaa7'
-                            }}>
-                                <span style={{ fontSize: '14px', marginRight: '5px' }}>⭐</span>
-                                <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#f39c12' }}>
+                            <div className="points-badge-inline">
+                                <span className="pts-icon">⭐</span>
+                                <span className="pts-value">
                                     {(user?.user?.points_balance || user?.points_balance || 0) + (user?.user?.total_points || user?.total_points || 0)} pts
                                 </span>
                             </div>
                         )}
                     </div>
 
-                    <div style={{ position: 'relative' }}>
+                    <div className="user-menu-anchor">
                         {isGuest ? (
                             <button onClick={onRequireLogin} className="login-btn-guest">Đăng nhập</button>
                         ) : (
                             <img
                                 src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150"
                                 alt="Avatar"
-                                className="avatar"
+                                className="avatar clickable"
                                 onClick={() => setShowMenu(!showMenu)}
-                                style={{ cursor: 'pointer' }}
                             />
                         )}
 
@@ -136,36 +116,26 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
                 </div>
 
                 {/* Thanh Tìm Kiếm */}
-                <div className="search-bar" style={{ marginTop: '1px' }}>
+                <div className="search-bar home-search">
                     <span>🔍</span>
-                    <input type="text" placeholder="Bạn muốn đi đâu hôm nay?" style={{ backgroundColor: '#f1f2f6' }} />
+                    <input type="text" placeholder="Bạn muốn đi đâu hôm nay?" />
                 </div>
             </div>
             {/* ============ KẾT THÚC KHU VỰC GHIM CỐ ĐỊNH ============ */}
 
 
             {/* CÁC PHẦN BÊN DƯỚI NÀY SẼ TỰ DO CUỘN (SCROLL) */}
-            <div style={{ paddingTop: '10px' }}>
+            <div className="home-scroll-content">
 
                 {/* Banner tạo lộ trình DUY NHẤT */}
-                <div style={{
-                    background: 'linear-gradient(135deg, #0abde3 0%, #22a6b3 100%)',
-                    padding: '20px',
-                    borderRadius: '20px',
-                    color: 'white',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '20px',
-                    boxShadow: '0 8px 20px rgba(10, 189, 227, 0.3)'
-                }}>
+                <div className="plan-banner">
                     <div>
-                        <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Chưa biết đi đâu?</h3>
-                        <p style={{ margin: '5px 0 0', fontSize: '14px', opacity: 0.9 }}>Để hệ thống tạo lộ trình riêng</p>
+                        <h3>Chưa biết đi đâu?</h3>
+                        <p>Để hệ thống tạo lộ trình riêng</p>
                     </div>
                     <button
                         onClick={isGuest ? onRequireLogin : onOpenPlan}
-                        style={{ background: 'white', color: '#0abde3', border: 'none', padding: '12px 18px', borderRadius: '14px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}
+                        className="plan-banner-btn"
                     >
                         Bắt đầu 🚀
                     </button>
@@ -173,12 +143,12 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
 
                 {/* Lộ trình đang diễn ra */}
                 {!isGuest && loadingTrips && (
-                    <div style={{ textAlign: 'center', margin: '20px 0', color: '#8395a7', fontSize: '14px' }}>
+                    <div className="inline-loading">
                         ⏳ Đang tải lộ trình...
                     </div>
                 )}
                 {!isGuest && ongoingTrips.length > 0 && (
-                    <div style={{ marginBottom: '25px' }}>
+                    <div className="ongoing-section">
                         <div className="section-title">Hành trình đang diễn ra</div>
                         <div className="ongoing-trips-list">
                             {ongoingTrips.map(trip => (
@@ -191,11 +161,11 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
                                         🔄 Đang diễn ra
                                     </div>
                                     <div className="card-info">
-                                        <h3 style={{ margin: '0 0 5px', fontSize: '16px', color: '#2f3542' }}>{trip.name || 'Hành trình không tên'}</h3>
-                                        <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#747d8c' }}>
+                                        <h3 className="ongoing-trip-title">{trip.name || 'Hành trình không tên'}</h3>
+                                        <p className="ongoing-trip-meta">
                                             Ngày tạo: {formatDate(trip.create_at)}
                                         </p>
-                                        <div style={{ display: 'flex', gap: '15px', fontSize: '13px', color: '#57606f', fontWeight: '500' }}>
+                                        <div className="ongoing-trip-stats">
                                             <span>🛣️ {trip.total_distance} km</span>
                                             <span>💰 {new Intl.NumberFormat('vi-VN').format(trip.total_budget)} đ</span>
                                         </div>
@@ -208,24 +178,14 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
 
                 {/* Banner Doanh Nghiệp */}
                 {!isGuest && user?.role === 'ENTERPRISE' && (
-                    <div style={{
-                        background: 'linear-gradient(135deg, #f0932b 0%, #ffbe76 100%)',
-                        padding: '20px',
-                        borderRadius: '20px',
-                        color: 'white',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '25px',
-                        boxShadow: '0 8px 20px rgba(240, 147, 43, 0.3)'
-                    }}>
+                    <div className="enterprise-banner">
                         <div>
-                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Kênh Doanh Nghiệp</h3>
-                            <p style={{ margin: '5px 0 0', fontSize: '14px', opacity: 0.9 }}>Thêm địa điểm kinh doanh mới</p>
+                            <h3>Kênh Doanh Nghiệp</h3>
+                            <p>Thêm địa điểm kinh doanh mới</p>
                         </div>
                         <button
                             onClick={onOpenLocationRegister}
-                            style={{ background: 'white', color: '#f0932b', border: 'none', padding: '12px 18px', borderRadius: '14px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}
+                            className="enterprise-banner-btn"
                         >
                             + Thêm Mới
                         </button>

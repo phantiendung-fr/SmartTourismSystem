@@ -32,10 +32,10 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onLoginSuccess,onForgotPasswo
     };
 
     return (
-        <div className="login-container" style={{ padding: '20px', paddingTop: '40px' }}>
+        <div className="login-container">
             {/* Nút Quay lại */}
             <div 
-                style={{ cursor: 'pointer', marginBottom: '20px', color: '#555', fontWeight: 'bold', fontSize: '18px' }} 
+                className="auth-back"
                 onClick={onBack}
             >
                 ⬅️ Quay lại
@@ -55,7 +55,7 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onLoginSuccess,onForgotPasswo
                 />
                 <button className="login-button" type="submit">Khởi hành</button>
                 
-                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+                <div className="auth-google-row">
                     <GoogleLogin
                         onSuccess={handleGoogleSuccess}
                         onError={() => setError("❌ Đăng nhập Google thất bại")}
@@ -69,14 +69,14 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onLoginSuccess,onForgotPasswo
                 {error && <p className="error-msg">{error}</p>}
 
                 {/* Các liên kết hỗ trợ */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px', fontSize: '14px' }}>
-                    <span style={{ color: '#0abde3', cursor: 'pointer', fontWeight: 'bold' }}
+                <div className="auth-link-row">
+                    <span className="auth-link"
                     onClick={onForgotPassword}
                     >
                         Quên mật khẩu?</span>
 
                     <span 
-                        style={{ color: '#0abde3', cursor: 'pointer', fontWeight: 'bold' }} 
+                        className="auth-link"
                         onClick={onSwitchToRegister}
                     >
                         Chưa có tài khoản?

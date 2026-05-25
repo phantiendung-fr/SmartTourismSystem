@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { startWatchingPosition } from '../platform/location';
 
 export const useGeolocation = (targetLat, targetLng) => {
   const [state, setState] = useState({
@@ -10,9 +11,8 @@ export const useGeolocation = (targetLat, targetLng) => {
   });
   const [distance, setDistance] = useState(null);
 
-  // Client-side Haversine distance calculator
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371000; // Earth radius in meters
+    const R = 6371000;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
     const dLon = ((lon2 - lon1) * Math.PI) / 180;
     const a =
@@ -22,44 +22,46 @@ export const useGeolocation = (targetLat, targetLng) => {
         Math.sin(dLon / 2) *
         Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Returns distance in meters
+    return R * c;
   };
 
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setState((prev) => ({ ...prev, error: 'Trình duyệt không hỗ trợ định vị GPS.', loading: false }));
-      return;
-    }
+    const stopWatching = startWatchingPosition({
+      onSuccess: (position) => {
+        const { latitude, longitude, accuracy } = position;
 
-    const handleSuccess = (position) => {
-      const { latitude, longitude, accuracy } = position.coords;
-      
-      setState({
-        latitude,
-        longitude,
-        accuracy,
-        error: null,
-        loading: false,
-      });
+        setState({
+          latitude,
+          longitude,
+          accuracy,
+          error: null,
+          loading: false,
+        });
 
-      if (targetLat !== undefined && targetLng !== undefined) {
-        const dist = calculateDistance(latitude, longitude, targetLat, targetLng);
-        setDistance(dist);
-      }
-    };
-
-    const handleError = (error) => {
-      setState((prev) => ({ ...prev, error: error.message, loading: false }));
-    };
-
-    // Start watchPosition for real-time tracking
-    const watchId = navigator.geolocation.watchPosition(handleSuccess, handleError, {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
+        if (targetLat !== undefined && targetLng !== undefined) {
+          const dist = calculateDistance(latitude, longitude, targetLat, targetLng);
+          setDistance(dist);
+        }
+      },
+      onError: (geoError) => {
+        setState((prev) => ({
+          ...prev,
+          error: geoError?.message || 'Không thể lấy dữ liệu GPS.',
+          loading: false,
+        }));
+      },
+      options: {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      },
     });
 
-    return () => navigator.geolocation.clearWatch(watchId);
+    return () => {
+      if (typeof stopWatching === 'function') {
+        stopWatching();
+      }
+    };
   }, [targetLat, targetLng]);
 
   return { ...state, distance };

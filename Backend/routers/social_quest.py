@@ -55,8 +55,8 @@ async def process_location_update(user_id: str, lat: float, lng: float):
 
         dist = calculate_haversine_distance(lat, lng, loc["lat"], loc["lng"])
         
-        # 1. PHÁT HIỆN GẦN NHAU DƯỚI 50M -> MỜI CHƠI
-        if dist <= 50.0:
+        # 1. PHÁT HIỆN GẦN NHAU DƯỚI 15M -> MỜI CHƠI
+        if dist <= 15.0:
             if acquire_match_lock(user_id) and acquire_match_lock(other_user):
                 instance_id = str(uuid.uuid4())
                 

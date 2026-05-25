@@ -1,11 +1,17 @@
 // src/services/hiddenQuestService.js
 // API service layer for the Hidden Quest & Dynamic Event gamification system
 
-const BASE_URL = 'http://localhost:8000';
+import { API_BASE } from '../config/api';
+import { storageGet } from '../platform/storage';
 
-const getAuthHeader = () => {
-    const token = localStorage.getItem('access_token');
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
+const BASE_URL = API_BASE;
+
+const getAuthHeader = async () => {
+    const token = await storageGet('access_token');
+    if (!token) {
+        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+    }
+    return { 'Authorization': `Bearer ${token}` };
 };
 
 const formatError = (err, defaultMsg) => {
@@ -30,11 +36,12 @@ const formatError = (err, defaultMsg) => {
  * @returns {Promise<object>} - spawn result
  */
 export const pingLocation = async (lat, lng) => {
+    const authHeader = await getAuthHeader();
     const response = await fetch(`${BASE_URL}/api/v1/hidden/ping-location`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...getAuthHeader()
+            ...authHeader
         },
         body: JSON.stringify({ latitude: lat, longitude: lng })
     });
@@ -50,11 +57,12 @@ export const pingLocation = async (lat, lng) => {
  * @returns {Promise<Array>} - list of active tasks
  */
 export const getActiveTasks = async () => {
+    const authHeader = await getAuthHeader();
     const response = await fetch(`${BASE_URL}/api/v1/hidden/active`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
-            ...getAuthHeader()
+            ...authHeader
         }
     });
     if (!response.ok) {
@@ -72,11 +80,12 @@ export const getActiveTasks = async () => {
  * @returns {Promise<object>} - reward details
  */
 export const claimChest = async (spawnId, lat, lng) => {
+    const authHeader = await getAuthHeader();
     const response = await fetch(`${BASE_URL}/api/v1/hidden/claim-chest`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...getAuthHeader()
+            ...authHeader
         },
         body: JSON.stringify({
             spawn_id: spawnId,
@@ -101,11 +110,12 @@ export const claimChest = async (spawnId, lat, lng) => {
  * @returns {Promise<object>} - reward details
  */
 export const verifyQuest = async (spawnId, lat, lng, questType, extraData = {}) => {
+    const authHeader = await getAuthHeader();
     const response = await fetch(`${BASE_URL}/api/v1/hidden/verify-quest`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...getAuthHeader()
+            ...authHeader
         },
         body: JSON.stringify({
             spawn_id: spawnId,
@@ -131,11 +141,12 @@ export const verifyQuest = async (spawnId, lat, lng, questType, extraData = {}) 
  * @returns {Promise<object>} - spawned task info
  */
 export const debugSpawn = async (taskType, lat, lng, rarity = 'COMMON') => {
+    const authHeader = await getAuthHeader();
     const response = await fetch(`${BASE_URL}/api/v1/hidden/debug-spawn`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...getAuthHeader()
+            ...authHeader
         },
         body: JSON.stringify({
             task_type: taskType,
@@ -158,8 +169,9 @@ export const debugSpawn = async (taskType, lat, lng, rarity = 'COMMON') => {
  * @returns {Promise<Array>}
  */
 export const getEnterpriseEvents = async () => {
+    const authHeader = await getAuthHeader();
     const response = await fetch(`${BASE_URL}/api/enterprise/events`, {
-        headers: { ...getAuthHeader() }
+        headers: { ...authHeader }
     });
     if (!response.ok) {
         const err = await response.json().catch(() => ({}));
@@ -174,11 +186,12 @@ export const getEnterpriseEvents = async () => {
  * @returns {Promise<object>}
  */
 export const createEnterpriseEvent = async (eventData) => {
+    const authHeader = await getAuthHeader();
     const response = await fetch(`${BASE_URL}/api/enterprise/events`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...getAuthHeader()
+            ...authHeader
         },
         body: JSON.stringify(eventData)
     });
@@ -195,9 +208,10 @@ export const createEnterpriseEvent = async (eventData) => {
  * @returns {Promise<object>}
  */
 export const deleteEnterpriseEvent = async (eventId) => {
+    const authHeader = await getAuthHeader();
     const response = await fetch(`${BASE_URL}/api/enterprise/events/${eventId}`, {
         method: 'DELETE',
-        headers: { ...getAuthHeader() }
+        headers: { ...authHeader }
     });
     if (!response.ok) {
         const err = await response.json().catch(() => ({}));

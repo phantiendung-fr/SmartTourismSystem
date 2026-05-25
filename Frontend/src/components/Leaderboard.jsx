@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE } from '../config/api';
+import { storageGet } from '../platform/storage';
 import './Leaderboard.css';
 
 const Leaderboard = () => {
@@ -29,14 +31,14 @@ const Leaderboard = () => {
         setError(null);
         try {
             // Xây dựng Query URL
-            let url = `http://127.0.0.1:8000/api/leaderboard?category=${category}`;
+            let url = `${API_BASE}/api/leaderboard?category=${category}`;
             if (category === 'region' && selectedRegion) {
                 url += `&region_name=${encodeURIComponent(selectedRegion)}`;
             } else if (category === 'tier') {
                 url += `&tier_name=${selectedTier}`;
             }
 
-            const token = localStorage.getItem('access_token');
+            const token = await storageGet('access_token');
             const headers = {};
             if (token) {
                 headers['Authorization'] = `Bearer ${token}`;

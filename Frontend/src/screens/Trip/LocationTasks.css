@@ -22,6 +22,7 @@
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 30px 30px 0 0;
   padding: 20px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   max-height: 85%;
   display: flex;
   flex-direction: column;
@@ -65,8 +66,8 @@
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.6);
-  width: 32px;
-  height: 32px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 50%;
   font-size: 14px;
   cursor: pointer;
@@ -187,6 +188,7 @@
   padding: 15px;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 44px;
 }
 
 .task-card-item:hover {

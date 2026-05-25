@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE } from '../../config/api';
 import './LocationTasks.css';
 
 const LOCATION_MOCK_METADATA = {
@@ -35,7 +36,7 @@ export const LocationTasks = ({ locationId, locationName, itineraryId, userId, o
       try {
         setLoading(true);
         const response = await fetch(
-          `http://127.0.0.1:8000/api/gamification/locations/${locationId}/tasks?itinerary_id=${itineraryId}&user_id=${userId}`
+          `${API_BASE}/api/gamification/locations/${locationId}/tasks?itinerary_id=${itineraryId}&user_id=${userId}`
         );
         if (!response.ok) {
           throw new Error('Không thể lấy danh sách nhiệm vụ.');

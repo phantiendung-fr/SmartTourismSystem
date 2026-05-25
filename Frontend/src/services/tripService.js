@@ -1,5 +1,5 @@
 // Gọi API lấy gợi ý, lưu lộ trình.
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
+import { API_BASE } from '../config/api';
 const API_URL = `${API_BASE}/api/trips`;
 
 const formatError = (err, defaultMsg) => {

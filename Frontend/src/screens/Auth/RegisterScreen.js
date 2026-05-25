@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { authService } from '../../services/authService';
+import './LoginScreen.css';
 
 const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
     // 1. Thêm trường 'role' vào formData, mặc định là 'USER' (Cá nhân)
@@ -18,63 +19,53 @@ const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
     };
 
     return (
-        <div style={{ padding: '20px', paddingTop: '40px', maxWidth: '400px', margin: 'auto' }}>
+        <div className="login-container">
             {/* Nút Quay lại */}
             <div 
-                style={{ cursor: 'pointer', marginBottom: '20px', color: '#555', fontWeight: 'bold', fontSize: '18px' }} 
+                className="auth-back"
                 onClick={onBack}
             >
                 ⬅️ Quay lại
             </div>
 
-            <h2>Đăng ký tài khoản</h2>
+            <h2 className="login-title">Đăng ký tài khoản</h2>
 
             {/* 3. NÚT CHỌN LOẠI TÀI KHOẢN */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', marginTop: '15px' }}>
+            <div className="role-toggle-row">
                 <button 
                     type="button"
                     onClick={() => setFormData({...formData, role: 'USER'})}
-                    style={{ 
-                        flex: 1, padding: '10px', borderRadius: '8px', cursor: 'pointer',
-                        backgroundColor: formData.role === 'USER' ? '#0abde3' : '#f1f2f6',
-                        color: formData.role === 'USER' ? 'white' : 'black',
-                        border: 'none', fontWeight: 'bold', transition: '0.3s'
-                    }}
+                    className={`role-toggle-btn ${formData.role === 'USER' ? 'user-active' : 'inactive'}`}
                 >
                     👤 Cá nhân
                 </button>
                 <button 
                     type="button"
                     onClick={() => setFormData({...formData, role: 'ENTERPRISE'})}
-                    style={{ 
-                        flex: 1, padding: '10px', borderRadius: '8px', cursor: 'pointer',
-                        backgroundColor: formData.role === 'ENTERPRISE' ? '#f0932b' : '#f1f2f6',
-                        color: formData.role === 'ENTERPRISE' ? 'white' : 'black',
-                        border: 'none', fontWeight: 'bold', transition: '0.3s'
-                    }}
+                    className={`role-toggle-btn ${formData.role === 'ENTERPRISE' ? 'enterprise-active' : 'inactive'}`}
                 >
                     🏢 Doanh nghiệp
                 </button>
             </div>
 
             <form onSubmit={handleRegister}>
-                <input style={{width: '100%', padding: '10px', marginBottom: '10px', boxSizing: 'border-box', borderRadius: '6px', border: '1px solid #ccc'}} placeholder="Họ và Tên" type="text" required
+                <input className="login-input" placeholder="Họ và Tên" type="text" required
                     onChange={e => setFormData({...formData, fullName: e.target.value})} />
-                <input style={{width: '100%', padding: '10px', marginBottom: '10px', boxSizing: 'border-box', borderRadius: '6px', border: '1px solid #ccc'}} placeholder="Email" type="email" required
+                <input className="login-input" placeholder="Email" type="email" required
                     onChange={e => setFormData({...formData, email: e.target.value})} />
-                <input style={{width: '100%', padding: '10px', marginBottom: '15px', boxSizing: 'border-box', borderRadius: '6px', border: '1px solid #ccc'}} placeholder="Mật khẩu" type="password" required
+                <input className="login-input" placeholder="Mật khẩu" type="password" required
                     onChange={e => setFormData({...formData, password: e.target.value})} />
-                <button style={{width: '100%', padding: '12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold'}} type="submit">
+                <button className="login-button register-submit-btn" type="submit">
                     Đăng ký
                 </button>
             </form>
             
-            <p style={{textAlign: 'center', color: message.includes('❌') ? 'red' : 'green', fontWeight: 'bold'}}>{message}</p>
+            <p className={`auth-register-message ${message.includes('❌') ? 'error' : 'success'}`}>{message}</p>
 
             {/* Chuyển sang đăng nhập */}
-            <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px' }}>
+            <div className="auth-center-link-row">
                 <span 
-                    style={{ color: '#0abde3', cursor: 'pointer', fontWeight: 'bold' }} 
+                    className="auth-link"
                     onClick={onSwitchToLogin}
                 >
                     Đã có tài khoản? Đăng nhập ngay

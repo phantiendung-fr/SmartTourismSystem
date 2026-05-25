@@ -24,8 +24,8 @@
 }
 
 .banner-btn {
-    width: 40px;
-    height: 40px;
+    min-width: 44px;
+    min-height: 44px;
     border-radius: 50%;
     border: none;
     background-color: rgba(255, 255, 255, 0.9);
@@ -48,6 +48,7 @@
     flex: 1;
     position: relative;
     z-index: 2;
+    padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
 }
 
 .header-info {
@@ -114,6 +115,7 @@
     display: inline-flex;
     align-items: center;
     margin-bottom: 25px;
+    min-height: 44px;
 }
 
 /* --- Sections --- */
@@ -225,6 +227,7 @@
     left: 0;
     width: 100%;
     padding: 20px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     background: linear-gradient(to top, rgba(255,255,255,1) 80%, rgba(255,255,255,0));
     box-sizing: border-box;
     display: flex;
@@ -243,4 +246,5 @@
     font-weight: bold;
     cursor: pointer;
     box-shadow: 0 4px 15px rgba(0, 188, 212, 0.4);
+    min-height: 48px;
 }

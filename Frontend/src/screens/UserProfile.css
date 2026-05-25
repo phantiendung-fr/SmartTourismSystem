@@ -1,0 +1,189 @@
+/* ===== USER PROFILE SCREEN ===== */
+.user-profile-screen {
+    padding: 24px;
+    padding-top: calc(24px + env(safe-area-inset-top, 0px));
+    background-color: #fafbfc;
+    min-height: 100%;
+    box-sizing: border-box;
+}
+
+.user-profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.user-profile-back-btn {
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: #576574;
+    cursor: pointer;
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+}
+
+.user-profile-edit-btn {
+    background: #0abde3;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    min-height: 44px;
+}
+
+.user-profile-title {
+    color: #222f3e;
+    margin-bottom: 10px;
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.user-profile-points-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background-color: #fff4e6;
+    padding: 15px 20px;
+    border-radius: 16px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(243, 156, 18, 0.15);
+    border: 1px solid #ffeaa7;
+}
+
+.user-profile-points-icon {
+    font-size: 24px;
+}
+
+.user-profile-points-label {
+    font-size: 13px;
+    color: #636e72;
+    font-weight: 600;
+}
+
+.user-profile-points-value {
+    font-size: 20px;
+    color: #f39c12;
+    font-weight: 800;
+}
+
+.user-profile-points-unit {
+    font-size: 14px;
+    color: #b2bec3;
+    font-weight: 500;
+}
+
+.user-profile-avatar-section {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+.user-profile-avatar-wrapper {
+    position: relative;
+}
+
+.user-profile-avatar-img {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #0abde3;
+}
+
+.user-profile-avatar-edit-btn {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: #0abde3;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    min-height: 30px;
+}
+
+.user-profile-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-profile-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.user-profile-field label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #576574;
+}
+
+.user-profile-field input,
+.user-profile-field select,
+.user-profile-field textarea {
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid #c8d6e5;
+    font-size: 16px;
+    min-height: 44px;
+    box-sizing: border-box;
+}
+
+.user-profile-field textarea {
+    resize: none;
+}
+
+.user-profile-field .view-value {
+    padding: 12px;
+    background-color: #f1f2f6;
+    border-radius: 12px;
+    color: #2d3436;
+    min-height: 20px;
+}
+
+.user-profile-field-row {
+    display: flex;
+    gap: 10px;
+}
+
+.user-profile-field-row > div {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-profile-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.user-profile-save-btn,
+.user-profile-cancel-btn {
+    flex: 1;
+    color: white;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    min-height: 48px;
+}
+
+.user-profile-save-btn {
+    background: #22a6b3;
+}
+
+.user-profile-cancel-btn {
+    background: #ee5253;
+}

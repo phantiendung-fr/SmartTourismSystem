@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+import './App.css';
 import SplashScreen from './screens/SplashScreen';
 import WelcomeScreen from './screens/WelcomeScreen';
 import RegisterScreen from './screens/Auth/RegisterScreen';
@@ -15,159 +17,252 @@ import HistoryScreen from './screens/Trip/HistoryScreen';
 import PlanRecommendScreen from './screens/Trip/PlanRecommendScreen';
 import TripDetailScreen from './screens/Trip/TripDetailScreen';
 import LocationDetailScreen from './screens/Trip/LocationDetailScreen';
+import { API_BASE } from './config/api';
+import { storageGet, storageRemove } from './platform/storage';
+import { showConfirm } from './platform/dialog';
 
-// Import Context và Overlay của Social Quest
 import { SocialQuestProvider } from './components/SocialQuest/SocialQuestProvider';
 import SocialQuestOverlay from './components/SocialQuest/SocialQuestOverlay';
-import LocationSimulator from './components/SocialQuest/LocationSimulator';
+// Bỏ comment nếu muốn test giả lập tương tác
+//import LocationSimulator from './components/SocialQuest/LocationSimulator';
+
+const NativeApp = registerPlugin('App');
+const EXIT_GUARD_SCREENS = new Set([
+    'trip_detail',
+    'plan_recommend',
+    'location_detail',
+    'profile_edit',
+    'register_location',
+]);
 
 function App() {
     const [currentScreen, setCurrentScreen] = useState('splash');
     const [isGuest, setIsGuest] = useState(false);
-
     const [currentUser, setCurrentUser] = useState(null);
     const [planPayload, setPlanPayload] = useState(null);
     const [currentItineraryId, setCurrentItineraryId] = useState(null);
     const [currentLocationDetail, setCurrentLocationDetail] = useState(null);
 
-    const refreshUser = async () => {
-        const token = localStorage.getItem('access_token');
+    const screenHistoryRef = useRef([]);
+    const currentScreenRef = useRef(currentScreen);
+
+    useEffect(() => {
+        currentScreenRef.current = currentScreen;
+    }, [currentScreen]);
+
+    const navigateTo = useCallback((nextScreen, options = {}) => {
+        const { resetHistory = false } = options;
+        setCurrentScreen((prevScreen) => {
+            if (resetHistory) {
+                screenHistoryRef.current = [];
+                return nextScreen;
+            }
+
+            if (prevScreen !== nextScreen) {
+                screenHistoryRef.current.push(prevScreen);
+            }
+
+            return nextScreen;
+        });
+    }, []);
+
+    const goBackFromHistory = useCallback((fallbackScreen = 'main') => {
+        const previousScreen = screenHistoryRef.current.pop();
+
+        if (previousScreen) {
+            setCurrentScreen(previousScreen);
+            return true;
+        }
+
+        if (currentScreenRef.current !== fallbackScreen) {
+            setCurrentScreen(fallbackScreen);
+            return true;
+        }
+
+        return false;
+    }, []);
+
+    const clearAuthSession = useCallback(async () => {
+        await Promise.all([
+            storageRemove('access_token'),
+            storageRemove('refresh_token'),
+        ]);
+    }, []);
+
+    const refreshUser = useCallback(async () => {
+        const token = await storageGet('access_token');
         if (!token) return;
+
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/auth/me', {
-                headers: { 'Authorization': `Bearer ${token}` }
+            const res = await fetch(`${API_BASE}/api/auth/me`, {
+                headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) {
                 const data = await res.json();
                 setCurrentUser(data);
             }
         } catch (error) {
-            console.error("Lỗi cập nhật user:", error);
+            console.error('Lỗi cập nhật user:', error);
         }
-    };
+    }, []);
 
-    // =========================================================================
-    // 1. TỰ ĐỘNG ĐĂNG NHẬP VÀ LẤY FULL DATA KHI MỞ APP (F5 KHÔNG BỊ MẤT)
-    // =========================================================================
     useEffect(() => {
         const fetchUserData = async () => {
-            const token = localStorage.getItem('access_token');
-            if (token) {
-                try {
-                    const res = await fetch('http://127.0.0.1:8000/api/auth/me', {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        setCurrentUser(data);
-                        setCurrentScreen('main'); 
-                    }
-                } catch (error) {
-                    console.error("Lỗi xác thực:", error);
+            const token = await storageGet('access_token');
+            if (!token) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/auth/me`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setCurrentUser(data);
+                    navigateTo('main', { resetHistory: true });
                 }
+            } catch (error) {
+                console.error('Lỗi xác thực:', error);
             }
         };
 
         if (currentScreen === 'welcome') {
             fetchUserData();
         }
-    }, [currentScreen]);
+    }, [currentScreen, navigateTo]);
 
-    const handleLogout = () => {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+    useEffect(() => {
+        if (!Capacitor.isNativePlatform()) return undefined;
+
+        let backListener = null;
+
+        const attachBackHandler = async () => {
+            try {
+                backListener = await NativeApp.addListener('backButton', async () => {
+                    const activeScreen = currentScreenRef.current;
+
+                    if (activeScreen === 'main') {
+                        const shouldExit = await showConfirm('Bạn có muốn thoát ứng dụng?', {
+                            title: 'Thoát ứng dụng',
+                            okButtonTitle: 'Thoát',
+                            cancelButtonTitle: 'Ở lại',
+                        });
+                        if (shouldExit) {
+                            await NativeApp.exitApp();
+                        }
+                        return;
+                    }
+
+                    const movedBack = goBackFromHistory();
+                    if (movedBack) return;
+
+                    if (EXIT_GUARD_SCREENS.has(activeScreen)) {
+                        navigateTo('main', { resetHistory: true });
+                        return;
+                    }
+
+                    const shouldExit = await showConfirm('Bạn có muốn thoát ứng dụng?', {
+                        title: 'Thoát ứng dụng',
+                        okButtonTitle: 'Thoát',
+                        cancelButtonTitle: 'Ở lại',
+                    });
+                    if (shouldExit) {
+                        await NativeApp.exitApp();
+                    }
+                });
+            } catch (error) {
+                console.warn('Không thể đăng ký Android back button listener:', error);
+            }
+        };
+
+        attachBackHandler();
+
+        return () => {
+            if (backListener) {
+                backListener.remove();
+            }
+        };
+    }, [goBackFromHistory, navigateTo]);
+
+    const handleLogout = async () => {
+        await clearAuthSession();
         setCurrentUser(null);
         setIsGuest(false);
-        setCurrentScreen('welcome');
+        navigateTo('welcome', { resetHistory: true });
     };
 
     const userRole = currentUser?.user?.role || currentUser?.role;
 
-    // =========================================================================
-    // GIAO DIỆN CHÍNH (Đã được bọc bởi SocialQuestProvider)
-    // =========================================================================
     return (
         <SocialQuestProvider user={currentUser?.user || currentUser}>
-            <div style={{ backgroundColor: '#e4e5e6', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <div className="app-container" style={{
-                    width: '390px',
-                    height: '844px',
-                    backgroundColor: '#fff',
-                    borderRadius: '40px',
-                    boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-                    overflow: 'hidden',
-                    position: 'relative',
-                    overflowY: 'auto',
-                    transform: 'scale(0.8)',
-                    transformOrigin: 'center',
-                    msOverflowStyle: 'none', scrollbarWidth: 'none'
-                }}>
-                    
-                    {/* Overlay sẽ luôn chạy ngầm và hiển thị Popup đè lên trên cùng khi có Quest */}
+            <div className="app-outer">
+                <div className="app-container">
                     <SocialQuestOverlay />
-                    <LocationSimulator />
+                    {/* ❌ XÓA HOẶC COMMENT DÒNG NÀY ĐỂ ẨN BẢNG GIẢ LẬP: */}
+                    {/* <LocationSimulator /> */}
 
-                    {currentScreen === 'splash' && <SplashScreen onFinish={() => setCurrentScreen('welcome')} />}
+                    {currentScreen === 'splash' && (
+                        <SplashScreen onFinish={() => navigateTo('welcome', { resetHistory: true })} />
+                    )}
 
                     {currentScreen === 'welcome' && (
                         <WelcomeScreen
-                            onSignIn={() => setCurrentScreen('login')}
-                            onCreateAccount={() => setCurrentScreen('register')}
+                            onSignIn={() => navigateTo('login')}
+                            onCreateAccount={() => navigateTo('register')}
                             onSkip={() => {
                                 setIsGuest(true);
-                                setCurrentScreen('main');
+                                navigateTo('main', { resetHistory: true });
                             }}
                         />
                     )}
 
                     {currentScreen === 'login' && (
                         <LoginScreen
-                            onBack={() => setCurrentScreen('welcome')}
-                            onSwitchToRegister={() => setCurrentScreen('register')}
-                            onForgotPassword={() => setCurrentScreen('forgot_password')}
+                            onBack={() => goBackFromHistory('welcome')}
+                            onSwitchToRegister={() => navigateTo('register')}
+                            onForgotPassword={() => navigateTo('forgot_password')}
                             onLoginSuccess={(userData) => {
                                 setIsGuest(false);
                                 setCurrentUser(userData);
-                                setCurrentScreen('main');
+                                navigateTo('main', { resetHistory: true });
                             }}
                         />
                     )}
 
                     {currentScreen === 'forgot_password' && (
                         <ForgotPasswordScreen
-                            onBack={() => setCurrentScreen('login')}
-                            onSwitchToLogin={() => setCurrentScreen('login')}
+                            onBack={() => goBackFromHistory('login')}
+                            onSwitchToLogin={() => navigateTo('login')}
                         />
                     )}
 
                     {currentScreen === 'register' && (
                         <RegisterScreen
-                            onBack={() => setCurrentScreen('welcome')}
-                            onSwitchToLogin={() => setCurrentScreen('login')}
+                            onBack={() => goBackFromHistory('welcome')}
+                            onSwitchToLogin={() => navigateTo('login')}
                         />
                     )}
 
                     {currentScreen === 'main' && (
-                        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                        <div className="app-main-screen">
                             {userRole === 'ENTERPRISE' ? (
                                 <EnterpriseTabs
                                     user={currentUser?.user || currentUser}
                                     onLogout={handleLogout}
-                                    onOpenLocationRegister={() => setCurrentScreen('register_location')}
-                                    onOpenProfileEdit={() => setCurrentScreen('profile_edit')}
+                                    onOpenLocationRegister={() => navigateTo('register_location')}
+                                    onOpenProfileEdit={() => navigateTo('profile_edit')}
                                 />
                             ) : (
                                 <MainTabs
                                     user={currentUser?.user || currentUser}
                                     isGuest={isGuest}
-                                    onRequireLogin={() => setCurrentScreen('login')}
+                                    onRequireLogin={() => navigateTo('login')}
                                     onLogout={handleLogout}
-                                    onOpenPlan={() => setCurrentScreen('plan')}
-                                    onOpenProfileEdit={() => setCurrentScreen('profile_edit')}
-                                    onOpenHistory={() => setCurrentScreen('history')}
+                                    onOpenPlan={() => navigateTo('plan')}
+                                    onOpenProfileEdit={() => navigateTo('profile_edit')}
+                                    onOpenHistory={() => navigateTo('history')}
                                     onOpenTripDetail={(id) => {
                                         setCurrentItineraryId(id);
-                                        setCurrentScreen('trip_detail');
+                                        navigateTo('trip_detail');
                                     }}
                                 />
                             )}
@@ -175,19 +270,19 @@ function App() {
                     )}
 
                     {currentScreen === 'history' && (
-                        <HistoryScreen onBack={() => setCurrentScreen('main')} />
+                        <HistoryScreen onBack={() => goBackFromHistory('main')} />
                     )}
 
                     {currentScreen === 'profile_edit' && (
                         <UserProfile
                             user={currentUser?.user || currentUser}
-                            onBack={() => setCurrentScreen('main')}
+                            onBack={() => goBackFromHistory('main')}
                             onUpdateSuccess={(updatedData) => {
-                                setCurrentUser(prev => {
+                                setCurrentUser((prev) => {
                                     const oldUserData = prev?.user || prev || {};
                                     return {
                                         ...prev,
-                                        user: { ...oldUserData, ...updatedData }
+                                        user: { ...oldUserData, ...updatedData },
                                     };
                                 });
                             }}
@@ -196,60 +291,61 @@ function App() {
 
                     {currentScreen === 'plan' && (
                         isGuest || !currentUser ? (
-                            (() => { setCurrentScreen('login'); return null; })()
+                            (() => {
+                                navigateTo('login');
+                                return null;
+                            })()
                         ) : (
                             <TripInputForm
                                 onSubmitPlan={(collectedData) => {
                                     setPlanPayload(collectedData);
-                                    setCurrentScreen('plan_recommend');
+                                    navigateTo('plan_recommend');
                                 }}
-                                onCancel={() => setCurrentScreen('main')}
+                                onCancel={() => goBackFromHistory('main')}
                             />
                         )
                     )}
 
-                {currentScreen === 'plan_recommend' && (
-                    <PlanRecommendScreen
-                        planPayload={planPayload}
-                        onBack={() => setCurrentScreen('plan')}
-                        onTripCreated={(itineraryId) => {
-                            setCurrentItineraryId(itineraryId);
-                            setCurrentScreen('trip_detail');
-                        }}
-                        onOpenLocationDetail={(loc) => {
-                            setCurrentLocationDetail(loc);
-                            setCurrentScreen('location_detail');
-                        }}
-                        onSessionExpired={() => {
-                            localStorage.removeItem('access_token');
-                            localStorage.removeItem('refresh_token');
-                            setCurrentScreen('login');
-                        }}
-                        refreshUser={refreshUser}
-                    />
-                )}
+                    {currentScreen === 'plan_recommend' && (
+                        <PlanRecommendScreen
+                            planPayload={planPayload}
+                            onBack={() => goBackFromHistory('plan')}
+                            onTripCreated={(itineraryId) => {
+                                setCurrentItineraryId(itineraryId);
+                                navigateTo('trip_detail');
+                            }}
+                            onOpenLocationDetail={(loc) => {
+                                setCurrentLocationDetail(loc);
+                                navigateTo('location_detail');
+                            }}
+                            onSessionExpired={async () => {
+                                await clearAuthSession();
+                                navigateTo('login', { resetHistory: true });
+                            }}
+                            refreshUser={refreshUser}
+                        />
+                    )}
 
-                {currentScreen === 'location_detail' && (
-                    <LocationDetailScreen
-                        location={currentLocationDetail}
-                        onBack={() => setCurrentScreen('plan_recommend')}
-                    />
-                )}
+                    {currentScreen === 'location_detail' && (
+                        <LocationDetailScreen
+                            location={currentLocationDetail}
+                            onBack={() => goBackFromHistory('plan_recommend')}
+                        />
+                    )}
 
-                {currentScreen === 'trip_detail' && (
-                    <TripDetailScreen
-                        itineraryId={currentItineraryId}
-                        onBack={() => setCurrentScreen('main')}
-                        refreshUser={refreshUser}
-                        onPointsUpdate={refreshUser}
-                        user={currentUser?.user || currentUser}
-                    />
-                )}
+                    {currentScreen === 'trip_detail' && (
+                        <TripDetailScreen
+                            itineraryId={currentItineraryId}
+                            onBack={() => goBackFromHistory('main')}
+                            refreshUser={refreshUser}
+                            onPointsUpdate={refreshUser}
+                            user={currentUser?.user || currentUser}
+                        />
+                    )}
 
-                {currentScreen === 'register_location' && (
-                    <LocationRegister onBack={() => setCurrentScreen('main')} />
-                )}
-
+                    {currentScreen === 'register_location' && (
+                        <LocationRegister onBack={() => goBackFromHistory('main')} />
+                    )}
                 </div>
             </div>
         </SocialQuestProvider>
