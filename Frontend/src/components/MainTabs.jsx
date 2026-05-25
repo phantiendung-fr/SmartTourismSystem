@@ -68,7 +68,11 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
     const [questSuccess, setQuestSuccess] = useState(null);
 
     const userLocationRef = useRef(userLocation);
-
+    const mapComponentRef = useRef(null);
+    const [showMapSearch, setShowMapSearch] = useState(false);
+    const [showMapMenu, setShowMapMenu] = useState(false);
+    const [mapStyle, setMapStyle] = useState('voyager');
+    const [showHiddenTasks, setShowHiddenTasks] = useState(true);
     // Update location ref
     useEffect(() => {
         userLocationRef.current = userLocation;
@@ -197,46 +201,75 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
 
     // Các trang giả định (Placeholder) cho các tab chưa code
     const LocationScreen = () => (
-        <div className="location-screen">
-            <h2>📍 Vị trí hiện tại</h2>
-
+        <div className="location-screen-full">
             <MapComponent 
+                ref={mapComponentRef}
                 userLocation={userLocation} 
                 stops={[]} 
                 hiddenTasks={hiddenTasks} 
-                onHiddenTaskClick={handleHiddenTaskClick} 
+                onHiddenTaskClick={handleHiddenTaskClick}
+                fullScreen={true}
+                mapStyle={mapStyle}
+                showHiddenTasks={showHiddenTasks}
             />
 
-            {!isGuest && (
-                <HiddenQuestDebug 
-                    userLocation={userLocation} 
-                    onSpawnSuccess={fetchActiveTasks}
-                    onTestClaim={(testTask) => {
-                        setSelectedTask(testTask);
-                        setShowChestAnimation(true);
-                    }}
-                />
-            )}
-
-            {userLocation ? (
-                <div className="location-coords-card">
-                    <p>Tọa độ của bạn:</p>
-                    <div className="location-coords-row">
-                        <div><small>Vĩ độ:</small> <strong>{userLocation.lat.toFixed(6)}</strong></div>
-                        <div><small>Kinh độ:</small> <strong>{userLocation.lng.toFixed(6)}</strong></div>
+            {/* Overlays on top of the map */}
+            <div className="map-overlay-top">
+                <div className="map-title-box">
+                    <h1 className="map-title-main">Hành trình</h1>
+                    <div className="map-title-sub">
+                        <span className="dot-blue"></span> BẢN ĐỒ TRỰC TUYẾN
                     </div>
                 </div>
-            ) : (
-                <div className="location-loading">
-                    🛰️ Đang xác định vị trí của bạn...
+                <div className="map-top-actions">
+                    <button className="map-circle-btn" onClick={() => setShowMapSearch(!showMapSearch)}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    </button>
+                    <button className="map-circle-btn" onClick={() => setShowMapMenu(!showMapMenu)}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </button>
+                </div>
+            </div>
+
+            {/* Quick Search Overlay */}
+            {showMapSearch && (
+                <div className="map-search-overlay" style={{ position: 'absolute', top: '100px', left: '20px', right: '20px', background: '#fff', borderRadius: '16px', padding: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', zIndex: 20 }}>
+                    <input type="text" placeholder="Tìm kiếm trên bản đồ..." style={{ width: '100%', border: 'none', outline: 'none', fontSize: '15px' }} autoFocus />
                 </div>
             )}
 
-            <div className="location-tip-box">
-                <h4>💡 Mẹo nhỏ</h4>
-                <p>
-                    Bản đồ này sẽ giúp bạn theo dõi vị trí của mình trong suốt hành trình. Khi bạn bắt đầu một chuyến đi, lịch trình sẽ hiển thị trực tiếp tại đây!
-                </p>
+            {/* Map Menu Overlay */}
+            {showMapMenu && (
+                <div className="map-menu-overlay" style={{ position: 'absolute', top: '100px', right: '20px', background: '#fff', borderRadius: '16px', padding: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', zIndex: 20, display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '150px' }}>
+                    <button onClick={() => { setMapStyle('voyager'); setShowMapMenu(false); }} style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', padding: '5px', color: '#3b82f6', fontWeight: mapStyle === 'voyager' ? 'bold' : 'normal' }}>🗺️ Bản đồ gốc</button>
+                    <button onClick={() => { setMapStyle('satellite'); setShowMapMenu(false); }} style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', padding: '5px', fontWeight: mapStyle === 'satellite' ? 'bold' : 'normal' }}>🛰️ Bản đồ Vệ tinh</button>
+                    <button onClick={() => { setMapStyle('traffic'); setShowMapMenu(false); }} style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', padding: '5px', fontWeight: mapStyle === 'traffic' ? 'bold' : 'normal' }}>🚗 Bản đồ Tối (Giao thông)</button>
+                    <button onClick={() => { setShowHiddenTasks(!showHiddenTasks); setShowMapMenu(false); }} style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', padding: '5px', color: '#8e44ad' }}>🔮 {showHiddenTasks ? 'Ẩn nhiệm vụ' : 'Hiện nhiệm vụ ẩn'}</button>
+                </div>
+            )}
+
+            <button className="map-my-location-btn" onClick={() => {
+                mapComponentRef.current?.flyToUserLocation();
+            }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+            </button>
+
+            {/* Keep debug tool hidden in UI but available in DOM if needed */}
+            <div style={{display: 'none'}}>
+                {!isGuest && (
+                    <HiddenQuestDebug 
+                        userLocation={userLocation} 
+                        onSpawnSuccess={fetchActiveTasks}
+                        onTestClaim={(testTask) => {
+                            setSelectedTask(testTask);
+                            setShowChestAnimation(true);
+                        }}
+                    />
+                )}
             </div>
         </div>
     );
@@ -494,49 +527,43 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
             {/* Thanh menu dưới đáy */}
             <div className="bottom-nav">
                 <div className={`nav-item ${activeTab === 'home' ? 'active' : ''}`} onClick={() => handleTabChange('home')}>
-                    <svg className="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'home' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    <svg className="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
                     </svg>
-                    <span className="nav-label">Trang chủ</span>
                 </div>
 
                 <div className={`nav-item ${activeTab === 'location' ? 'active' : ''}`} onClick={() => handleTabChange('location')}>
                     <svg className="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'location' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle>
                     </svg>
-                    <span className="nav-label">Vị trí</span>
+                </div>
+
+                <div className={`nav-item ${activeTab === 'friends' ? 'active' : ''}`} onClick={() => handleTabChange('friends')}>
+                    <svg className="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
                 </div>
 
                 <div className={`nav-item ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => handleTabChange('leaderboard')}>
-                    <svg className="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'leaderboard' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg className="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
                         <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
                         <path d="M4 22h16"></path>
                         <path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34"></path>
                         <path d="M12 2a6 6 0 0 1 6 6v5a6 6 0 0 1-6 6 a6 6 0 0 1-6-6V8a6 6 0 0 1 6-6z"></path>
                     </svg>
-                    <span className="nav-label">Xếp hạng</span>
-                </div>
-
-                <div className={`nav-item ${activeTab === 'friends' ? 'active' : ''}`} onClick={() => handleTabChange('friends')}>
-                    <svg className="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'friends' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                    <span className="nav-label">Bạn bè</span>
                 </div>
 
                 <div className={`nav-item ${activeTab === 'favorites' ? 'active' : ''}`} onClick={() => handleTabChange('favorites')}>
-                    <svg className="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'favorites' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    <svg className="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
                     </svg>
-                    <span className="nav-label">Yêu thích</span>
                 </div>
 
                 <div className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => handleTabChange('profile')}>
-                    <svg className="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'profile' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg className="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
                     </svg>
-                    <span className="nav-label">Cá nhân</span>
                 </div>
             </div>
 

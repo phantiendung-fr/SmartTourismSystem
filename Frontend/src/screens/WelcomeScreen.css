@@ -1,96 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap');
+
 .welcome-container {
     width: 100%;
     min-height: 100vh;
     min-height: 100dvh;
+    margin: 0 auto;
     background: #ffffff;
     display: flex;
     flex-direction: column;
-    padding: 24px;
-    padding-top: calc(24px + env(safe-area-inset-top, 0px));
+    padding: 32px 24px;
+    padding-top: calc(32px + env(safe-area-inset-top, 0px));
     box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Inter', sans-serif;
+    position: relative;
+    overflow: hidden;
 }
 
 .skip-btn {
     align-self: flex-end;
-    background: none;
-    border: none;
-    font-size: 16px;
-    font-weight: 600;
+    background: transparent;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
     cursor: pointer;
-    color: #222f3e;
-    padding: 10px 0;
+    color: #6b7280;
+    padding: 8px 16px;
+    text-transform: uppercase;
+    transition: 0.2s;
+}
+
+.skip-btn:hover {
+    background: #f3f4f6;
 }
 
 /* Xếp hình ghép (Collage) */
 .collage {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin-top: 10px;
     position: relative;
-    height: min(320px, 40vh);
+    height: 280px;
+    margin-top: 25px;
+    margin-bottom: 25px;
 }
 
-.img-1, .img-2 {
-    width: 45%;
-    height: 180px;
-    border-radius: 24px;
+.img-1, .img-2, .img-3 {
+    position: absolute;
     object-fit: cover;
+    border-radius: 32px;
 }
 
-.img-1 { margin-right: 10px; margin-top: 20px; }
-.img-2 { background-color: #eee; }
-
-.img-3 {
-    width: 80%;
+/* Hiker */
+.img-1 {
+    width: 42%;
     height: 140px;
-    border-radius: 24px;
-    object-fit: cover;
-    margin-top: -60px; /* Kéo lên đè lên 2 ảnh trên */
-    border: 6px solid #ffffff; /* Viền trắng tạo hiệu ứng cắt */
+    top: 0;
+    left: 10%;
     z-index: 2;
+    border: 4px solid #ffffff;
 }
 
-/* Typography giống Figma */
+/* Lake */
+.img-2 {
+    width: 44%;
+    height: 120px;
+    top: 125px;
+    left: 4%;
+    z-index: 3;
+    border: 4px solid #ffffff;
+}
+
+/* Dubai */
+.img-3 {
+    width: 52%;
+    height: 210px;
+    top: 35px;
+    right: 5%;
+    z-index: 1;
+}
+
+/* Khối chữ */
 .text-section {
-    margin-top: 20px;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .title-line {
-    font-size: 36px;
+    font-size: 38px;
     font-weight: 900;
-    color: #111;
     margin: 0;
-    line-height: 1.2;
+    line-height: 1.05;
+    letter-spacing: -1px;
 }
 
-/* Tạo khối nền chéo màu cam cho chữ Destinations */
-.highlight-box {
-    display: inline-block;
-    background-color: #e19842;
-    color: white;
-    padding: 5px 15px;
-    margin-top: 5px;
-    transform: skewX(-10deg); /* Kéo nghiêng khối nền */
+.text-black {
+    color: #0b0f19;
 }
 
-.highlight-box span {
-    display: inline-block;
-    transform: skewX(10deg); /* Dựng thẳng chữ lại */
+.text-gray {
+    color: #9ca3af;
+}
+
+.text-blue {
+    color: #3b82f6;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sparkle-icon {
+    margin-bottom: 12px;
 }
 
 .sub-text {
-    color: #576574;
-    font-size: 15px;
-    margin-top: 15px;
+    color: #6b7280;
+    font-size: 14px;
+    margin-top: 12px;
     line-height: 1.5;
+    font-weight: 500;
+    padding-right: 20px;
 }
 
 /* Nút bấm */
 .btn-group {
-    margin-top: auto; /* Đẩy các nút xuống cuối màn hình */
-    margin-bottom: 20px;
+    margin-top: auto;
+    margin-bottom: 10px;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -99,22 +134,43 @@
 .btn-primary, .btn-outline {
     width: 100%;
     padding: 16px;
-    border-radius: 30px;
-    font-size: 16px;
-    font-weight: 600;
+    border-radius: 16px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
     cursor: pointer;
     transition: 0.2s;
-    min-height: 48px;
+    min-height: 54px;
 }
 
 .btn-primary {
-    background-color: #0062cc;
+    background-color: #3b82f6;
     color: white;
     border: none;
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+}
+
+.btn-primary:hover {
+    background-color: #2563eb;
 }
 
 .btn-outline {
     background-color: transparent;
-    color: #222f3e;
-    border: 1.5px solid #222f3e;
+    color: #6b7280;
+    border: 1.5px solid #e5e7eb;
+}
+
+.btn-outline:hover {
+    background-color: #f9fafb;
+    color: #374151;
+}
+
+@media (min-width: 481px) {
+    .welcome-container {
+        max-width: 480px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        border-radius: 20px;
+        min-height: auto;
+        height: 100%;
+    }
 }

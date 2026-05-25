@@ -11,13 +11,13 @@ const ISLAND_REGIONS = {
         { id: 't4', left: '40%', top: '58%', width: '10%', height: '10%' }
     ],
     hotel: [
-        { id: 'h1', left: '60%', top: '10%', width: '10%', height: '10%' },
+        { id: 'h1', left: '60%', top: '13%', width: '10%', height: '10%' },
         { id: 'h2', left: '25%', top: '22%', width: '10%', height: '10%' },
         { id: 'h3', left: '55%', top: '28%', width: '10%', height: '10%' },
         { id: 'h4', left: '50%', top: '52%', width: '10%', height: '10%' }
     ],
     park: [
-        { id: 'p1', left: '50%', top: '10%', width: '10%', height: '10%' },
+        { id: 'p1', left: '50%', top: '13%', width: '10%', height: '10%' },
         { id: 'p2', left: '35%', top: '22%', width: '10%', height: '10%' },
         { id: 'p3', left: '65%', top: '28%', width: '10%', height: '10%' },
         { id: 'p4', left: '40%', top: '46%', width: '10%', height: '10%' }
@@ -27,7 +27,7 @@ const ISLAND_REGIONS = {
         { id: 's2', left: '30%', top: '50%', width: '10%', height: '6%' },
         { id: 's3', left: '30%', top: '65%', width: '10%', height: '6%' },
         { id: 's4', left: '75%', top: '20%', width: '10%', height: '6%' },
-        { id: 's5', left: '80%', top: '40%', width: '10%', height: '6%' },
+        { id: 's5', left: '78%', top: '45%', width: '10%', height: '6%' },
         { id: 's6', left: '70%', top: '60%', width: '10%', height: '6%' },
         { id: 's7', left: '45%', top: '80%', width: '10%', height: '6%' },
         { id: 's8', left: '55%', top: '85%', width: '10%', height: '6%' }
@@ -278,8 +278,8 @@ const IslandMap = ({ stops = [], onBuildingClick }) => {
                 className="island-background"
                 style={{
                     backgroundImage: `url('${process.env.PUBLIC_URL || ''}/assets/island/map-dao.png')`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center bottom',
+                    backgroundSize: '100% 100%',
+                    backgroundPosition: 'center',
                     backgroundRepeat: 'no-repeat',
                     cursor: 'crosshair'
                 }}
@@ -330,6 +330,7 @@ const IslandMap = ({ stops = [], onBuildingClick }) => {
                     );
                 })}
             </div>
+
 
             {/* Lớp 2: Tất cả các nhãn tên (Nằm trên cùng để trôi nổi hoàn toàn) */}
             <div className="labels-layer" style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, pointerEvents: 'none'}}>

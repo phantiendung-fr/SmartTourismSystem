@@ -115,11 +115,7 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
                     </div>
                 </div>
 
-                {/* Thanh Tìm Kiếm */}
-                <div className="search-bar home-search">
-                    <span>🔍</span>
-                    <input type="text" placeholder="Bạn muốn đi đâu hôm nay?" />
-                </div>
+
             </div>
             {/* ============ KẾT THÚC KHU VỰC GHIM CỐ ĐỊNH ============ */}
 
