@@ -165,6 +165,37 @@ class UserProfiles(SQLModel, table=True):
     points_balance: int = Field(default=0, ge=0)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
+    @property
+    def travel_credits(self) -> int:
+        return self.points_balance
+
+    @travel_credits.setter
+    def travel_credits(self, value: int):
+        self.points_balance = value
+
+    @property
+    def footprints(self) -> int:
+        return self.total_points
+
+    @footprints.setter
+    def footprints(self, value: int):
+        self.total_points = value
+
+    @property
+    def status(self) -> str:
+        if self.total_points >= 1000:
+            return "Đại sứ"
+        elif self.total_points >= 500:
+            return "Người bản địa"
+        elif self.total_points >= 200:
+            return "Tín đồ xê dịch"
+        return "Tân binh"
+
+    @status.setter
+    def status(self, value: str):
+        pass
+
+
 
 class UserSessions(SQLModel, table=True):
     __tablename__ = "user_sessions"
@@ -827,4 +858,187 @@ class HiddenTaskCooldowns(SQLModel, table=True):
     user_id: UUID = Field(foreign_key="users.user_id", index=True)
     cooldown_until: datetime
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ============================================================
+# NEW TABLES FOR MODERATION, SOCIAL & COMPANIONS
+# ============================================================
+
+class LocationSubmissions(SQLModel, table=True):
+    __tablename__ = "location_submissions"
+
+    submission_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    location_id: Optional[UUID] = Field(default=None, foreign_key="locations.location_id", nullable=True)
+    enterprise_id: UUID = Field(foreign_key="enterprise_profiles.enterprise_id")
+    type: str = Field(max_length=50) # CREATE, UPDATE, DELETE_REQUEST
+    status: str = Field(default="PENDING", max_length=50) # PENDING, APPROVED, REJECTED
+    data_json: str = Field(sa_column=Column(TEXT, nullable=False))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    reviewed_at: Optional[datetime] = Field(default=None)
+    reviewed_by: Optional[UUID] = Field(default=None, foreign_key="users.user_id", nullable=True)
+    reject_reason: Optional[str] = Field(default=None, max_length=255)
+
+
+class LocationVerificationLogs(SQLModel, table=True):
+    __tablename__ = "location_verification_logs"
+
+    log_id: Optional[int] = Field(default=None, primary_key=True)
+    submission_id: Optional[UUID] = Field(default=None, foreign_key="location_submissions.submission_id", nullable=True)
+    location_id: Optional[UUID] = Field(default=None, foreign_key="locations.location_id", nullable=True)
+    admin_id: Optional[UUID] = Field(default=None, foreign_key="users.user_id", nullable=True)
+    action: str = Field(max_length=50) # APPROVE, REJECT, HIDE, UNHIDE
+    reason: Optional[str] = Field(default=None, max_length=255)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class SocialPosts(SQLModel, table=True):
+    __tablename__ = "social_posts"
+
+    post_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    user_id: UUID = Field(foreign_key="users.user_id")
+    itinerary_id: Optional[UUID] = Field(default=None, foreign_key="itineraries.itinerary_id", nullable=True)
+    caption: Optional[str] = Field(default=None, sa_column=Column(TEXT, nullable=True))
+    image_url: str = Field(sa_column=Column(TEXT, nullable=False))
+    location_name: Optional[str] = Field(default=None, max_length=255)
+    likes_count: int = Field(default=0)
+    comments_count: int = Field(default=0)
+    privacy_status: str = Field(default="PUBLIC", max_length=20) # PUBLIC, FRIENDS, PRIVATE
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class PostLikes(SQLModel, table=True):
+    __tablename__ = "post_likes"
+
+    user_id: UUID = Field(foreign_key="users.user_id", primary_key=True)
+    post_id: UUID = Field(foreign_key="social_posts.post_id", primary_key=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class PostComments(SQLModel, table=True):
+    __tablename__ = "post_comments"
+
+    comment_id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: UUID = Field(foreign_key="users.user_id")
+    post_id: UUID = Field(foreign_key="social_posts.post_id")
+    content: str = Field(sa_column=Column(TEXT, nullable=False))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class PostSaves(SQLModel, table=True):
+    __tablename__ = "post_saves"
+
+    save_id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: UUID = Field(foreign_key="users.user_id")
+    post_id: UUID = Field(foreign_key="social_posts.post_id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Friendships(SQLModel, table=True):
+    __tablename__ = "friendships"
+
+    friendship_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    user_id: UUID = Field(foreign_key="users.user_id")
+    friend_id: UUID = Field(foreign_key="users.user_id")
+    status: str = Field(max_length=50) # PENDING, ACCEPTED, DECLINED
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ChatMessages(SQLModel, table=True):
+    __tablename__ = "chat_messages"
+
+    message_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    sender_id: UUID = Field(foreign_key="users.user_id")
+    receiver_id: UUID = Field(foreign_key="users.user_id")
+    content: str = Field(sa_column=Column(TEXT, nullable=False))
+    message_type: str = Field(default="TEXT", max_length=20) # TEXT, IMAGE
+    is_read: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class MatchingRequests(SQLModel, table=True):
+    __tablename__ = "matching_requests"
+
+    request_id: UUID = Field(default_factory=uuid4, primary_key=True)
+    user_id: UUID = Field(foreign_key="users.user_id")
+    city_id: int = Field(foreign_key="cities.city_id")
+    start_date: date
+    end_date: date
+    notes: Optional[str] = Field(default=None, sa_column=Column(TEXT, nullable=True))
+    status: str = Field(default="OPEN", max_length=20) # OPEN, MATCHED, CLOSED
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Milestones(SQLModel, table=True):
+    __tablename__ = "milestones"
+
+    milestone_id: Optional[int] = Field(default=None, primary_key=True)
+    milestone_name: str = Field(max_length=255)
+    vibe_tag: str = Field(max_length=255)
+    description: Optional[str] = Field(default=None, sa_column=Column(TEXT, nullable=True))
+    icon_url: Optional[str] = Field(default=None, sa_column=Column(TEXT, nullable=True))
+    requirement: Optional[str] = Field(default=None, sa_column=Column(TEXT, nullable=True))
+    credit_reward: int = Field(default=100)
+
+
+class UserMilestones(SQLModel, table=True):
+    __tablename__ = "user_milestones"
+
+    user_id: UUID = Field(foreign_key="users.user_id", primary_key=True, index=True)
+    milestone_id: int = Field(foreign_key="milestones.milestone_id", primary_key=True, index=True)
+    unlocked_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class DiscoveryPrompts(SQLModel, table=True):
+    __tablename__ = "discovery_prompts"
+
+    prompt_id: Optional[int] = Field(default=None, primary_key=True)
+    title: str = Field(max_length=255)
+    description: Optional[str] = Field(default=None, sa_column=Column(TEXT, nullable=True))
+    difficulty: Optional[str] = Field(default=None, max_length=50)
+    footprint_reward: int = Field(default=300)
+    target_count: int = Field(default=1)
+
+
+class UserPrompts(SQLModel, table=True):
+    __tablename__ = "user_prompts"
+
+    user_id: UUID = Field(foreign_key="users.user_id", primary_key=True, index=True)
+    prompt_id: int = Field(foreign_key="discovery_prompts.prompt_id", primary_key=True, index=True)
+    current_progress: int = Field(default=0)
+    is_completed: bool = Field(default=False)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Privileges(SQLModel, table=True):
+    __tablename__ = "privileges"
+
+    privilege_id: Optional[int] = Field(default=None, primary_key=True)
+    brand_name: str = Field(max_length=255)
+    title: str = Field(max_length=255)
+    description: Optional[str] = Field(default=None, sa_column=Column(TEXT, nullable=True))
+    credit_cost: int = Field(default=0)
+    image_url: Optional[str] = Field(default=None, sa_column=Column(TEXT, nullable=True))
+    is_active: bool = Field(default=True)
+
+
+class UserPrivileges(SQLModel, table=True):
+    __tablename__ = "user_privileges"
+
+    user_id: UUID = Field(foreign_key="users.user_id", primary_key=True, index=True)
+    privilege_id: int = Field(foreign_key="privileges.privilege_id", primary_key=True, index=True)
+    redeemed_at: datetime = Field(default_factory=datetime.utcnow)
+    code: str = Field(max_length=255, unique=True, index=True)
+    is_used: bool = Field(default=False)
+
+
+class LocalAmbassadors(SQLModel, table=True):
+    __tablename__ = "local_ambassadors"
+
+    ambassador_id: Optional[int] = Field(default=None, primary_key=True)
+    location_id: UUID = Field(foreign_key="locations.location_id", index=True)
+    user_id: UUID = Field(foreign_key="users.user_id", index=True)
+    month: date
+    checkin_count: int = Field(default=0)
+
+
 

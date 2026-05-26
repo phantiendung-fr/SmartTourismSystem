@@ -48,6 +48,17 @@ const MapComponent = forwardRef(({ stops = [], userLocation = null, hiddenTasks 
             } else {
                 alert("Vui lòng bật định vị GPS và chờ trong giây lát.");
             }
+        },
+        flyToLocation: (lat, lon, name) => {
+            if (mapInstance.current && lat && lon) {
+                const targetZoom = Math.max(mapInstance.current.getZoom(), USER_LOCATION_ZOOM - 2);
+                mapInstance.current.flyTo([parseFloat(lat), parseFloat(lon)], targetZoom, { animate: true, duration: 1.2 });
+                
+                L.popup({ className: 'game-map-popup' })
+                    .setLatLng([parseFloat(lat), parseFloat(lon)])
+                    .setContent(`<b>${name || 'Địa điểm tìm kiếm'}</b>`)
+                    .openOn(mapInstance.current);
+            }
         }
     }));
 

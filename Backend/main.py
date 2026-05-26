@@ -32,9 +32,11 @@ async def lifespan(app: FastAPI):
         from sqlmodel import Session
         from database import engine
         from api.achievements import seed_default_achievements
+        from api.gamification_seeding import seed_default_gamification_shop
         with Session(engine) as session:
             seed_default_achievements(session)
-        print("Khoi tao du lieu thanh tuu thanh cong!")
+            seed_default_gamification_shop(session)
+        print("Khoi tao du lieu thanh tuu va shop gamification thanh cong!")
     except Exception as e:
         print(f"LOI KET NOI DATABASE: {str(e)}")
         print("Canh bao: Server van chay nhung cac chuc nang lien quan den DB se loi.")
@@ -83,7 +85,7 @@ app.add_middleware(
 # app.include_router(locations.router, prefix="/api/v1/locations", tags=["Locations"])
 # app.include_router(itineraries.router, prefix="/api/v1/itineraries", tags=["Itineraries"])
 
-from routers import auth, enterprise, location_router, gamification, task_router, social_quest, hidden_quest, enterprise_event
+from routers import auth, enterprise, location_router, gamification, task_router, social_quest, hidden_quest, enterprise_event, explore, community, admin
 from api import planning, locations, trips, reference, leaderboard, achievements
 
 app.include_router(auth.router, prefix="/api/auth")
@@ -100,6 +102,12 @@ app.include_router(leaderboard.router)
 app.include_router(achievements.router)
 app.include_router(hidden_quest.router)
 app.include_router(enterprise_event.router)
+
+# Đăng ký các routers mới cho Admin, Social Feed & Chat, Proxy Maps
+app.include_router(explore.router)
+app.include_router(community.router)
+app.include_router(admin.router)
+
 
 # ============================================================
 # Health check

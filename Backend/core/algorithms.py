@@ -162,3 +162,31 @@ def tsp_dp_bitmask(locations: List[Tuple]) -> Tuple[List, float]:
     path_ids = [ids[i] for i in path]
 
     return path_ids, min_dist
+
+
+def calculate_hybrid_score(user1: dict, user2: dict, extra_context: dict = {}) -> float:
+    """Tính điểm tương đồng giữa 2 người dùng (Hybrid Matching)"""
+    # Itinerary Overlap
+    dest1 = user1.get("planned_destinations", [])
+    dest2 = user2.get("planned_destinations", [])
+    itinerary_score = 1.0 if set(dest1) & set(dest2) else 0.5
+    
+    # Vibe/Style Match
+    style1 = (user1.get("travel_style") or "").lower()
+    style2 = (user2.get("travel_style") or "").lower()
+    style_score = 1.0 if style1 == style2 and style1 != "" else 0.2
+    
+    # Tag Match
+    # Jaccard similarity between tags
+    tags1 = user1.get("interests", [])
+    tags2 = user2.get("interests", [])
+    
+    set1 = set(t.lower().strip() for t in tags1)
+    set2 = set(t.lower().strip() for t in tags2)
+    if not set1 or not set2:
+        tag_match = 0.0
+    else:
+        tag_match = len(set1 & set2) / len(set1 | set2)
+    
+    final_score = (itinerary_score * 0.4) + (style_score * 0.3) + (tag_match * 0.3)
+    return round(70 + (final_score * 29), 1) # Range 70-99%

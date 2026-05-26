@@ -23,7 +23,8 @@ import {
     Globe,
     Activity,
     HelpCircle,
-    AlertTriangle
+    AlertTriangle,
+    ShieldAlert
 } from 'lucide-react';
 import './MainTabs.css';
 
@@ -31,6 +32,9 @@ import './MainTabs.css';
 import Traveltrip from '../screens/Travel_trip';
 import MapComponent from './Map/MapComponent';
 import Leaderboard from './Leaderboard';
+import SocialFeedScreen from './SocialFeedScreen';
+import FindCompanionsScreen from './FindCompanionsScreen';
+import ChatScreen from './ChatScreen';
 
 // Import services and components for Hidden Quests
 import { getActiveTasks, pingLocation, verifyQuest } from '../services/hiddenQuestService';
@@ -55,53 +59,151 @@ const getTierMeta = (level) => {
     return { label: 'Bạch Kim', shortLabel: 'Bạch Kim', icon: Trophy };
 };
 
-const getAchievementIcon = (achievement) => {
-    const category = String(achievement?.category || '').toLowerCase();
-    const type = String(achievement?.type || '').toLowerCase();
-    const title = String(achievement?.title || '').toLowerCase();
-    const key = `${category} ${type} ${title}`;
-
-    if (key.includes('check') || key.includes('gps') || key.includes('địa điểm')) return <MapPin size={18} className="achievement-icon-svg" />;
-    if (key.includes('ảnh') || key.includes('photo')) return <Camera size={18} className="achievement-icon-svg" />;
-    if (key.includes('thưởng') || key.includes('rank') || key.includes('top')) return <Trophy size={18} className="achievement-icon-svg" />;
-    if (key.includes('chuỗi') || key.includes('streak')) return <Star size={18} className="achievement-icon-svg" />;
-    return <Award size={18} className="achievement-icon-svg" />;
-};
-
-const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenLocationRegister, onOpenProfileEdit, onOpenHistory, onOpenTripDetail }) => {
+const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenLocationRegister, onOpenProfileEdit, onOpenHistory, onOpenTripDetail, onOpenAdminModeration }) => {
     // State quản lý tab đang hiển thị
     const [activeTab, setActiveTab] = useState('home');
     const [userLocation, setUserLocation] = useState(null);
     
     // State quản lý Thành tựu
     const [achievements, setAchievements] = useState([]);
-    const [loadingAch, setLoadingAch] = useState(false);
     const [achFilter, setAchFilter] = useState('all'); // 'all', 'unlocked', 'locked'
 
-    const fetchAchievements = async () => {
+    // States for map search and weather
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [weatherInfo, setWeatherInfo] = useState(null);
+
+    // States for Rewards Shop & Quests
+    const [rewardsTab, setRewardsTab] = useState('badges'); // 'badges', 'quests', 'shop'
+    const [rewardsData, setRewardsData] = useState({ badges: [], vouchers: [], quests: [] });
+    const [loadingRewards, setLoadingRewards] = useState(false);
+    const [localPointsBalance, setLocalPointsBalance] = useState(null);
+    const [showRedeemSuccessModal, setShowRedeemSuccessModal] = useState(false);
+    const [redeemedVoucherInfo, setRedeemedVoucherInfo] = useState(null);
+
+    const userInfo = user?.user || user;
+    const pointsBalance = localPointsBalance !== null ? localPointsBalance : (userInfo?.points_balance || 0);
+    const totalPoints = isGuest ? 0 : (pointsBalance + (userInfo?.total_points || 0));
+    const level = isGuest ? 1 : (Math.floor(totalPoints / 1000) + 1);
+    const currentExp = isGuest ? 0 : (totalPoints % 1000);
+    const expPercentage = (currentExp / 1000) * 100;
+    const tierMeta = getTierMeta(level);
+    const HudTierIcon = tierMeta.icon;
+
+    const fetchRewards = async () => {
         if (isGuest) return;
-        setLoadingAch(true);
+        setLoadingRewards(true);
         try {
             const token = await storageGet('access_token');
-            const res = await fetch(`${API_BASE}/api/achievements`, {
+            const res = await fetch(`${API_BASE}/api/social/rewards`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
                 const data = await res.json();
-                if (data.status === 'success') {
-                    setAchievements(data.achievements || []);
+                setRewardsData(data);
+                if (data.badges) {
+                    setAchievements(data.badges);
                 }
             }
         } catch (error) {
-            console.error("Lỗi khi tải thành tựu:", error);
+            console.error("Lỗi khi tải phần thưởng & nhiệm vụ:", error);
         } finally {
-            setLoadingAch(false);
+            setLoadingRewards(false);
+        }
+    };
+
+    const fetchWeather = async (lat, lon) => {
+        try {
+            const res = await fetch(`${API_BASE}/api/discovery/weather?lat=${lat}&lon=${lon}`);
+            if (res.ok) {
+                const data = await res.json();
+                setWeatherInfo(data);
+            }
+        } catch (err) {
+            console.error("Weather fetch failed", err);
+        }
+    };
+
+    const fetchSearchResults = async (query) => {
+        if (!query.trim()) {
+            setSearchResults([]);
+            return;
+        }
+        setSearchLoading(true);
+        try {
+            const coordsParam = userLocation ? `&lat=${userLocation.lat}&lon=${userLocation.lng}` : '';
+            const res = await fetch(`${API_BASE}/api/discovery/geocode/search?q=${encodeURIComponent(query)}${coordsParam}`);
+            if (res.ok) {
+                const data = await res.json();
+                setSearchResults(data);
+            }
+        } catch (err) {
+            console.error("Geocoding search failed", err);
+        } finally {
+            setSearchLoading(false);
+        }
+    };
+
+    const handleRedeemVoucher = async (voucher) => {
+        const confirmRedeem = window.confirm(`Bạn có chắc chắn muốn dùng ${voucher.cost} xu để đổi lấy voucher "${voucher.discount}" không?`);
+        if (!confirmRedeem) return;
+
+        try {
+            const token = await storageGet('access_token');
+            const res = await fetch(`${API_BASE}/api/social/redeem-voucher/${voucher.id}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'success') {
+                    setLocalPointsBalance(data.points_balance);
+                    setRedeemedVoucherInfo({
+                        code: data.code,
+                        brand: voucher.brand,
+                        title: voucher.discount
+                    });
+                    setShowRedeemSuccessModal(true);
+                    fetchRewards();
+                } else {
+                    alert(data.message || "Đổi quà thất bại.");
+                }
+            } else {
+                const errData = await res.json();
+                alert(errData.detail || "Đổi quà thất bại.");
+            }
+        } catch (error) {
+            console.error("Lỗi khi đổi voucher:", error);
+            alert("Có lỗi kết nối hệ thống. Vui lòng thử lại!");
         }
     };
 
     useEffect(() => {
+        const delayDebounceFn = setTimeout(() => {
+            if (searchQuery.trim()) {
+                fetchSearchResults(searchQuery);
+            } else {
+                setSearchResults([]);
+            }
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchQuery]);
+
+    useEffect(() => {
+        if (userLocation?.lat && userLocation?.lng && activeTab === 'location') {
+            fetchWeather(userLocation.lat, userLocation.lng);
+        }
+    }, [userLocation, activeTab]);
+
+    useEffect(() => {
         if (activeTab === 'profile') {
-            fetchAchievements();
+            fetchRewards();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab]);
@@ -251,6 +353,18 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
         }
     };
 
+    const getWeatherEmoji = (code) => {
+        if (code === 0) return '☀️';
+        if (code >= 1 && code <= 3) return '🌤️';
+        if (code >= 45 && code <= 48) return '🌫️';
+        if (code >= 51 && code <= 55) return '🌦️';
+        if (code >= 61 && code <= 65) return '🌧️';
+        if (code >= 71 && code <= 77) return '❄️';
+        if (code >= 80 && code <= 82) return '🌧️';
+        if (code >= 95 && code <= 99) return '⛈️';
+        return '🌡️';
+    };
+
     // Các trang giả định (Placeholder) cho các tab chưa code
     const LocationScreen = () => (
         <div className="location-screen-full">
@@ -267,14 +381,32 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
             />
 
             {/* Overlays on top of the map */}
-            <div className="map-overlay-top">
+            <div className="map-overlay-top" style={{ alignItems: 'center' }}>
                 <div className="map-title-box">
                     <h1 className="map-title-main">Hành trình</h1>
                     <div className="map-title-sub">
                         <span className="dot-blue"></span> BẢN ĐỒ TRỰC TUYẾN
                     </div>
                 </div>
-                <div className="map-top-actions">
+                <div className="map-top-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {weatherInfo && (
+                        <div className="weather-hud-pill" style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: '#ffffff',
+                            border: '2.5px solid #2c3e50',
+                            borderRadius: '20px',
+                            padding: '4px 10px',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            color: '#2c3e50',
+                            boxShadow: '0 3px 0 #2c3e50',
+                        }} title={`Thời tiết: ${weatherInfo.condition || 'Bình thường'}`}>
+                            <span>{getWeatherEmoji(weatherInfo.weathercode)}</span>
+                            <span>{Math.round(weatherInfo.temp)}°C</span>
+                        </div>
+                    )}
                     <button className="map-circle-btn" onClick={() => setShowMapSearch(!showMapSearch)}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     </button>
@@ -286,14 +418,100 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
 
             {/* Quick Search Overlay */}
             {showMapSearch && (
-                <div className="map-search-overlay" style={{ position: 'absolute', top: '100px', left: '20px', right: '20px', background: '#fff', borderRadius: '16px', padding: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', zIndex: 20 }}>
-                    <input type="text" placeholder="Tìm kiếm trên bản đồ..." style={{ width: '100%', border: 'none', outline: 'none', fontSize: '15px' }} autoFocus />
+                <div className="map-search-overlay" style={{
+                    position: 'absolute',
+                    top: '150px',
+                    left: '20px',
+                    right: '20px',
+                    background: '#fff',
+                    border: '3px solid #2c3e50',
+                    borderRadius: '16px',
+                    padding: '12px',
+                    boxShadow: '0 5px 0 #2c3e50',
+                    zIndex: 20
+                }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                            type="text"
+                            placeholder="Gõ địa điểm tìm kiếm..."
+                            style={{
+                                flex: 1,
+                                border: '2.5px solid #2c3e50',
+                                borderRadius: '10px',
+                                padding: '8px 12px',
+                                outline: 'none',
+                                fontSize: '14px',
+                                fontWeight: 'bold'
+                            }}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            autoFocus
+                        />
+                        <button
+                            onClick={() => fetchSearchResults(searchQuery)}
+                            style={{
+                                background: '#ffd32d',
+                                border: '2.5px solid #2c3e50',
+                                borderRadius: '10px',
+                                padding: '8px 14px',
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                boxShadow: '0 3px 0 #2c3e50'
+                            }}
+                        >
+                            Tìm
+                        </button>
+                    </div>
+                    
+                    {/* Search results list */}
+                    {(searchResults.length > 0 || searchLoading) && (
+                        <div style={{
+                            marginTop: '10px',
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '6px'
+                        }}>
+                            {searchLoading ? (
+                                <div style={{ textAlign: 'center', padding: '10px', fontWeight: 'bold', color: '#7f8c8d' }}>Đang tìm kiếm...</div>
+                            ) : (
+                                searchResults.map((item) => (
+                                    <div
+                                        key={item.place_id}
+                                        onClick={() => {
+                                            if (item.lat && item.lon) {
+                                                mapComponentRef.current?.flyToLocation(item.lat, item.lon, item.display_name.split(',')[0]);
+                                                setShowMapSearch(false);
+                                                setSearchResults([]);
+                                            }
+                                        }}
+                                        style={{
+                                            padding: '8px 12px',
+                                            borderRadius: '8px',
+                                            border: '1.5px solid #e2e8f0',
+                                            cursor: 'pointer',
+                                            fontSize: '13px',
+                                            fontWeight: '600',
+                                            color: '#2c3e50',
+                                            backgroundColor: '#f8fafc',
+                                            transition: 'background-color 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffd32d'}
+                                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                                    >
+                                        📍 {item.display_name}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
 
             {/* Map Menu Overlay */}
             {showMapMenu && (
-                <div className="map-menu-overlay" style={{ position: 'absolute', top: '100px', right: '20px', background: '#fff', borderRadius: '16px', padding: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', zIndex: 20, display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '180px' }}>
+                <div className="map-menu-overlay" style={{ position: 'absolute', top: '150px', right: '20px', background: '#fff', borderRadius: '16px', padding: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', zIndex: 20, display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '180px' }}>
                     <button onClick={() => { setMapStyle('voyager'); setShowMapMenu(false); }} style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', padding: '5px', color: '#3b82f6', fontWeight: mapStyle === 'voyager' ? 'bold' : 'normal', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Map size={16} /> Bản đồ game
                     </button>
@@ -334,22 +552,166 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
             </div>
         </div>
     );
-    const FriendsScreen = () => (
-        <div className="placeholder-screen">
-            <h2 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <Users size={24} /> Bạn bè & Cộng đồng
-            </h2>
-            <p>Ghép đôi và danh sách bạn bè...</p>
-        </div>
-    );
-    const FavoritesScreen = () => (
-        <div className="placeholder-screen">
-            <h2 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <Heart size={24} style={{ color: '#e74c3c' }} /> Yêu thích
-            </h2>
-            <p>Các địa điểm, bài đăng đã lưu...</p>
-        </div>
-    );
+    const FriendsScreen = () => {
+        const [friendsTab, setFriendsTab] = useState('feed'); // 'feed', 'matching', 'chat'
+
+        return (
+            <div className="friends-screen-wrapper" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                {/* Internal sub-navigation tabs */}
+                <div className="friends-sub-tabs" style={{ display: 'flex', borderBottom: '2.5px solid #2c3e50', backgroundColor: '#ffffff', padding: '8px 16px', gap: '8px', zIndex: 10 }}>
+                    <button 
+                        onClick={() => setFriendsTab('feed')}
+                        style={{
+                            flex: 1,
+                            padding: '8px',
+                            fontWeight: 'bold',
+                            fontSize: '12px',
+                            border: '2.5px solid #2c3e50',
+                            borderRadius: '12px',
+                            backgroundColor: friendsTab === 'feed' ? '#ffd32d' : '#ffffff',
+                            cursor: 'pointer',
+                            boxShadow: friendsTab === 'feed' ? 'none' : '0 3px 0 #2c3e50',
+                            transform: friendsTab === 'feed' ? 'translateY(3px)' : 'none'
+                        }}
+                    >
+                        Bản Tin
+                    </button>
+                    <button 
+                        onClick={() => setFriendsTab('matching')}
+                        style={{
+                            flex: 1,
+                            padding: '8px',
+                            fontWeight: 'bold',
+                            fontSize: '12px',
+                            border: '2.5px solid #2c3e50',
+                            borderRadius: '12px',
+                            backgroundColor: friendsTab === 'matching' ? '#ffd32d' : '#ffffff',
+                            cursor: 'pointer',
+                            boxShadow: friendsTab === 'matching' ? 'none' : '0 3px 0 #2c3e50',
+                            transform: friendsTab === 'matching' ? 'translateY(3px)' : 'none'
+                        }}
+                    >
+                        Ghép Đôi
+                    </button>
+                    <button 
+                        onClick={() => setFriendsTab('chat')}
+                        style={{
+                            flex: 1,
+                            padding: '8px',
+                            fontWeight: 'bold',
+                            fontSize: '12px',
+                            border: '2.5px solid #2c3e50',
+                            borderRadius: '12px',
+                            backgroundColor: friendsTab === 'chat' ? '#ffd32d' : '#ffffff',
+                            cursor: 'pointer',
+                            boxShadow: friendsTab === 'chat' ? 'none' : '0 3px 0 #2c3e50',
+                            transform: friendsTab === 'chat' ? 'translateY(3px)' : 'none'
+                        }}
+                    >
+                        Trò Chuyện
+                    </button>
+                </div>
+
+                <div className="friends-screen-content" style={{ flex: 1, overflowY: 'auto' }}>
+                    {friendsTab === 'feed' && (
+                        <SocialFeedScreen 
+                            user={userInfo} 
+                            onRequireLogin={onRequireLogin} 
+                            onOpenProfile={() => setActiveTab('profile')} 
+                        />
+                    )}
+                    {friendsTab === 'matching' && (
+                        <FindCompanionsScreen 
+                            user={userInfo} 
+                            onRequireLogin={onRequireLogin} 
+                        />
+                    )}
+                    {friendsTab === 'chat' && (
+                        <ChatScreen 
+                            user={userInfo} 
+                            onRequireLogin={onRequireLogin} 
+                        />
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    const FavoritesScreen = () => {
+        const [savedList, setSavedList] = useState([]);
+        const [loadingSaved, setLoadingSaved] = useState(true);
+
+        useEffect(() => {
+            fetchSavedPosts();
+        }, []);
+
+        const fetchSavedPosts = async () => {
+            setLoadingSaved(true);
+            try {
+                const token = await storageGet('access_token');
+                if (!token) return;
+                const res = await fetch(`${API_BASE}/api/social/saved-posts`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setSavedList(data);
+                }
+            } catch (error) {
+                console.error('Error fetching saved posts:', error);
+            } finally {
+                setLoadingSaved(false);
+            }
+        };
+
+        return (
+            <div className="favorites-screen-wrapper" style={{ padding: '16px', height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>
+                <h2 style={{ fontSize: '24px', fontWeight: '950', color: '#2c3e50', marginBottom: '16px', textShadow: '1.5px 1.5px 0 #fff' }}>Yêu Thích Đã Lưu</h2>
+                {loadingSaved ? (
+                    <div style={{ textAlign: 'center', padding: '40px' }}>
+                        <div className="loader-hud" style={{ margin: '0 auto 12px' }}></div>
+                        <p style={{ fontWeight: 'bold', color: '#747d8c' }}>Đang tải danh mục đã lưu...</p>
+                    </div>
+                ) : savedList.length === 0 ? (
+                    <div className="cartoon-card" style={{ padding: '32px', textAlign: 'center', backgroundColor: '#ffffff', color: '#747d8c', fontWeight: 'bold' }}>
+                        <Heart size={48} style={{ color: '#ff4757', marginBottom: '12px' }} />
+                        <p>Danh sách trống!</p>
+                        <p style={{ fontSize: '11px', fontWeight: 'normal', marginTop: '4px' }}>Hãy lưu các địa điểm và bài đăng thú vị để xem lại tại đây.</p>
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '80px' }}>
+                        {savedList.map(post => (
+                            <div key={post.post_id} className="cartoon-card" style={{ padding: '16px', backgroundColor: '#ffffff' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                                    <img 
+                                        src={post.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.profiles?.full_name}`} 
+                                        alt="avatar" 
+                                        style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1.5px solid #2c3e50' }} 
+                                    />
+                                    <div>
+                                        <h4 style={{ fontSize: '12px', fontWeight: '800', color: '#2c3e50' }}>{post.profiles?.full_name}</h4>
+                                        {post.location_name && (
+                                            <span style={{ fontSize: '9px', color: '#747d8c', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                                <MapPin size={8} /> {post.location_name}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <p style={{ fontSize: '12px', fontWeight: '600', color: '#2c3e50', lineHeight: '1.4' }}>{post.caption}</p>
+                                {post.image_url && (
+                                    <img 
+                                        src={post.image_url.includes('|') ? post.image_url.split('|')[0] : (post.image_url.startsWith('data:image') ? post.image_url : post.image_url.split(',')[0])} 
+                                        alt="preview" 
+                                        style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '12px', border: '2px solid #2c3e50', marginTop: '10px' }} 
+                                    />
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
     const GuestPlaceholder = ({ title, icon }) => (
         <div className="guest-placeholder">
             <div className="guest-placeholder-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px', color: '#636e72' }}>{icon}</div>
@@ -411,12 +773,12 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
             <div className="profile-stats-row">
                 <div className="profile-stat-box">
                     <div className="stat-box-icon"><Coins size={18} /></div>
-                    <div className="stat-box-value">{totalPoints}</div>
+                    <div className="stat-box-value">{pointsBalance}</div>
                     <div className="stat-box-label">Xu vàng</div>
                 </div>
                 <div className="profile-stat-box">
                     <div className="stat-box-icon"><Trophy size={18} /></div>
-                    <div className="stat-box-value">{achievements.filter(a => a.is_unlocked).length}</div>
+                    <div className="stat-box-value">{achievements.filter(a => a.unlocked).length}</div>
                     <div className="stat-box-label">Huy hiệu</div>
                 </div>
                 <div className="profile-stat-box">
@@ -430,95 +792,257 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                 </div>
             </div>
 
-            {/* === THÀNH TỰU & HUY HIỆU === */}
+            {/* === THÀNH TỰU & HUY HIỆU & CỬA HÀNG === */}
             <div className="achievements-card">
-                <h4 className="achievements-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Trophy size={18} style={{ color: '#f1c40f' }} /> Huy hiệu thám hiểm ({achievements.filter(a => a.is_unlocked).length}/{achievements.length})
-                </h4>
-                
-                {/* Thanh bộ lọc thành tựu */}
-                <div className="achievements-filter-row">
-                    {['all', 'unlocked', 'locked'].map((f) => {
-                        const isActive = achFilter === f;
-                        return (
-                            <button
-                                key={f}
-                                onClick={() => setAchFilter(f)}
-                                className={`achievements-filter-btn ${isActive ? 'active' : 'inactive'}`}
-                            >
-                                {f === 'unlocked' ? `Đã đạt (${achievements.filter(a => a.is_unlocked).length})` : f === 'locked' ? `Đang làm (${achievements.filter(a => !a.is_unlocked).length})` : 'Tất cả'}
-                            </button>
-                        );
-                    })}
+                <div style={{
+                    display: 'flex',
+                    borderBottom: '3.5px solid #2c3e50',
+                    marginBottom: '15px',
+                    backgroundColor: '#f8fafc',
+                    borderRadius: '14px 14px 0 0',
+                    overflow: 'hidden'
+                }}>
+                    {[
+                        { id: 'badges', label: '🏆 Huy hiệu' },
+                        { id: 'quests', label: '⚡ Nhiệm vụ' },
+                        { id: 'shop', label: '🎁 Cửa hàng' }
+                    ].map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setRewardsTab(tab.id)}
+                            style={{
+                                flex: 1,
+                                padding: '12px 8px',
+                                fontWeight: 'bold',
+                                fontSize: '13px',
+                                border: 'none',
+                                borderRight: tab.id !== 'shop' ? '2.5px solid #2c3e50' : 'none',
+                                backgroundColor: rewardsTab === tab.id ? '#ffd32d' : 'transparent',
+                                color: '#2c3e50',
+                                cursor: 'pointer',
+                                transition: 'all 0.1s ease',
+                                outline: 'none'
+                            }}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
                 </div>
-                
-                {loadingAch ? (
-                    <div className="profile-loading" style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
-                        <Sparkles size={16} /> Đang tải thành tựu...
-                    </div>
-                ) : achievements.length === 0 ? (
-                    <div className="profile-empty">
-                        Chưa có dữ liệu thành tựu.
-                    </div>
-                ) : (
-                    <div className="achievements-list">
-                        {achievements
-                            .filter((ach) => {
-                                if (achFilter === 'unlocked') return ach.is_unlocked;
-                                if (achFilter === 'locked') return !ach.is_unlocked;
-                                return true;
-                            })
-                            .map((ach) => {
-                                const percent = (ach.current_progress / ach.condition_value) * 100;
-                            return (
-                                <div 
-                                    key={ach.achievement_id}
-                                    className={`achievement-item ${ach.is_unlocked ? 'unlocked' : 'locked'}`}
-                                >
-                                    {/* Icon Huy hiệu */}
-                                    <div className={`achievement-icon ${ach.is_unlocked ? 'unlocked' : 'locked'}`}>
-                                        {getAchievementIcon(ach)}
-                                    </div>
-                                    
-                                    {/* Chi tiết thành tựu */}
-                                    <div className="achievement-details">
-                                        <div className="achievement-header">
-                                            <strong className="achievement-name">{ach.title}</strong>
-                                            <span className={`achievement-badge ${ach.is_unlocked ? 'unlocked' : 'locked'}`}>
-                                                {ach.is_unlocked ? `+${ach.points_reward} điểm` : 'Đang khóa'}
-                                            </span>
-                                        </div>
-                                        
-                                        <span className="achievement-desc">{ach.description}</span>
-                                        
-                                        {/* Tiến trình bar */}
-                                        {!ach.is_unlocked && (
-                                            <div className="achievement-progress">
-                                                <div className="achievement-progress-header">
-                                                    <span>Tiến trình</span>
-                                                    <span>{ach.current_progress}/{ach.condition_value}</span>
+
+                {rewardsTab === 'badges' && (
+                    <>
+                        <h4 className="achievements-title" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '0 0 10px 0' }}>
+                            <Trophy size={18} style={{ color: '#f1c40f' }} /> Huy hiệu thám hiểm ({achievements.filter(a => a.unlocked).length}/{achievements.length})
+                        </h4>
+                        
+                        <div className="achievements-filter-row">
+                            {['all', 'unlocked', 'locked'].map((f) => {
+                                const isActive = achFilter === f;
+                                return (
+                                    <button
+                                        key={f}
+                                        onClick={() => setAchFilter(f)}
+                                        className={`achievements-filter-btn ${isActive ? 'active' : 'inactive'}`}
+                                    >
+                                        {f === 'unlocked' ? `Đã đạt (${achievements.filter(a => a.unlocked).length})` : f === 'locked' ? `Đang làm (${achievements.filter(a => !a.unlocked).length})` : 'Tất cả'}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        
+                        {loadingRewards ? (
+                            <div className="profile-loading" style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                                <Sparkles size={16} /> Đang tải thành tựu...
+                            </div>
+                        ) : achievements.length === 0 ? (
+                            <div className="profile-empty">
+                                Chưa có dữ liệu thành tựu.
+                            </div>
+                        ) : (
+                            <div className="achievements-list">
+                                {achievements
+                                    .filter((ach) => {
+                                        if (achFilter === 'unlocked') return ach.unlocked;
+                                        if (achFilter === 'locked') return !ach.unlocked;
+                                        return true;
+                                    })
+                                    .map((ach) => {
+                                        const isUnlocked = ach.unlocked;
+                                    return (
+                                        <div 
+                                            key={ach.id}
+                                            className={`achievement-item ${isUnlocked ? 'unlocked' : 'locked'}`}
+                                        >
+                                            <div className={`achievement-icon ${isUnlocked ? 'unlocked' : 'locked'}`} style={{ fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                {ach.icon || '🏆'}
+                                            </div>
+                                            
+                                            <div className="achievement-details">
+                                                <div className="achievement-header">
+                                                    <strong className="achievement-name">{ach.name}</strong>
+                                                    <span className={`achievement-badge ${isUnlocked ? 'unlocked' : 'locked'}`}>
+                                                        {isUnlocked ? `+${ach.points} xu` : 'Đang khóa'}
+                                                    </span>
                                                 </div>
-                                                <div className="achievement-progress-bar">
-                                                    <div className="achievement-progress-fill" style={{ width: `${percent}%` }}></div>
+                                                <span className="achievement-desc">{ach.description}</span>
+                                                <span style={{ fontSize: '11px', color: '#747d8c', display: 'block', marginTop: '2px' }}>
+                                                    Yêu cầu: {ach.requirement}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {rewardsTab === 'quests' && (
+                    <div className="achievements-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <h4 className="achievements-title" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '0 0 10px 0' }}>
+                            <Sparkles size={18} style={{ color: '#8e44ad' }} /> Nhiệm vụ thám hiểm tuần
+                        </h4>
+                        {loadingRewards ? (
+                            <div className="profile-loading" style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                                <Sparkles size={16} /> Đang tải nhiệm vụ...
+                            </div>
+                        ) : rewardsData.quests.length === 0 ? (
+                            <div className="profile-empty">Hiện không có nhiệm vụ tuần nào.</div>
+                        ) : (
+                            rewardsData.quests.map((quest) => {
+                                const percent = (quest.progress / quest.max) * 100;
+                                const diffColors = {
+                                    "Dễ": { bg: "#e8f5e9", text: "#2e7d32", border: "#c8e6c9" },
+                                    "Trung bình": { bg: "#e1f5fe", text: "#039be5", border: "#b3e5fc" },
+                                    "Khó": { bg: "#ffebee", text: "#c62828", border: "#ffcdd2" }
+                                };
+                                const styleMeta = diffColors[quest.difficulty] || diffColors["Dễ"];
+                                
+                                return (
+                                    <div 
+                                        key={quest.id}
+                                        className={`achievement-item ${quest.completed ? 'unlocked' : 'locked'}`}
+                                        style={{ padding: '14px', border: '2.5px solid #2c3e50', borderRadius: '14px', boxShadow: '0 4px 0 #2c3e50', marginBottom: '8px' }}
+                                    >
+                                        <div className="achievement-details" style={{ width: '100%' }}>
+                                            <div className="achievement-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                                <span style={{
+                                                    fontSize: '10px',
+                                                    fontWeight: 'bold',
+                                                    padding: '2px 8px',
+                                                    borderRadius: '12px',
+                                                    backgroundColor: styleMeta.bg,
+                                                    color: styleMeta.text,
+                                                    border: `1.5px solid ${styleMeta.border}`
+                                                }}>
+                                                    Độ khó: {quest.difficulty}
+                                                </span>
+                                                <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#ffd32d', textShadow: '1px 1px 0 #2c3e50', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                                    🎁 +{quest.reward} EXP
+                                                </span>
+                                            </div>
+                                            <strong style={{ fontSize: '14px', color: '#2c3e50', display: 'block', marginBottom: '4px' }}>{quest.title}</strong>
+                                            <span style={{ fontSize: '11px', color: '#747d8c', display: 'block', marginBottom: '10px' }}>{quest.description}</span>
+                                            
+                                            <div className="achievement-progress">
+                                                <div className="achievement-progress-header" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'bold', marginBottom: '3px' }}>
+                                                    <span>Tiến độ</span>
+                                                    <span>{quest.progress}/{quest.max}</span>
+                                                </div>
+                                                <div className="achievement-progress-bar" style={{ height: '10px', background: '#eceff1', borderRadius: '5px', overflow: 'hidden', border: '1.5px solid #2c3e50' }}>
+                                                    <div className="achievement-progress-fill" style={{ height: '100%', width: `${percent}%`, background: '#2ecc71' }}></div>
                                                 </div>
                                             </div>
-                                        )}
-                                        
-                                        {ach.is_unlocked && ach.unlocked_at && (
-                                            <span className="achievement-unlock-date" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                <Sparkles size={14} style={{ color: '#f1c40f' }} /> Đạt được ngày {new Date(ach.unlocked_at).toLocaleDateString('vi-VN')}
-                                            </span>
-                                        )}
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })
+                        )}
+                    </div>
+                )}
+
+                {rewardsTab === 'shop' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <h4 className="achievements-title" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '0 0 10px 0' }}>
+                            <Coins size={18} style={{ color: '#ffd32d' }} /> Cửa hàng đổi quà ưu đãi
+                        </h4>
+                        {loadingRewards ? (
+                            <div className="profile-loading" style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                                <Sparkles size={16} /> Đang tải cửa hàng...
+                            </div>
+                        ) : rewardsData.vouchers.length === 0 ? (
+                            <div className="profile-empty">Cửa hàng hiện đang bảo trì, vui lòng quay lại sau!</div>
+                        ) : (
+                            rewardsData.vouchers.map((voucher) => {
+                                const canAfford = pointsBalance >= voucher.cost;
+                                return (
+                                    <div 
+                                        key={voucher.id}
+                                        style={{
+                                            border: '2.5px solid #2c3e50',
+                                            borderRadius: '16px',
+                                            padding: '12px',
+                                            backgroundColor: '#ffffff',
+                                            boxShadow: '0 4px 0 #2c3e50',
+                                            display: 'flex',
+                                            gap: '12px',
+                                            alignItems: 'center'
+                                        }}
+                                    >
+                                        <img 
+                                            src={voucher.image || 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=100'} 
+                                            alt={voucher.brand} 
+                                            style={{
+                                                width: '60px',
+                                                height: '60px',
+                                                borderRadius: '12px',
+                                                border: '2px solid #2c3e50',
+                                                objectFit: 'cover'
+                                            }}
+                                        />
+                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                            <span style={{ fontSize: '10px', fontWeight: '800', color: '#747d8c', textTransform: 'uppercase' }}>{voucher.brand}</span>
+                                            <strong style={{ fontSize: '13px', color: '#2c3e50' }}>{voucher.discount}</strong>
+                                            <span style={{ fontSize: '11px', color: '#747d8c', marginBottom: '4px' }}>Giá trị quy đổi: <b style={{ color: '#e67e22' }}>{voucher.cost} xu</b></span>
+                                            
+                                            <button
+                                                onClick={() => handleRedeemVoucher(voucher)}
+                                                disabled={!canAfford}
+                                                style={{
+                                                    alignSelf: 'flex-start',
+                                                    background: canAfford ? '#ffd32d' : '#bdc3c7',
+                                                    border: '2.5px solid #2c3e50',
+                                                    borderRadius: '8px',
+                                                    padding: '4px 12px',
+                                                    fontSize: '11px',
+                                                    fontWeight: 'bold',
+                                                    color: '#2c3e50',
+                                                    cursor: canAfford ? 'pointer' : 'not-allowed',
+                                                    boxShadow: canAfford ? '0 2px 0 #2c3e50' : 'none',
+                                                    transform: 'none',
+                                                    transition: 'all 0.1s'
+                                                }}
+                                            >
+                                                {canAfford ? 'Đổi Quà' : 'Không đủ xu'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
                 )}
             </div>
 
             {/* === MENU ACTIONS (style game buttons) === */}
             <div className="profile-menu-list">
+                {(userInfo?.role === 'ADMIN' || userInfo?.role === 'OWNER' || userInfo?.role === 'CS') && (
+                    <button className="profile-menu-btn" onClick={onOpenAdminModeration} style={{ borderLeft: '4px solid #ff4757' }}>
+                        <span className="menu-btn-icon"><ShieldAlert size={18} style={{ color: '#ff4757' }} /></span>
+                        <span className="profile-menu-label" style={{ color: '#ff4757', fontWeight: 'bold' }}>Bảng Kiểm Duyệt Admin</span>
+                        <span className="menu-btn-arrow" style={{ color: '#ff4757' }}>›</span>
+                    </button>
+                )}
                 <button className="profile-menu-btn" onClick={onOpenProfileEdit}>
                     <span className="menu-btn-icon"><Settings size={18} /></span>
                     <span className="profile-menu-label">Cài đặt quyền riêng tư</span>
@@ -574,14 +1098,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                 return <Traveltrip />;
         }
     };
- 
-    const userInfo = user?.user || user;
-    const totalPoints = isGuest ? 0 : ((userInfo?.points_balance || 0) + (userInfo?.total_points || 0));
-    const level = isGuest ? 1 : (Math.floor(totalPoints / 1000) + 1);
-    const currentExp = isGuest ? 0 : (totalPoints % 1000);
-    const expPercentage = (currentExp / 1000) * 100;
-    const tierMeta = getTierMeta(level);
-    const HudTierIcon = tierMeta.icon;
+
 
     const handleHudClick = () => {
         if (isGuest) {
@@ -868,6 +1385,55 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                                     </button>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- Redeem Voucher Success Modal --- */}
+            {showRedeemSuccessModal && redeemedVoucherInfo && (
+                <div className="quest-modal-overlay">
+                    <div className="quest-modal-content" style={{ textAlign: 'center', maxWidth: '400px' }}>
+                        <div className="quest-modal-header">
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Sparkles size={20} style={{ color: '#ffd32d' }} /> Đổi voucher thành công!</h3>
+                            <button className="quest-close-btn" onClick={() => setShowRedeemSuccessModal(false)}>✕</button>
+                        </div>
+                        <div className="quest-modal-body" style={{ padding: '20px' }}>
+                            <div style={{ fontSize: '50px', marginBottom: '15px' }}>🎉</div>
+                            <h4 style={{ fontSize: '18px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '10px' }}>
+                                {redeemedVoucherInfo.brand}
+                            </h4>
+                            <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#2ecc71', marginBottom: '15px' }}>
+                                {redeemedVoucherInfo.title}
+                            </p>
+                            <p style={{ fontSize: '13px', color: '#747d8c', marginBottom: '10px' }}>
+                                Mã ưu đãi của bạn là:
+                            </p>
+                            <div style={{
+                                background: '#ffd32d',
+                                border: '3.5px solid #2c3e50',
+                                borderRadius: '12px',
+                                padding: '10px 20px',
+                                fontSize: '20px',
+                                fontWeight: '900',
+                                color: '#2c3e50',
+                                letterSpacing: '1px',
+                                display: 'inline-block',
+                                marginBottom: '20px',
+                                boxShadow: '0 4px 0 #2c3e50'
+                            }}>
+                                {redeemedVoucherInfo.code}
+                            </div>
+                            <p style={{ fontSize: '11px', color: '#95a5a6' }}>
+                                *Vui lòng chụp màn hình hoặc sao chép mã trên để sử dụng trực tiếp tại cửa hàng.
+                            </p>
+                            <button 
+                                className="quest-close-success-btn"
+                                onClick={() => setShowRedeemSuccessModal(false)}
+                                style={{ width: '100%', marginTop: '15px' }}
+                            >
+                                Tuyệt vời!
+                            </button>
                         </div>
                     </div>
                 </div>
