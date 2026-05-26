@@ -562,9 +562,70 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                 return <Traveltrip />;
         }
     };
+ 
+    const userInfo = user?.user || user;
+    const totalPoints = isGuest ? 0 : ((userInfo?.points_balance || 0) + (userInfo?.total_points || 0));
+    const level = isGuest ? 1 : (Math.floor(totalPoints / 1000) + 1);
+    const currentExp = isGuest ? 0 : (totalPoints % 1000);
+    const expPercentage = (currentExp / 1000) * 100;
+
+    const handleHudClick = () => {
+        if (isGuest) {
+            onRequireLogin();
+        } else {
+            if (onOpenProfileEdit) {
+                onOpenProfileEdit();
+            } else {
+                setActiveTab('profile');
+            }
+        }
+    };
 
     return (
         <div className="main-layout">
+            {/* Cartoon Game HUD Bar */}
+            <div className="game-hud-header" onClick={handleHudClick}>
+                <div className="hud-player-info">
+                    <div className="hud-avatar-wrapper">
+                        <img
+                            src={userInfo?.avatar_url || '/mascot.png'}
+                            alt="Avatar"
+                            className="hud-avatar-img"
+                            onError={(event) => {
+                                event.currentTarget.onerror = null;
+                                event.currentTarget.src = '/mascot.png';
+                            }}
+                        />
+                        <div className="hud-level-badge">{level}</div>
+                    </div>
+                    <div className="hud-name-container">
+                        <span className="hud-player-name">{isGuest ? 'Khách chơi' : (userInfo?.full_name || 'Chiến binh')}</span>
+                        <span className="hud-player-tier">
+                            {level <= 5 ? '🥉 Đồng' : level <= 15 ? '🥈 Bạc' : level <= 30 ? '🥇 Vàng' : '💎 Bạch Kim'}
+                        </span>
+                    </div>
+                </div>
+
+                <div className="hud-stats-group">
+                    {/* Coin Counter Pill */}
+                    <div className="hud-stat-pill coin-pill" title="Xu vàng tích lũy">
+                        <div className="pill-icon">🪙</div>
+                        <div className="pill-value">{totalPoints}</div>
+                    </div>
+
+                    {/* EXP Counter Pill */}
+                    <div className="hud-stat-pill exp-pill" title="Kinh nghiệm cấp">
+                        <div className="pill-icon">⭐️</div>
+                        <div className="pill-value-container">
+                            <div className="pill-value">{currentExp}/1000</div>
+                            <div className="hud-exp-progress-bar">
+                                <div className="hud-exp-progress-fill" style={{ width: `${expPercentage}%` }}></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Vùng hiển thị nội dung của từng tab */}
             <div className="content-area">
                 {renderContent()}
