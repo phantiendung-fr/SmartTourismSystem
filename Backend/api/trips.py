@@ -126,7 +126,14 @@ def complete_trip(
         unlocked_msg = f" 🎉 Bạn đã mở khóa thành tựu mới: {titles}!"
         
     db.commit()
-    return MessageResponse(detail=f"Chúc mừng bạn đã hoàn thành chuyến đi! Bạn nhận được {completion_score} điểm thưởng lộ trình và +{earned_from_trip} điểm đã tích lũy.{unlocked_msg}")
+    return MessageResponse(
+        detail=f"Chúc mừng bạn đã hoàn thành chuyến đi! Bạn nhận được {completion_score} điểm thưởng lộ trình và +{earned_from_trip} điểm đã tích lũy.{unlocked_msg}",
+        completion_score=completion_score,
+        earned_from_trip=earned_from_trip,
+        total_rewarded=completion_score + earned_from_trip,
+        new_total_points=profile.total_points if profile else None,
+        new_points_balance=profile.points_balance if profile else None,
+    )
 
 @router.put("/{itinerary_id}/cancel", response_model=MessageResponse, summary="Hủy chuyến đi")
 def cancel_trip(

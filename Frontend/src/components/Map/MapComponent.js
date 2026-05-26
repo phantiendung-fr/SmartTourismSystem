@@ -2,20 +2,49 @@ import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { createPlayerAvatarIcon } from '../PlayerAvatar/PlayerAvatar';
+import './MapComponent.css';
+
+const TILE_STYLES = {
+    voyager: {
+        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+        options: {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 20,
+        },
+    },
+    satellite: {
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        options: {
+            attribution: '&copy; Esri',
+            maxZoom: 20,
+        },
+    },
+    traffic: {
+        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        options: {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 20,
+        },
+    },
+};
+
+const getTileStyleConfig = (mapStyle) => TILE_STYLES[mapStyle] || TILE_STYLES.voyager;
+const USER_LOCATION_ZOOM = 18;
 
 const MapComponent = forwardRef(({ stops = [], userLocation = null, hiddenTasks = [], onHiddenTaskClick = null, fullScreen = false, mapStyle = 'voyager', showHiddenTasks = true, user = null }, ref) => {
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
     const markersLayer = useRef(null);
     const tileLayerRef = useRef(null);
-    const hasAutoFitRef = useRef(false);
-    const prevStopsKeyRef = useRef('');
-    const hasUserInteractedRef = useRef(false);
 
     useImperativeHandle(ref, () => ({
         flyToUserLocation: () => {
             if (mapInstance.current && userLocation?.lat && userLocation?.lng) {
-                mapInstance.current.flyTo([userLocation.lat, userLocation.lng], 16, { animate: true, duration: 1.5 });
+                const currentZoom = mapInstance.current.getZoom();
+                const targetZoom = Math.max(currentZoom, USER_LOCATION_ZOOM);
+                mapInstance.current.flyTo([userLocation.lat, userLocation.lng], targetZoom, { animate: true, duration: 0.8 });
             } else {
                 alert("Vui lòng bật định vị GPS và chờ trong giây lát.");
             }
@@ -30,24 +59,18 @@ const MapComponent = forwardRef(({ stops = [], userLocation = null, hiddenTasks 
 
         mapInstance.current = L.map(mapRef.current, {
             zoomControl: !fullScreen, // Hide zoom control if full screen for cleaner look
+            zoomSnap: 0.25,
+            zoomDelta: 0.5,
+            wheelPxPerZoomLevel: 120,
+            bounceAtZoomLimits: false,
             zoomAnimation: false,
             fadeAnimation: false,
             markerZoomAnimation: false
         }).setView([centerLat, centerLng], 13);
-        // Initial tile layer setup
-        tileLayerRef.current = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap &copy; CARTO',
-            subdomains: 'abcd',
-            maxZoom: 20
-        }).addTo(mapInstance.current);
+        const initialTileStyle = getTileStyleConfig(mapStyle);
+        tileLayerRef.current = L.tileLayer(initialTileStyle.url, initialTileStyle.options).addTo(mapInstance.current);
 
         markersLayer.current = L.layerGroup().addTo(mapInstance.current);
-
-        const markUserInteracted = () => {
-            hasUserInteractedRef.current = true;
-        };
-        mapInstance.current.on('zoomstart', markUserInteracted);
-        mapInstance.current.on('dragstart', markUserInteracted);
 
         setTimeout(() => {
             mapInstance.current?.invalidateSize();
@@ -55,8 +78,6 @@ const MapComponent = forwardRef(({ stops = [], userLocation = null, hiddenTasks 
 
         return () => {
             if (mapInstance.current) {
-                mapInstance.current.off('zoomstart');
-                mapInstance.current.off('dragstart');
                 mapInstance.current.remove();
                 mapInstance.current = null;
             }
@@ -67,24 +88,21 @@ const MapComponent = forwardRef(({ stops = [], userLocation = null, hiddenTasks 
     }, [fullScreen]); // stops is removed from dependencies to prevent recreating map when stops reference changes
 
     useEffect(() => {
-        if (!tileLayerRef.current) return;
-        
-        let url = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-        if (mapStyle === 'satellite') {
-            url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-        } else if (mapStyle === 'traffic') {
-            // Using dark mode as a placeholder for traffic view
-            url = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+        if (!mapInstance.current) return;
+
+        if (tileLayerRef.current) {
+            mapInstance.current.removeLayer(tileLayerRef.current);
         }
-        
-        tileLayerRef.current.setUrl(url);
+
+        const tileStyle = getTileStyleConfig(mapStyle);
+        tileLayerRef.current = L.tileLayer(tileStyle.url, tileStyle.options).addTo(mapInstance.current);
+        tileLayerRef.current.bringToBack();
     }, [mapStyle]);
 
     useEffect(() => {
         if (!mapInstance.current || !markersLayer.current) return;
 
         markersLayer.current.clearLayers();
-        const bounds = [];
         const nextStop = stops.find((stop) => stop.status === 'PENDING' || stop.status === 'VISITING');
 
         stops.forEach((stop, index) => {
@@ -94,22 +112,29 @@ const MapComponent = forwardRef(({ stops = [], userLocation = null, hiddenTasks 
             const lng = parseFloat(stop.longitude);
             if (Number.isNaN(lat) || Number.isNaN(lng)) return;
 
-            let markerColor = '#2196F3';
-            if (stop.status === 'COMPLETED') markerColor = '#4CAF50';
-            else if (nextStop && stop.stop_id === nextStop.stop_id) markerColor = '#FF9800';
+            let markerColor = '#1e90ff';
+            let markerStatusClass = '';
+            if (stop.status === 'COMPLETED') {
+                markerColor = '#2ed573';
+                markerStatusClass = 'status-completed';
+            } else if (nextStop && stop.stop_id === nextStop.stop_id) {
+                markerColor = '#ff9f1a';
+                markerStatusClass = 'status-next';
+            }
 
             L.marker([lat, lng], {
                 icon: L.divIcon({
-                    className: 'custom-div-icon',
-                    html: `<div style="background-color:${markerColor};color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;font-weight:bold;font-size:12px;box-shadow:0 2px 5px rgba(0,0,0,0.3);">${index + 1}</div>`,
-                    iconSize: [24, 24],
-                    iconAnchor: [12, 12],
+                    className: 'custom-div-icon game-stop-icon',
+                    html: `<div class="game-stop-marker ${markerStatusClass}" style="--marker-color:${markerColor};">${index + 1}</div>`,
+                    iconSize: [40, 48],
+                    iconAnchor: [20, 42],
                 }),
             })
-                .bindPopup(`<b>${stop.location_name}</b><br/>${stop.arrival_time ? `Đến: ${stop.arrival_time.slice(0, 5)}` : ''}`)
+                .bindPopup(`<b>${stop.location_name}</b><br/>${stop.arrival_time ? `Đến: ${stop.arrival_time.slice(0, 5)}` : ''}`, {
+                    className: 'game-map-popup',
+                })
                 .addTo(markersLayer.current);
 
-            bounds.push([lat, lng]);
         });
 
         // User location marker with shared game avatar style
@@ -117,10 +142,11 @@ const MapComponent = forwardRef(({ stops = [], userLocation = null, hiddenTasks 
             L.marker([userLocation.lat, userLocation.lng], {
                 icon: createPlayerAvatarIcon(user),
             })
-                .bindPopup('Vị trí của bạn')
+                .bindPopup('Vị trí của bạn', {
+                    className: 'game-map-popup',
+                })
                 .addTo(markersLayer.current);
 
-            bounds.push([userLocation.lat, userLocation.lng]);
         }
 
         if (showHiddenTasks) {
@@ -148,58 +174,29 @@ const MapComponent = forwardRef(({ stops = [], userLocation = null, hiddenTasks 
 
                 const marker = L.marker([lat, lng], {
                     icon: L.divIcon({
-                        className: 'hidden-task-icon',
-                        html: `<div class="glowing-chest" style="background-color:${color};border:2px solid white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 12px ${color};cursor:pointer;animation:float-effect 2s infinite ease-in-out;position:relative;">${iconHtml}<div style="position:absolute;width:40px;height:40px;border-radius:50%;border:2px dashed ${color};top:-6px;left:-6px;animation:spin-circle 8s infinite linear;"></div></div>`,
-                        iconSize: [32, 32],
-                        iconAnchor: [16, 16],
+                        className: 'hidden-task-icon game-hidden-task-icon',
+                        html: `<div class="game-hidden-task-marker" style="--task-color:${color};">${iconHtml}<div class="game-hidden-task-orbit"></div></div>`,
+                        iconSize: [58, 58],
+                        iconAnchor: [29, 29],
                     }),
                 });
 
-                marker.bindPopup(`<b>${task.title || label}</b><br/><small>${task.rarity} - Click để xem!</small>`);
+                marker.bindPopup(`<b>${task.title || label}</b><br/><small>${task.rarity} - Click để xem!</small>`, {
+                    className: 'game-map-popup',
+                });
                 marker.on('click', () => {
                     if (onHiddenTaskClick) onHiddenTaskClick(task);
                 });
                 marker.addTo(markersLayer.current);
-                bounds.push([lat, lng]);
             });
-        }
-
-        // Chỉ auto-fit lần đầu hoặc khi danh sách điểm dừng thay đổi,
-        // tránh giật zoom khi GPS/userLocation cập nhật liên tục.
-        const stopsKey = stops
-            .map((stop) => `${stop.stop_id || stop.location_id || stop.location_name}-${stop.latitude}-${stop.longitude}`)
-            .join('|');
-        const shouldAutoFitByData = !hasAutoFitRef.current || prevStopsKeyRef.current !== stopsKey;
-        const shouldAutoFit = shouldAutoFitByData && !hasUserInteractedRef.current;
-
-        if (bounds.length > 0 && shouldAutoFit) {
-            mapInstance.current.fitBounds(bounds, { padding: [40, 40], animate: false });
-            hasAutoFitRef.current = true;
-            prevStopsKeyRef.current = stopsKey;
         }
     }, [stops, userLocation, hiddenTasks, onHiddenTaskClick, showHiddenTasks, user]);
 
     return (
-        <div
-            style={fullScreen ? {
-                height: '100%',
-                width: '100%',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                zIndex: 1
-            } : {
-                height: '350px',
-                width: '100%',
-                marginBottom: '25px',
-                position: 'relative',
-                background: '#e0e0e0',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            }}
-        >
-            <div ref={mapRef} style={{ height: '100%', width: '100%' }} />
+        <div className={`game-map-shell ${fullScreen ? 'full' : 'card'} map-style-${mapStyle}`}>
+            <div className="game-map-frame">
+                <div ref={mapRef} className="game-map-canvas" />
+            </div>
         </div>
     );
 });

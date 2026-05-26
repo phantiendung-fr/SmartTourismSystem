@@ -13,6 +13,15 @@ import { createPlayerAvatarIcon } from '../PlayerAvatar/PlayerAvatar';
 // Feature 3: Fog of War (GIỮ NGUYÊN CODE CỦA BẠN)
 import { createFogLayer } from '../FogOfWar/FogOfWar';
 
+const ROUTE_TILE_STYLE = {
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    options: {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 20,
+    },
+};
+
 // --- Fix Leaflet default icon issue with bundlers ---
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -72,13 +81,17 @@ const RouteMap = ({ stops = [], routes = [], hiddenTasks = [], userLocation = nu
 
             mapInstance.current = L.map(mapRef.current, {
                 zoomControl: true,
-                attributionControl: false,
+                attributionControl: true,
+                zoomSnap: 0.25,
+                zoomDelta: 0.5,
+                wheelPxPerZoomLevel: 120,
+                bounceAtZoomLimits: false,
                 zoomAnimation: false,
                 fadeAnimation: false,
                 markerZoomAnimation: false
             }).setView([startLat, startLng], 14);
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapInstance.current);
+            L.tileLayer(ROUTE_TILE_STYLE.url, ROUTE_TILE_STYLE.options).addTo(mapInstance.current);
 
             routeLayerRef.current = L.layerGroup().addTo(mapInstance.current);
             hiddenTasksLayerRef.current = L.layerGroup().addTo(mapInstance.current);
@@ -87,38 +100,61 @@ const RouteMap = ({ stops = [], routes = [], hiddenTasks = [], userLocation = nu
 
         const routeLayer = routeLayerRef.current;
         routeLayer.clearLayers();
-        const bounds = [];
 
         stops.forEach((stop, index) => {
             const lat = parseFloat(stop.latitude);
             const lng = parseFloat(stop.longitude);
-            bounds.push([lat, lng]);
+
+            let stopColor = '#1e90ff';
+            let stopStatusClass = 'pending';
+            if (stop.status === 'COMPLETED') {
+                stopColor = '#2ed573';
+                stopStatusClass = 'completed';
+            } else if (stop.status === 'VISITING') {
+                stopColor = '#ff9f1a';
+                stopStatusClass = 'visiting';
+            }
 
             const stopMarker = L.marker([lat, lng], {
                 icon: L.divIcon({
-                    className: 'custom-stop-icon',
-                    html: `<div style="background:#1976d2;color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)">${index + 1}</div>`,
-                    iconSize: [24, 24],
-                    iconAnchor: [12, 12]
+                    className: 'custom-stop-icon route-stop-icon',
+                    html: `<div class="route-stop-marker ${stopStatusClass}" style="--route-stop-color:${stopColor};"><span>${index + 1}</span></div>`,
+                    iconSize: [42, 52],
+                    iconAnchor: [21, 46]
                 })
             });
-            stopMarker.bindPopup(`<b>${stop.location_name || 'Trạm dừng'}</b>`);
+            stopMarker.bindPopup(`<b>${stop.location_name || 'Trạm dừng'}</b>`, {
+                className: 'game-route-popup',
+            });
             stopMarker.addTo(routeLayer);
         });
 
         routes.forEach((route) => {
             if (route.polyline_data) {
                 const coordinates = decodePolyline(route.polyline_data);
-                const polyline = L.polyline(coordinates, { color: '#2196f3', weight: 5, opacity: 0.75 });
-                polyline.bindPopup(`<b>Khoảng cách:</b> ${route.distance} km<br/><b>Thời gian:</b> ${route.travel_time} phút`);
+                L.polyline(coordinates, {
+                    color: '#243447',
+                    weight: 11,
+                    opacity: 0.34,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                }).addTo(routeLayer);
+                const polyline = L.polyline(coordinates, {
+                    color: '#ffd32d',
+                    weight: 6,
+                    opacity: 0.96,
+                    dashArray: '12 12',
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                    className: 'quest-route-line',
+                });
+                polyline.bindPopup(`<b>Khoảng cách:</b> ${route.distance} km<br/><b>Thời gian:</b> ${route.travel_time} phút`, {
+                    className: 'game-route-popup',
+                });
                 polyline.addTo(routeLayer);
             }
         });
 
-        if (bounds.length > 0) {
-            mapInstance.current.fitBounds(bounds, { padding: [40, 40], animate: false });
-        }
-        
         setTimeout(() => { if (mapInstance.current) mapInstance.current.invalidateSize(); }, 200);
 
     }, [stops, routes]);
@@ -207,7 +243,9 @@ const RouteMap = ({ stops = [], routes = [], hiddenTasks = [], userLocation = nu
                 // Gọi hàm khởi tạo Avatar của bạn
                 icon: createPlayerAvatarIcon(user)
             });
-            userMarker.bindPopup('<b style="color:#e74c3c">Vị trí của bạn</b>');
+            userMarker.bindPopup('<b style="color:#e74c3c">Vị trí của bạn</b>', {
+                className: 'game-route-popup',
+            });
             userMarker.addTo(userLayer);
         }
     }, [userLocation, user]);
@@ -251,8 +289,8 @@ const RouteMap = ({ stops = [], routes = [], hiddenTasks = [], userLocation = nu
                 </button>
             </div>
             
-            <div className="route-map-wrapper" style={{ height: '380px', width: '100%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.08)', background: '#e0e0e0' }}>
-                <div ref={mapRef} style={{ height: '100%', width: '100%' }} />
+            <div className="route-map-wrapper route-map-game-wrapper" style={{ height: '380px', width: '100%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.08)', background: '#e0e0e0' }}>
+                <div ref={mapRef} className="route-map-game-canvas" style={{ height: '100%', width: '100%' }} />
             </div>
             
             <div className="route-map-footer" style={{ marginTop: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>

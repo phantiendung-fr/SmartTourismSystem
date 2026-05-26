@@ -62,6 +62,20 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
     const [mascotMessage, setMascotMessage] = useState('');
     const [rewardData, setRewardData] = useState(null);
 
+    const syncUserPoints = async () => {
+        const callbacks = [onPointsUpdate, refreshUser]
+            .filter(callback => typeof callback === 'function');
+        await Promise.all([...new Set(callbacks)].map(callback => callback()));
+    };
+
+    const extractCompletionScore = (result) => {
+        const directScore = Number(result?.completion_score ?? result?.score_earned);
+        if (Number.isFinite(directScore)) return directScore;
+
+        const match = String(result?.detail || '').match(/(\d+)\s+điểm thưởng lộ trình/);
+        return match ? Number(match[1]) : null;
+    };
+
     useEffect(() => {
         if (!tripDetail) return;
         if (tripDetail.status === 'COMPLETED') {
@@ -103,7 +117,13 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
             if (!silent) setLoading(true);
             const token = await storageGet('access_token');
             const data = await getTripDetail(itineraryId, token);
-            setTripDetail(data);
+            setTripDetail(prev => {
+                if (!prev || prev.itinerary_id !== data.itinerary_id) return data;
+                return {
+                    ...data,
+                    score_earned: data.score_earned ?? prev.score_earned
+                };
+            });
         } catch (err) {
             if (!silent) setError(err.message || "Không thể tải chi tiết chuyến đi");
         } finally {
@@ -250,14 +270,20 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
         try {
             const token = await storageGet('access_token');
             const result = await completeTrip(itineraryId, token);
-            setActionMsg(result.detail);
-            // Refresh trip detail to get updated status
-            await fetchDetail(true);
+            const completionScore = extractCompletionScore(result);
+
+            setTripDetail(prev => prev ? {
+                ...prev,
+                status: 'COMPLETED',
+                score_earned: completionScore ?? prev.score_earned
+            } : prev);
+            setActionMsg(result.detail || 'Chuyến đi đã được hoàn thành. Điểm thưởng đã được cộng vào tài khoản.');
+            await Promise.all([fetchDetail(true), syncUserPoints()]);
         } catch (err) {
-            setActionMsg(err.message);
+            setActionMsg(err.message || 'Lỗi khi hoàn thành chuyến đi');
+            setTimeout(() => setActionMsg(''), 5000);
         } finally {
             setActionLoading(false);
-            setTimeout(() => setActionMsg(''), 3000);
         }
     };
 
@@ -274,14 +300,14 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
         try {
             const token = await storageGet('access_token');
             const result = await cancelTrip(itineraryId, token);
-            setActionMsg(result.detail);
+            setActionMsg(result.detail || 'Chuyến đi đã được hủy.');
             // Refresh trip detail to get updated status
-            await fetchDetail(true);
+            await Promise.all([fetchDetail(true), syncUserPoints()]);
         } catch (err) {
-            setActionMsg(err.message);
+            setActionMsg(err.message || 'Lỗi khi hủy chuyến đi');
+            setTimeout(() => setActionMsg(''), 5000);
         } finally {
             setActionLoading(false);
-            setTimeout(() => setActionMsg(''), 3000);
         }
     };
 
@@ -356,7 +382,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                 clearTimeout(safetyTimer);
                 
                 // Lấy điểm thưởng từ API (nếu có) hoặc từ thông tin trạm
-                const earnedPoints = result.reward_points || targetStop.reward || 50;
+                const earnedPoints = result.reward_points ?? result.earned_points ?? targetStop.reward ?? 50;
 
                 // Hiển thị hiệu ứng rương kho báu đang rung
                 setRewardData({ 
@@ -403,10 +429,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
 
                     checkinInProgress.current = false;
                     setCheckinLoading(false);
-                    if (onPointsUpdate) onPointsUpdate();
-                    if (typeof refreshUser === 'function') {
-                        refreshUser();
-                    }
+                    syncUserPoints();
                 }, 4500);
 
             } catch (err) {
@@ -610,6 +633,14 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
 
             {actionMsg && (
                 <div className="action-toast">{actionMsg}</div>
+            )}
+
+            {!actionMsg && isTripCompleted && (
+                <div className="action-toast">
+                    {tripDetail.score_earned
+                        ? `Chuyến đi đã hoàn thành. Bạn nhận được ${tripDetail.score_earned} điểm thưởng lộ trình.`
+                        : 'Chuyến đi đã hoàn thành. Điểm thưởng đã được cộng vào tài khoản.'}
+                </div>
             )}
             
             {checkinMsg && (

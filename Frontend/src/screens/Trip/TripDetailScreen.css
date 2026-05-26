@@ -1078,7 +1078,9 @@
     border-radius: 12px;
     box-shadow: 0 3px 0 #2c3e50;
     background: #ffffff;
+    color: #2c3e50;
     font-weight: 700;
+    line-height: 1.45;
 }
 
 /* ===== Full-screen loading/error states ===== */

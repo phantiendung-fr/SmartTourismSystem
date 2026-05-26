@@ -70,30 +70,9 @@
     box-shadow: 0 4px 0 #2c3e50;
 }
 
-.card-status.ongoing {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: #e3f2fd;
-    color: #1e90ff;
-    border: 2px solid #2c3e50;
-    padding: 2px 6px;
-    border-radius: 8px;
-    font-size: 9px;
-    font-weight: 900;
-    max-width: calc(100% - 24px);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-
 .card-info {
     grid-area: info;
     min-width: 0;
-    padding-top: 18px;
 }
 
 .ongoing-trip-title {
@@ -549,11 +528,6 @@
     .ongoing-trip-card {
         padding: 14px;
         gap: 8px;
-    }
-
-    .card-status.ongoing {
-        right: 10px;
-        max-width: calc(100% - 20px);
     }
 
     .enter-dungeon-action {

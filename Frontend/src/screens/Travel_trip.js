@@ -192,9 +192,6 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onOpenPlan, onOpenHistory, 
                                     className="ongoing-trip-card"
                                     onClick={() => onOpenTripDetail && onOpenTripDetail(trip.itinerary_id)}
                                 >
-                                    <div className="card-status ongoing">
-                                        <Gamepad2 size={12} /> Đang leo ải
-                                    </div>
                                     <div className="card-info">
                                         <h3 className="ongoing-trip-title">{trip.name || 'Hành trình không tên'}</h3>
                                         <p className="ongoing-trip-meta">Ngày kích hoạt: {formatDate(trip.create_at)}</p>

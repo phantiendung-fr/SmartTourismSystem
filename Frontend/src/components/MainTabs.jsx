@@ -295,7 +295,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
             {showMapMenu && (
                 <div className="map-menu-overlay" style={{ position: 'absolute', top: '100px', right: '20px', background: '#fff', borderRadius: '16px', padding: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', zIndex: 20, display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '180px' }}>
                     <button onClick={() => { setMapStyle('voyager'); setShowMapMenu(false); }} style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', padding: '5px', color: '#3b82f6', fontWeight: mapStyle === 'voyager' ? 'bold' : 'normal', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Map size={16} /> Bản đồ gốc
+                        <Map size={16} /> Bản đồ game
                     </button>
                     <button onClick={() => { setMapStyle('satellite'); setShowMapMenu(false); }} style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', padding: '5px', fontWeight: mapStyle === 'satellite' ? 'bold' : 'normal', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Globe size={16} /> Bản đồ Vệ tinh
