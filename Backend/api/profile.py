@@ -21,15 +21,11 @@ class UserProfileUpdate(BaseModel):
 @router.post("/update")
 def update_user_profile(profile: UserProfileUpdate):
     try:
-        # TẠM THỜI IN RA ĐỂ KIỂM TRA DỮ LIỆU ĐÃ CHẠY TỚI ĐÂY CHƯA
-        print("🚀 Dữ liệu React gửi lên:", profile.dict())
-        
         # --- Logic kết nối Database (SQLAlchemy) sẽ nằm ở đây ---
         
         return {
             "status": "success", 
-            "message": "Đã nhận dữ liệu hồ sơ thành công!", 
-            "data": profile.dict()
+            "message": "Đã nhận dữ liệu hồ sơ thành công!"
         }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Dữ liệu hồ sơ không hợp lệ")

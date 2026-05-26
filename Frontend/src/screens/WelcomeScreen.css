@@ -1,120 +1,224 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap');
+
 .welcome-container {
     width: 100%;
     min-height: 100vh;
     min-height: 100dvh;
-    background: #ffffff;
+    margin: 0 auto;
+    background: linear-gradient(180deg, #70a1ff 0%, #1e90ff 100%);
     display: flex;
     flex-direction: column;
-    padding: 24px;
+    padding: 32px 24px;
     padding-top: calc(24px + env(safe-area-inset-top, 0px));
     box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Fredoka', sans-serif;
+    position: relative;
+    overflow: hidden;
 }
+
+/* Floating Clouds Background */
+.game-cloud {
+    position: absolute;
+    background-color: rgba(255, 255, 255, 0.7);
+    border-radius: 40px;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.game-cloud::before, .game-cloud::after {
+    content: '';
+    position: absolute;
+    background-color: rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+}
+
+.cloud-1 {
+    width: 120px;
+    height: 40px;
+    top: 15%;
+    left: -20px;
+    animation: cloud-slide 25s infinite linear;
+}
+.cloud-1::before { width: 50px; height: 50px; top: -20px; left: 20px; }
+.cloud-1::after { width: 40px; height: 40px; top: -15px; right: 20px; }
+
+.cloud-2 {
+    width: 140px;
+    height: 45px;
+    top: 45%;
+    right: -40px;
+    animation: cloud-slide 32s infinite linear reverse;
+}
+.cloud-2::before { width: 60px; height: 60px; top: -25px; left: 25px; }
+.cloud-2::after { width: 45px; height: 45px; top: -15px; right: 25px; }
+
+.cloud-3 {
+    width: 100px;
+    height: 35px;
+    top: 75%;
+    left: 20%;
+    animation: cloud-slide 20s infinite linear;
+}
+.cloud-3::before { width: 45px; height: 45px; top: -15px; left: 15px; }
+.cloud-3::after { width: 35px; height: 35px; top: -10px; right: 15px; }
 
 .skip-btn {
     align-self: flex-end;
-    background: none;
-    border: none;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    color: #222f3e;
-    padding: 10px 0;
+    z-index: 10;
+    font-size: 13px !important;
+    padding: 6px 16px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 0 #2c3e50 !important;
 }
 
-/* Xếp hình ghép (Collage) */
-.collage {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin-top: 10px;
+/* Character Lobby Card */
+.character-lobby-card {
     position: relative;
-    height: min(320px, 40vh);
+    background-color: #ffffff;
+    border: 4px solid #2c3e50;
+    border-radius: 32px;
+    padding: 20px;
+    margin: 30px auto 10px;
+    width: 180px;
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 0 #2c3e50, 0 15px 25px rgba(0,0,0,0.15);
+    z-index: 5;
+    animation: float-bouncy 4s ease-in-out infinite;
 }
 
-.img-1, .img-2 {
-    width: 45%;
-    height: 180px;
-    border-radius: 24px;
-    object-fit: cover;
+.character-avatar-wrapper {
+    position: relative;
+    width: 110px;
+    height: 110px;
+    background: radial-gradient(circle, #ffeaa7 0%, #ffd32d 100%);
+    border: 3px solid #2c3e50;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.img-1 { margin-right: 10px; margin-top: 20px; }
-.img-2 { background-color: #eee; }
-
-.img-3 {
-    width: 80%;
-    height: 140px;
-    border-radius: 24px;
-    object-fit: cover;
-    margin-top: -60px; /* Kéo lên đè lên 2 ảnh trên */
-    border: 6px solid #ffffff; /* Viền trắng tạo hiệu ứng cắt */
-    z-index: 2;
+.lobby-mascot-img {
+    width: 85px;
+    height: 85px;
+    object-fit: contain;
 }
 
-/* Typography giống Figma */
+.level-badge-float {
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    background-color: #ff4757;
+    color: #ffffff;
+    border: 2px solid #2c3e50;
+    border-radius: 8px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 900;
+    box-shadow: 0 2px 0 #2c3e50;
+}
+
+.character-stats-row {
+    margin-top: 14px;
+    display: flex;
+    gap: 8px;
+}
+
+.stat-pill {
+    background-color: #f1f2f6;
+    border: 2px solid #2c3e50;
+    border-radius: 10px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 800;
+    color: #2c3e50;
+}
+
+/* Text Section */
 .text-section {
-    margin-top: 20px;
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    z-index: 5;
+    background: rgba(255, 255, 255, 0.9);
+    border: 3px solid #2c3e50;
+    border-radius: 24px;
+    padding: 16px 20px;
+    box-shadow: 0 6px 0 #2c3e50;
 }
 
 .title-line {
-    font-size: 36px;
+    font-size: 32px;
     font-weight: 900;
-    color: #111;
     margin: 0;
-    line-height: 1.2;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+    text-shadow: 1px 1px 0px #fff;
+    -webkit-text-stroke: 1.5px #2c3e50;
 }
 
-/* Tạo khối nền chéo màu cam cho chữ Destinations */
-.highlight-box {
-    display: inline-block;
-    background-color: #e19842;
-    color: white;
-    padding: 5px 15px;
-    margin-top: 5px;
-    transform: skewX(-10deg); /* Kéo nghiêng khối nền */
+.text-yellow {
+    color: #ffd32d;
 }
 
-.highlight-box span {
-    display: inline-block;
-    transform: skewX(10deg); /* Dựng thẳng chữ lại */
+.text-blue {
+    color: #1e90ff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sparkle-icon {
+    margin-bottom: 2px;
 }
 
 .sub-text {
-    color: #576574;
-    font-size: 15px;
-    margin-top: 15px;
-    line-height: 1.5;
+    color: #57606f;
+    font-size: 13px;
+    margin-top: 8px;
+    line-height: 1.4;
+    font-weight: 600;
 }
 
-/* Nút bấm */
+/* Button Group */
 .btn-group {
-    margin-top: auto; /* Đẩy các nút xuống cuối màn hình */
-    margin-bottom: 20px;
+    margin-top: auto;
+    margin-bottom: 5px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-}
-
-.btn-primary, .btn-outline {
-    width: 100%;
-    padding: 16px;
-    border-radius: 30px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: 0.2s;
-    min-height: 48px;
+    gap: 14px;
+    z-index: 5;
 }
 
 .btn-primary {
-    background-color: #0062cc;
-    color: white;
-    border: none;
+    background-color: #ff9f1a !important;
+    color: #ffffff;
+    font-size: 16px !important;
+    padding: 14px !important;
 }
 
 .btn-outline {
-    background-color: transparent;
-    color: #222f3e;
-    border: 1.5px solid #222f3e;
+    background-color: #ffd32d !important;
+    color: #2c3e50 !important;
+    font-size: 16px !important;
+    padding: 14px !important;
+}
+
+@media (min-width: 481px) {
+    .welcome-container {
+        max-width: 480px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        border-radius: 40px;
+        min-height: auto;
+        height: 100%;
+        border: 5px solid #2c3e50;
+    }
 }

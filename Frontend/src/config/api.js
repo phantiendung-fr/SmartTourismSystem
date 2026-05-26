@@ -4,8 +4,31 @@ const explicitApiUrl = process.env.REACT_APP_API_URL;
 
 const normalizeUrl = (url) => url?.replace(/\/$/, '');
 
+const isLocalOrPrivateHost = (hostname) => (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname.startsWith('10.') ||
+    hostname.startsWith('192.168.') ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
+);
+
+const assertSecureInternetApiUrl = (url) => {
+    try {
+        const parsed = new URL(url);
+        if (parsed.protocol === 'http:' && !isLocalOrPrivateHost(parsed.hostname)) {
+            throw new Error('Public internet API URL must use HTTPS.');
+        }
+    } catch (error) {
+        if (error.message === 'Public internet API URL must use HTTPS.') throw error;
+    }
+};
+
 const getApiBase = () => {
-    if (explicitApiUrl) return normalizeUrl(explicitApiUrl);
+    if (explicitApiUrl) {
+        const normalized = normalizeUrl(explicitApiUrl);
+        assertSecureInternetApiUrl(normalized);
+        return normalized;
+    }
 
     if (Capacitor.isNativePlatform()) {
         throw new Error(
@@ -15,7 +38,9 @@ const getApiBase = () => {
 
     const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
     const hostname = window.location.hostname || 'localhost';
-    return `${protocol}//${hostname}:8000`;
+    const inferredUrl = `${protocol}//${hostname}:8000`;
+    assertSecureInternetApiUrl(inferredUrl);
+    return inferredUrl;
 };
 
 export const API_BASE = getApiBase();

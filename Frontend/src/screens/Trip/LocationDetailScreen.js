@@ -1,7 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { API_BASE } from '../../config/api';
 import './LocationDetailScreen.css';
 
 const LocationDetailScreen = ({ location, onBack }) => {
+    const [ambassadors, setAmbassadors] = useState([]);
+    const [loadingAmbassadors, setLoadingAmbassadors] = useState(false);
+
+    useEffect(() => {
+        if (location?.location_id) {
+            const fetchAmbassadors = async () => {
+                setLoadingAmbassadors(true);
+                try {
+                    const res = await fetch(`${API_BASE}/api/social/locations/${location.location_id}/ambassador`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setAmbassadors(data);
+                    }
+                } catch (err) {
+                    console.error("Lỗi khi tải Đại sứ địa phương:", err);
+                } finally {
+                    setLoadingAmbassadors(false);
+                }
+            };
+            fetchAmbassadors();
+        }
+    }, [location?.location_id]);
+
     // Nếu location bị null (do lỗi nào đó), trở về an toàn
     if (!location) {
         return (
@@ -59,6 +83,77 @@ const LocationDetailScreen = ({ location, onBack }) => {
                     <i className="fas fa-directions" style={{ marginRight: '8px' }}></i> Directions
                 </button>
 
+                {/* Local Ambassadors Section */}
+                <div className="section" style={{
+                    border: '2.5px solid #2c3e50',
+                    borderRadius: '16px',
+                    padding: '12px',
+                    backgroundColor: '#f8fafc',
+                    boxShadow: '0 4px 0 #2c3e50',
+                    marginBottom: '20px'
+                }}>
+                    <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '15px', fontWeight: 'bold', margin: '0 0 10px 0', color: '#2c3e50' }}>
+                        👑 Đại sứ địa phương
+                    </h3>
+                    {loadingAmbassadors ? (
+                        <div style={{ fontSize: '12px', color: '#7f8c8d', textAlign: 'center', padding: '10px' }}>Đang tải danh sách Đại sứ...</div>
+                    ) : ambassadors.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '12px', color: '#747d8c', fontSize: '12px', fontWeight: 'bold' }}>
+                            <span>Chưa có Đại sứ địa phương ở đây! 🗺️</span>
+                            <p style={{ fontSize: '10px', color: '#95a5a6', fontWeight: 'normal', marginTop: '4px' }}>
+                                Hãy là người check-in đầu tiên để chiếm lĩnh danh hiệu này!
+                            </p>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {ambassadors.map((amb, index) => {
+                                const medalEmojis = ['🥇', '🥈', '🥉', '🎖️', '🎖️'];
+                                return (
+                                    <div 
+                                        key={amb.user_id} 
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            padding: '8px 10px',
+                                            backgroundColor: '#ffffff',
+                                            border: '2px solid #2c3e50',
+                                            borderRadius: '12px',
+                                            boxShadow: '0 2px 0 #2c3e50'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{medalEmojis[index] || '🎖️'}</span>
+                                            <img 
+                                                src={amb.avatar} 
+                                                alt={amb.name} 
+                                                style={{
+                                                    width: '32px',
+                                                    height: '32px',
+                                                    borderRadius: '50%',
+                                                    border: '1.5px solid #2c3e50'
+                                                }}
+                                            />
+                                            <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#2c3e50' }}>{amb.name}</span>
+                                        </div>
+                                        <span style={{
+                                            fontSize: '11px',
+                                            fontWeight: 'bold',
+                                            color: '#3498db',
+                                            backgroundColor: '#eaf2f8',
+                                            padding: '3px 8px',
+                                            borderRadius: '8px',
+                                            border: '1px solid #a9cce3'
+                                        }}>
+                                            {amb.checkin_count} check-in
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
                 <div className="section">
                     <h3 className="section-title">Nearby Luxuries</h3>
                     <div className="luxuries-list">
@@ -67,8 +162,10 @@ const LocationDetailScreen = ({ location, onBack }) => {
                             <span>Food</span>
                         </div>
                         <div className="luxury-item active">
-                            <div className="lux-icon"><i className="fas fa-bed"></i></div>
-                            <span>Hotels</span>
+                            <div className="luxury-item active">
+                                <div className="lux-icon"><i className="fas fa-bed"></i></div>
+                                <span>Hotels</span>
+                            </div>
                         </div>
                         <div className="luxury-item">
                             <div className="lux-icon"><i className="fas fa-coffee"></i></div>

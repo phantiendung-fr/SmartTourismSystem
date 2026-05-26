@@ -3,6 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { API_BASE } from '../../config/api';
 import { storageGet } from '../../platform/storage';
 import { getCurrentPosition } from '../../platform/location';
+import { 
+  Trophy, Crown, Gem, Package, Key, Gift, Sparkles, 
+  Flame, Coins, TrendingUp, Check, AlertCircle 
+} from 'lucide-react';
 import './ChestOpeningAnimation.css';
 
 const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) => {
@@ -144,13 +148,13 @@ const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) 
                     longitude = position.longitude;
                 } catch (gpsErr) {
                     console.error("Lỗi lấy GPS:", gpsErr);
-                    throw new Error("📍 Lỗi định vị: Không thể xác định vị trí GPS của bạn. Vui lòng bật định vị và cho phép trình duyệt truy cập vị trí để mở rương!");
+                    throw new Error("Lỗi định vị: Không thể xác định vị trí GPS của bạn. Vui lòng bật định vị và cho phép trình duyệt truy cập vị trí để mở rương!");
                 }
             }
 
             // Đảm bảo có tọa độ GPS thực tế
             if (latitude === null || longitude === null) {
-                throw new Error("📍 Lỗi định vị: Chưa nhận được dữ liệu GPS. Vui lòng bật định vị để mở rương!");
+                throw new Error("Lỗi định vị: Chưa nhận được dữ liệu GPS. Vui lòng bật định vị để mở rương!");
             }
 
             const response = await fetch(`${API_BASE}/api/v1/hidden/claim-chest`, {
@@ -170,7 +174,7 @@ const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) 
 
             // ❌ LỖI 1: Khoảng cách quá xa (Backend trả về status: "too_far" với status code 200)
             if (data && data.status === "too_far") {
-                setErrorMsg(`📍 Khoảng cách quá xa: ${data.message} (Khoảng cách thực tế: ${Math.round(data.current_distance)}m, yêu cầu <= ${data.required_distance}m)`);
+                setErrorMsg(`Khoảng cách quá xa: ${data.message} (Khoảng cách thực tế: ${Math.round(data.current_distance)}m, yêu cầu <= ${data.required_distance}m)`);
                 setLoading(false);
                 return; 
             }
@@ -181,15 +185,15 @@ const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) 
 
                 // ❌ LỖI 2: Thiếu dữ liệu profile cá nhân dưới DB
                 if (backendDetail.includes("user_profiles") || backendDetail.includes("hồ sơ") || backendDetail.includes("profile")) {
-                    setErrorMsg("👤 Lỗi tài khoản: Hệ thống không tìm thấy hồ sơ cá nhân (user_profiles) tương ứng với tài khoản của bạn. Vui lòng cập nhật profile hoặc kiểm tra DB.");
+                    setErrorMsg("Lỗi tài khoản: Hệ thống không tìm thấy hồ sơ cá nhân (user_profiles) tương ứng với tài khoản của bạn. Vui lòng cập nhật profile hoặc kiểm tra DB.");
                 } 
                 // ❌ LỖI 3: Rương kho báu đã hết hạn trên bản đồ
                 else if (backendDetail.includes("expired") || backendDetail.includes("hết hạn") || backendDetail.includes("timeout")) {
-                    setErrorMsg("⏳ Rương đã hết hạn: Rương kho báu này đã quá thời gian tồn tại trên hệ thống!");
+                    setErrorMsg("Rương đã hết hạn: Rương kho báu này đã quá thời gian tồn tại trên hệ thống!");
                 } 
                 // ❌ CÁC LỖI KHÁC
                 else {
-                    setErrorMsg(`⚠️ Lỗi hệ thống: ${backendDetail || "Không thể mở rương vào lúc này"}`);
+                    setErrorMsg(`Lỗi hệ thống: ${backendDetail || "Không thể mở rương vào lúc này"}`);
                 }
 
                 setLoading(false);
@@ -212,7 +216,7 @@ const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) 
 
         } catch (err) {
             console.error(err);
-            setErrorMsg(err.message || "❌ Mất kết nối: Đã xảy ra lỗi khi kết nối đến máy chủ Backend");
+            setErrorMsg(err.message || "Mất kết nối: Đã xảy ra lỗi khi kết nối đến máy chủ Backend");
             setLoading(false);
         }
     };
@@ -252,9 +256,9 @@ const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) 
                         <h2 className="chest-title">{chestTitle}</h2>
                         <p className="chest-subtitle">{chestDesc}</p>
                         
-                        <div className="chest-wrapper chest-floating" onClick={handleOpenChest}>
-                            <div style={{ fontSize: '100px', transform: 'scale(1.2)', cursor: 'pointer' }}>
-                                {rarity === 'LEGENDARY' ? '🏆' : rarity === 'EPIC' ? '👑' : rarity === 'RARE' ? '💎' : '📦'}
+                        <div className="chest-wrapper chest-floating" onClick={handleOpenChest} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ transform: 'scale(1.2)', cursor: 'pointer', color: rarityColors[rarity]?.[0] || '#f1c40f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {rarity === 'LEGENDARY' ? <Trophy size={100} /> : rarity === 'EPIC' ? <Crown size={100} /> : rarity === 'RARE' ? <Gem size={100} /> : <Package size={100} />}
                             </div>
                         </div>
 
@@ -270,9 +274,13 @@ const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) 
                                 border: '1px solid rgba(255, 118, 117, 0.2)',
                                 textAlign: 'center',
                                 width: '100%',
-                                boxSizing: 'border-box'
+                                boxSizing: 'border-box',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px'
                             }}>
-                                {errorMsg}
+                                <AlertCircle size={16} /> {errorMsg}
                             </p>
                         )}
 
@@ -280,9 +288,9 @@ const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) 
                             className="claim-btn" 
                             onClick={handleOpenChest}
                             disabled={loading}
-                            style={{ marginTop: errorMsg ? '10px' : '20px' }}
+                            style={{ marginTop: errorMsg ? '10px' : '20px', display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}
                         >
-                            {loading ? 'Đang mở khóa...' : 'Mở rương 🔑'}
+                            {loading ? 'Đang mở khóa...' : <><Key size={16} /> Mở rương</>}
                         </button>
                         
                         <button 
@@ -301,9 +309,9 @@ const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) 
                             ĐANG MỞ KHÓA...
                         </h2>
                         
-                        <div className="chest-wrapper chest-shaking chest-open-animation">
-                            <div style={{ fontSize: '100px', transform: 'scale(1.2)' }}>
-                                {rarity === 'LEGENDARY' ? '🏆' : rarity === 'EPIC' ? '👑' : rarity === 'RARE' ? '💎' : '📦'}
+                        <div className="chest-wrapper chest-shaking chest-open-animation" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ transform: 'scale(1.2)', color: rarityColors[rarity]?.[0] || '#f1c40f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {rarity === 'LEGENDARY' ? <Trophy size={100} /> : rarity === 'EPIC' ? <Crown size={100} /> : rarity === 'RARE' ? <Gem size={100} /> : <Package size={100} />}
                             </div>
                         </div>
                     </>
@@ -320,10 +328,10 @@ const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) 
                                 
                                 {/* Front Face */}
                                 <div className="card-face card-front">
-                                    <div className="card-front-content">
-                                        <div className="card-logo">🎁</div>
+                                    <div className="card-front-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                                        <div className="card-logo" style={{ color: '#fbc531' }}><Gift size={40} /></div>
                                         <h3 style={{ margin: 0 }}>Lật Thẻ</h3>
-                                        <p className="tap-to-reveal">Chạm vào đây 💫</p>
+                                        <p className="tap-to-reveal" style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>Chạm vào đây <Sparkles size={14} /></p>
                                     </div>
                                 </div>
 
@@ -331,16 +339,16 @@ const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) 
                                 <div className={`card-face card-back card-${rarity}`}>
                                     <h4 className="reward-heading">PHẦN THƯỞNG</h4>
                                     
-                                    <div className="reward-row">
-                                        <span className="reward-icon">🔥</span>
+                                    <div className="reward-row" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <Flame size={20} style={{ color: '#ff7f50' }} />
                                         <div className="reward-text">
                                             <span className="reward-val">+{rewards?.reward_exp || 0}</span>
                                             <span className="reward-label">Kinh nghiệm (EXP)</span>
                                         </div>
                                     </div>
 
-                                    <div className="reward-row">
-                                        <span className="reward-icon">🪙</span>
+                                    <div className="reward-row" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <Coins size={20} style={{ color: '#fbc531' }} />
                                         <div className="reward-text">
                                             <span className="reward-val">+{rewards?.reward_coin || 0}</span>
                                             <span className="reward-label">Xu (Coin)</span>
@@ -348,8 +356,8 @@ const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) 
                                     </div>
 
                                     {rewards?.multiplier > 1 && (
-                                        <div className="multiplier-tag">
-                                            Hệ số Rarity: x{rewards.multiplier} 🚀
+                                        <div className="multiplier-tag" style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
+                                            Hệ số Rarity: x{rewards.multiplier} <TrendingUp size={14} />
                                         </div>
                                     )}
                                 </div>
@@ -357,8 +365,8 @@ const ChestOpeningAnimation = ({ task, onClose, onClaim, userLocation = null }) 
                             </div>
                         </div>
 
-                        <button className="claim-btn" onClick={handleConfirmClaim}>
-                            Nhận và Tiếp tục 🎉
+                        <button className="claim-btn" onClick={handleConfirmClaim} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                            Nhận và Tiếp tục <Check size={16} />
                         </button>
                     </>
                 )}

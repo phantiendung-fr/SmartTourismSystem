@@ -1,0 +1,320 @@
+.game-map-shell {
+    --map-ink: #2c3e50;
+    --map-cream: #fff9dd;
+    --map-accent: #ffd32d;
+    --map-aqua: #32d9d3;
+    --map-hot: #ff5d5d;
+    --map-grass: #58d68d;
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.game-map-shell.card {
+    height: 350px;
+    width: 100%;
+    margin-bottom: 25px;
+    border-radius: 24px;
+    border: 3px solid var(--map-ink);
+    background:
+        radial-gradient(circle at 20% 14%, rgba(255, 255, 255, 0.46) 0 8%, transparent 9%),
+        linear-gradient(180deg, #f6df9d 0%, #a9df9b 48%, #8fcce7 100%);
+    box-shadow: 0 6px 0 var(--map-ink), 0 14px 26px rgba(34, 50, 72, 0.2);
+}
+
+.game-map-shell.full {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+    border-radius: 0;
+    background:
+        radial-gradient(circle at 15% 14%, rgba(255, 245, 184, 0.42) 0 8%, transparent 9%),
+        linear-gradient(180deg, #f6df9d 0%, #a5df9b 50%, #8fcce7 100%);
+}
+
+.game-map-shell::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    background:
+        radial-gradient(circle at 18% 16%, rgba(255, 232, 122, 0.18) 0 9%, transparent 10%),
+        radial-gradient(circle at 82% 76%, rgba(84, 214, 146, 0.14) 0 11%, transparent 12%),
+        linear-gradient(140deg, rgba(255, 255, 255, 0.12), rgba(62, 203, 255, 0.08));
+    mix-blend-mode: soft-light;
+}
+
+.game-map-shell::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    background-image:
+        linear-gradient(rgba(44, 62, 80, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(44, 62, 80, 0.08) 1px, transparent 1px);
+    background-size: 96px 96px, 96px 96px;
+    opacity: 0.14;
+}
+
+.game-map-frame {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    border: 2px solid rgba(44, 62, 80, 0.38);
+    z-index: 1;
+}
+
+.game-map-shell.full .game-map-frame {
+    border: 0;
+}
+
+.game-map-canvas,
+.game-map-canvas.leaflet-container {
+    width: 100%;
+    height: 100%;
+}
+
+.game-map-canvas.leaflet-container {
+    background:
+        radial-gradient(circle at 20% 20%, rgba(255, 236, 140, 0.2), transparent 24%),
+        linear-gradient(180deg, #f6df9d 0%, #a9df9b 48%, #8fcce7 100%);
+    font-family: 'Be Vietnam Pro', sans-serif;
+}
+
+.game-map-shell .leaflet-tile-pane {
+    z-index: 1;
+    transition: filter 0.25s ease;
+}
+
+.game-map-shell .leaflet-overlay-pane,
+.game-map-shell .leaflet-shadow-pane {
+    z-index: 3;
+}
+
+.game-map-shell .leaflet-marker-pane,
+.game-map-shell .leaflet-tooltip-pane {
+    z-index: 4;
+}
+
+.game-map-shell .leaflet-popup-pane,
+.game-map-shell .leaflet-control-container {
+    z-index: 5;
+}
+
+.game-map-shell.map-style-voyager .leaflet-tile-pane {
+    filter: saturate(1.18) contrast(1.02) brightness(1.04) hue-rotate(-5deg);
+}
+
+.game-map-shell.map-style-satellite .leaflet-tile-pane {
+    filter: saturate(1.8) contrast(1.2) brightness(0.9);
+}
+
+.game-map-shell.map-style-traffic .leaflet-tile-pane {
+    filter: saturate(1.55) contrast(1.28) brightness(1.12) hue-rotate(14deg);
+}
+
+.custom-div-icon.game-stop-icon,
+.hidden-task-icon.game-hidden-task-icon {
+    background: transparent;
+    border: 0;
+}
+
+.game-stop-marker {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px 11px 16px 16px;
+    background:
+        radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.96) 0 12%, transparent 13%),
+        linear-gradient(180deg, #fff176 0%, var(--marker-color, #2196f3) 42%, #145ea8 100%);
+    border: 3px solid #ffffff;
+    color: #1d2d44;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 900;
+    box-shadow:
+        0 0 0 2px rgba(44, 62, 80, 0.95),
+        0 6px 0 rgba(44, 62, 80, 0.65),
+        0 0 18px var(--marker-color, #2196f3);
+    position: relative;
+    transform: translateY(-8px) rotate(-4deg);
+}
+
+.game-stop-marker::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    background: inherit;
+    border-right: 3px solid #ffffff;
+    border-bottom: 3px solid #ffffff;
+    box-shadow: 2px 2px 0 rgba(44, 62, 80, 0.95);
+    transform: translateX(-50%) rotate(45deg);
+    z-index: -1;
+}
+
+.game-stop-marker.status-next {
+    animation: pulse-next-stop 1.35s ease-in-out infinite;
+}
+
+.game-stop-marker.status-completed {
+    opacity: 0.9;
+}
+
+.game-hidden-task-marker {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.92) 0 13%, transparent 14%),
+        linear-gradient(145deg, #fff176 0%, var(--task-color, #7f8c8d) 58%, #202a44 100%);
+    border: 3px solid #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    box-shadow:
+        0 0 0 2px rgba(44, 62, 80, 0.9),
+        0 7px 0 rgba(44, 62, 80, 0.55),
+        0 0 24px var(--task-color, #7f8c8d);
+    cursor: pointer;
+    position: relative;
+    animation: map-float 2s infinite ease-in-out;
+}
+
+.game-hidden-task-orbit {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 2px dashed var(--task-color, #7f8c8d);
+    animation: map-spin 8s infinite linear;
+    opacity: 0.85;
+}
+
+.game-map-popup .leaflet-popup-content-wrapper {
+    background: var(--map-cream);
+    border: 2px solid var(--map-ink);
+    border-radius: 14px;
+    box-shadow: 0 6px 0 rgba(44, 62, 80, 0.5);
+}
+
+.game-map-popup .leaflet-popup-content {
+    margin: 10px 12px;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--map-ink);
+}
+
+.game-map-popup .leaflet-popup-content b {
+    font-size: 13px;
+}
+
+.game-map-popup .leaflet-popup-tip {
+    background: var(--map-cream);
+    box-shadow: 2px 2px 0 rgba(44, 62, 80, 0.4);
+}
+
+.game-map-popup .leaflet-popup-close-button {
+    color: #576574;
+    font-size: 16px;
+    right: 8px;
+    top: 6px;
+}
+
+.game-map-shell .leaflet-bar {
+    border: 2px solid var(--map-ink);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 0 rgba(44, 62, 80, 0.75);
+}
+
+.game-map-shell .leaflet-bar a {
+    background: #fffef5;
+    color: var(--map-ink);
+    border-bottom: 2px solid rgba(44, 62, 80, 0.12);
+    width: 34px;
+    height: 34px;
+    line-height: 34px;
+    font-size: 18px;
+    font-weight: 900;
+}
+
+.game-map-shell .leaflet-bar a:hover {
+    background: var(--map-accent);
+    color: #243447;
+}
+
+.game-map-shell .leaflet-control-attribution {
+    background: rgba(26, 38, 54, 0.78);
+    color: #dff2ff;
+    border-top-left-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 0;
+    border-right: 0;
+    padding: 2px 6px;
+    font-size: 10px;
+}
+
+.game-map-shell .leaflet-control-attribution a {
+    color: #f8cb2e;
+}
+
+@keyframes map-float {
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+    }
+
+    50% {
+        transform: translateY(-4px) scale(1.05);
+    }
+}
+
+@keyframes map-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse-next-stop {
+    0%,
+    100% {
+        transform: scale(1);
+        box-shadow:
+            0 0 0 2px rgba(44, 62, 80, 0.95),
+            0 6px 0 rgba(44, 62, 80, 0.6),
+            0 0 14px var(--marker-color, #ff9800);
+    }
+
+    50% {
+        transform: scale(1.16);
+        box-shadow:
+            0 0 0 2px rgba(44, 62, 80, 0.95),
+            0 6px 0 rgba(44, 62, 80, 0.6),
+            0 0 20px var(--marker-color, #ff9800);
+    }
+}
+
+@media (max-width: 768px) {
+    .game-map-shell::after {
+        opacity: 0.1;
+        background-size: 84px 84px, 84px 84px;
+    }
+}

@@ -4,6 +4,11 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getEnterpriseEvents, createEnterpriseEvent, deleteEnterpriseEvent } from '../../services/hiddenQuestService';
 import { showAlert, showConfirm } from '../../platform/dialog';
+import { 
+  Sparkles, Plus, MapPin, QrCode, HelpCircle, Camera, 
+  Gem, Award, Coins, Globe, Calendar, X, AlertCircle, 
+  CheckCircle2, Send 
+} from 'lucide-react';
 import './EnterpriseEventForm.css';
 
 export const EnterpriseEventForm = ({ onClose }) => {
@@ -48,15 +53,7 @@ export const EnterpriseEventForm = ({ onClose }) => {
                     box-shadow: 0 4px 12px rgba(0,0,0,0.35);
                     position: relative;
                 ">
-                    <span style="
-                        position: absolute;
-                        left: 50%;
-                        top: 50%;
-                        transform: translate(-50%, -50%);
-                        color: #fff;
-                        font-size: 12px;
-                        line-height: 1;
-                    ">📍</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                 </div>
             `,
             iconSize: [26, 26],
@@ -137,7 +134,11 @@ export const EnterpriseEventForm = ({ onClose }) => {
         }
 
         return () => {
-            // Cleanup is handled when closing modal or component destruction
+            if (mapInstanceRef.current) {
+                mapInstanceRef.current.remove();
+                mapInstanceRef.current = null;
+                markerRef.current = null;
+            }
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isFormOpen]);
@@ -248,8 +249,8 @@ export const EnterpriseEventForm = ({ onClose }) => {
             {/* Header */}
             <div className="enterprise-event-header">
                 <div>
-                    <h2 className="enterprise-event-title">
-                        Sự kiện Động ẩn 🔮
+                    <h2 className="enterprise-event-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        Sự kiện Động ẩn <Sparkles size={24} style={{ color: '#a29bfe' }} />
                     </h2>
                     <p className="enterprise-event-subtitle">
                         Tạo rương báu hoặc sự kiện để thu hút khách ghé thăm cửa hàng của bạn.
@@ -263,8 +264,8 @@ export const EnterpriseEventForm = ({ onClose }) => {
             </div>
 
             {/* Dashboard Action Button */}
-            <button onClick={() => setIsFormOpen(true)} className="enterprise-event-create-btn">
-                <span>➕</span> Tạo Sự Kiện Động / Rương Báu Mới
+            <button onClick={() => setIsFormOpen(true)} className="enterprise-event-create-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <Plus size={18} /> Tạo Sự Kiện Động / Rương Báu Mới
             </button>
 
             {/* Active Events List */}
@@ -278,8 +279,8 @@ export const EnterpriseEventForm = ({ onClose }) => {
                     <p style={{ fontSize: '13px', marginTop: '10px' }}>Đang tải danh sách sự kiện...</p>
                 </div>
             ) : events.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                    <p style={{ fontSize: '30px', margin: '0 0 10px' }}>🔮</p>
+                <div style={{ textAlign: 'center', padding: '40px 20px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px dashed rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <Sparkles size={40} style={{ color: '#a29bfe', marginBottom: '10px' }} />
                     <h4 style={{ margin: '0 0 5px', color: '#ffffff' }}>Chưa có sự kiện nào</h4>
                     <p style={{ margin: 0, fontSize: '13px', color: '#a4b0be' }}>Hãy nhấn nút phía trên để tạo sự kiện quảng bá đầu tiên của bạn!</p>
                 </div>
@@ -304,28 +305,37 @@ export const EnterpriseEventForm = ({ onClose }) => {
                                 <span className={`event-card-badge ${ev.is_active ? 'badge-active' : 'badge-inactive'}`}>
                                     {ev.is_active ? 'Đang hoạt động' : 'Hết hiệu lực'}
                                 </span>
-                                <span style={{ background: 'rgba(162,155,254,0.15)', color: '#a29bfe' }} className="event-card-badge">
-                                    {ev.quest_type === 'CHECKIN' ? '📍 Check-in' : ev.quest_type === 'QR' ? '🔳 Quét QR' : ev.quest_type === 'QUIZ' ? '❓ Trắc nghiệm' : '📷 Ảnh chụp'}
+                                <span style={{ background: 'rgba(162,155,254,0.15)', color: '#a29bfe', display: 'inline-flex', alignItems: 'center', gap: '4px' }} className="event-card-badge">
+                                    {ev.quest_type === 'CHECKIN' ? (
+                                        <><MapPin size={12} /> Check-in</>
+                                    ) : ev.quest_type === 'QR' ? (
+                                        <><QrCode size={12} /> Quét QR</>
+                                    ) : ev.quest_type === 'QUIZ' ? (
+                                        <><HelpCircle size={12} /> Trắc nghiệm</>
+                                    ) : (
+                                        <><Camera size={12} /> Ảnh chụp</>
+                                    )}
                                 </span>
                                 <span style={{ 
                                     background: ev.rarity === 'LEGENDARY' ? 'rgba(241,196,15,0.15)' : ev.rarity === 'EPIC' ? 'rgba(142,68,173,0.15)' : ev.rarity === 'RARE' ? 'rgba(41,128,185,0.15)' : 'rgba(255,255,255,0.08)',
-                                    color: ev.rarity === 'LEGENDARY' ? '#f1c40f' : ev.rarity === 'EPIC' ? '#bb8fce' : ev.rarity === 'RARE' ? '#5dade2' : '#bdc3c7'
+                                    color: ev.rarity === 'LEGENDARY' ? '#f1c40f' : ev.rarity === 'EPIC' ? '#bb8fce' : ev.rarity === 'RARE' ? '#5dade2' : '#bdc3c7',
+                                    display: 'inline-flex', alignItems: 'center', gap: '4px'
                                 }} className="event-card-badge">
-                                    💎 Rarity: {ev.rarity}
+                                    <Gem size={12} /> Rarity: {ev.rarity}
                                 </span>
-                                <span style={{ background: 'rgba(255,255,255,0.05)', color: '#ffffff' }} className="event-card-badge">
-                                    ⭐ +{ev.reward_exp * ev.multiplier} EXP | 🪙 +{ev.reward_coin * ev.multiplier} Coin
+                                <span style={{ background: 'rgba(255,255,255,0.05)', color: '#ffffff', display: 'inline-flex', alignItems: 'center', gap: '4px' }} className="event-card-badge">
+                                    <Award size={12} /> +{ev.reward_exp * ev.multiplier} EXP | <Coins size={12} /> +{ev.reward_coin * ev.multiplier} xu
                                 </span>
                             </div>
 
-                            <div style={{ marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px', fontSize: '11px', color: '#a4b0be', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <div>🌐 Vị trí: <strong>{ev.latitude.toFixed(5)}, {ev.longitude.toFixed(5)}</strong> (Bán kính {ev.radius_meters}m)</div>
-                                <div>📅 Diễn ra: <strong>{new Date(ev.start_time).toLocaleString()}</strong> đến <strong>{new Date(ev.end_time).toLocaleString()}</strong></div>
+                            <div style={{ marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px', fontSize: '11px', color: '#a4b0be', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Globe size={12} /> Vị trí: <strong>{ev.latitude.toFixed(5)}, {ev.longitude.toFixed(5)}</strong> (Bán kính {ev.radius_meters}m)</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Calendar size={12} /> Diễn ra: <strong>{new Date(ev.start_time).toLocaleString()}</strong> đến <strong>{new Date(ev.end_time).toLocaleString()}</strong></div>
                                 
                                 {ev.quest_type === 'QR' && ev.qr_token && (
                                     <div style={{ marginTop: '8px', background: 'rgba(253, 203, 110, 0.1)', border: '1px solid rgba(253, 203, 110, 0.2)', padding: '8px 12px', borderRadius: '8px' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span>Mã Token quét QR: <strong style={{ color: '#fdcb6e', fontFamily: 'monospace', fontSize: '13px' }}>{ev.qr_token}</strong></span>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><QrCode size={12} /> Mã Token quét QR: <strong style={{ color: '#fdcb6e', fontFamily: 'monospace', fontSize: '13px' }}>{ev.qr_token}</strong></span>
                                             <button 
                                                 onClick={() => {
                                                     navigator.clipboard.writeText(ev.qr_token);
@@ -356,7 +366,7 @@ export const EnterpriseEventForm = ({ onClose }) => {
                                 <h2>TẠO SỰ KIỆN ĐỘNG ẨN MỚI</h2>
                                 <p>Thiết lập rương kho báu hoặc thử thách check-in, QR, Quiz.</p>
                             </div>
-                            <button className="form-close-btn" onClick={closeFormSheet}>✕</button>
+                            <button className="form-close-btn" onClick={closeFormSheet} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={18} /></button>
                         </div>
 
                         <form onSubmit={handleCreateEvent}>
@@ -391,10 +401,10 @@ export const EnterpriseEventForm = ({ onClose }) => {
                                         value={questType} 
                                         onChange={(e) => setQuestType(e.target.value)}
                                     >
-                                        <option value="CHECKIN">📍 GPS Check-in (Có mặt)</option>
-                                        <option value="QR">🔳 Quét mã QR</option>
-                                        <option value="QUIZ">❓ Trả lời câu hỏi (Quiz)</option>
-                                        <option value="PHOTO">📷 Chụp ảnh hiện vật</option>
+                                        <option value="CHECKIN">GPS Check-in (Có mặt)</option>
+                                        <option value="QR">Quét mã QR</option>
+                                        <option value="QUIZ">Trả lời câu hỏi (Quiz)</option>
+                                        <option value="PHOTO">Chụp ảnh hiện vật</option>
                                     </select>
                                 </div>
 
@@ -434,11 +444,12 @@ export const EnterpriseEventForm = ({ onClose }) => {
                                             key={r} 
                                             className={`rarity-option rarity-${r} ${rarity === r ? 'selected' : ''}`}
                                             onClick={() => setRarity(r)}
+                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                                         >
-                                            {r === 'COMMON' && '🟢 Thường'}
-                                            {r === 'RARE' && '🔵 Hiếm'}
-                                            {r === 'EPIC' && '🟣 Sử thi'}
-                                            {r === 'LEGENDARY' && '🟡 Gold'}
+                                            {r === 'COMMON' && <><span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2ed573', display: 'inline-block' }}></span> Thường</>}
+                                            {r === 'RARE' && <><span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#5dade2', display: 'inline-block' }}></span> Hiếm</>}
+                                            {r === 'EPIC' && <><span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#bb8fce', display: 'inline-block' }}></span> Sử thi</>}
+                                            {r === 'LEGENDARY' && <><span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#f1c40f', display: 'inline-block' }}></span> Gold</>}
                                         </div>
                                     ))}
                                 </div>
@@ -501,13 +512,13 @@ export const EnterpriseEventForm = ({ onClose }) => {
                                 </div>
                             )}
 
-                            {errorMsg && <div className="form-error">⚠️ {errorMsg}</div>}
-                            {successMsg && <div className="form-success">✅ {successMsg}</div>}
+                            {errorMsg && <div className="form-error" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><AlertCircle size={14} /> {errorMsg}</div>}
+                            {successMsg && <div className="form-success" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><CheckCircle2 size={14} /> {successMsg}</div>}
 
                             {/* Show QR result to copy token if QR quest type */}
                             {createdQrData && (
                                 <div className="qr-result">
-                                    <div style={{ fontSize: '13px', fontWeight: 'bold' }}>🔳 TOKEN QUÉT QR CHO SỰ KIỆN:</div>
+                                    <div style={{ fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}><QrCode size={14} /> TOKEN QUÉT QR CHO SỰ KIỆN:</div>
                                     <div className="qr-token-text">{createdQrData.qr_token}</div>
                                     <div style={{ fontSize: '11px', color: '#a4b0be', marginBottom: '8px' }}>
                                         Hãy dán mã token này vào máy sinh QR hoặc in cho khách hàng quét.
@@ -525,8 +536,8 @@ export const EnterpriseEventForm = ({ onClose }) => {
                                 </div>
                             )}
 
-                            <button type="submit" className="submit-btn" disabled={loading}>
-                                {loading ? 'Đang gửi thông tin...' : '🚀 XÁC NHẬN ĐĂNG KÝ SỰ KIỆN'}
+                            <button type="submit" className="submit-btn" disabled={loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                {loading ? 'Đang gửi thông tin...' : <><Send size={18} /> XÁC NHẬN ĐĂNG KÝ SỰ KIỆN</>}
                             </button>
                         </form>
                     </div>

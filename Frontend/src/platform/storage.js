@@ -21,8 +21,6 @@ export const storageGet = async (key) => {
         try {
             const { value } = await Preferences.get({ key });
             if (value !== null && value !== undefined) {
-                // Keep localStorage in sync for legacy code paths.
-                setLocalValue(key, value);
                 return value;
             }
             return getLocalValue(key);
@@ -38,8 +36,6 @@ export const storageSet = async (key, value) => {
     if (Capacitor.isNativePlatform()) {
         try {
             await Preferences.set({ key, value });
-            // Keep localStorage in sync for legacy code paths.
-            setLocalValue(key, value);
             return;
         } catch (error) {
             // Fallback to localStorage on web runtime or when plugin is unavailable.
@@ -53,7 +49,6 @@ export const storageRemove = async (key) => {
     if (Capacitor.isNativePlatform()) {
         try {
             await Preferences.remove({ key });
-            // Keep localStorage in sync for legacy code paths.
             removeLocalValue(key);
             return;
         } catch (error) {

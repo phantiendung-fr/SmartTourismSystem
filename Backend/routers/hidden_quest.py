@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlmodel import Session, select
 
 from database import get_session
+from core.config import settings
 from core.security import verify_token
 from models import (
     Users,
@@ -42,11 +43,20 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     r = 6371000  # Radius of earth in meters
     return c * r
 
+def validate_coordinates(latitude, longitude) -> tuple[float, float]:
+    try:
+        lat = float(latitude)
+        lon = float(longitude)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Tọa độ GPS không hợp lệ")
+
+    if not -90 <= lat <= 90 or not -180 <= lon <= 180:
+        raise HTTPException(status_code=400, detail="Tọa độ GPS nằm ngoài phạm vi hợp lệ")
+    return lat, lon
+
 def get_db_user(current_user: dict, db: Session) -> Users:
     sub = current_user.get("sub")
-    
-    print(f"=== DEBUG GAMIFICATION ===\n> sub từ Token: {sub}\n> Kiểu dữ liệu sub: {type(sub)}")
-    
+
     if not sub:
         raise HTTPException(status_code=401, detail="Xác thực không hợp lệ")
     
@@ -55,19 +65,23 @@ def get_db_user(current_user: dict, db: Session) -> Users:
         user_uuid = UUID(sub)
         user = db.get(Users, user_uuid)
         if user:
-            print(f"> Tìm thấy user bằng UUID: {user.email}")
             return user
     except ValueError:
-        print("> sub không phải định dạng UUID chuẩn, chuyển xuống tìm bằng Email...")
+        pass
         
     # Thử tìm bằng Email
     user = db.exec(select(Users).where(Users.email == sub)).first()
     if user:
-        print(f"> Tìm thấy user bằng Email: {user.user_id}")
         return user
-        
-    print("> ❌ KẾT QUẢ: Không tìm thấy bất kỳ User nào trong bảng Users khớp với sub trên!")
+
     raise HTTPException(status_code=404, detail="Không tìm thấy tài khoản")
+
+def require_development_or_admin(user: Users) -> None:
+    if settings.ENVIRONMENT.lower() == "development":
+        return
+    role = getattr(user.role, "value", user.role)
+    if role != "ADMIN":
+        raise HTTPException(status_code=403, detail="Debug endpoint chỉ dành cho admin")
 
 # ============================================================
 # API ENDPOINTS
@@ -159,6 +173,8 @@ def ping_location(
     
     if lat is None or lng is None:
         raise HTTPException(status_code=400, detail="Vĩ độ và kinh độ là bắt buộc")
+
+    lat, lng = validate_coordinates(lat, lng)
         
     now = datetime.utcnow()
     target_user_id = user.user_id if isinstance(user.user_id, UUID) else UUID(str(user.user_id))
@@ -321,6 +337,8 @@ def claim_chest(
     
     if not spawn_id or player_lat is None or player_lng is None:
         raise HTTPException(status_code=400, detail="Thiếu thông tin spawn_id hoặc tọa độ GPS")
+
+    player_lat, player_lng = validate_coordinates(player_lat, player_lng)
         
     now = datetime.utcnow()
     target_user_id = user.user_id if isinstance(user.user_id, UUID) else UUID(str(user.user_id))
@@ -381,8 +399,6 @@ def claim_chest(
     
     # --- CƠ CHẾ TỰ ĐỘNG TẠO PROFILE VỚI GIÁ TRỊ MẶC ĐỊNH AN TOÀN ---
     if not profile:
-        print(f"⚠️ Đang khởi tạo Profile an toàn cho user: {user.email}")
-        
         from datetime import date
         
         profile = UserProfiles(
@@ -416,15 +432,15 @@ def claim_chest(
             longitude=task.longitude
         )
         db.add(log)
-    except Exception as log_error:
-        print(f"⚠️ Warning: Không thể ghi log mở rương: {str(log_error)}")
+    except Exception:
+        pass
     
     try:
         db.commit()
         db.refresh(profile)
-    except Exception as db_error:
+    except Exception:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Lỗi hệ thống khi cập nhật phần thưởng: {str(db_error)}")
+        raise HTTPException(status_code=500, detail="Lỗi hệ thống khi cập nhật phần thưởng")
     
     return {
         "status": "ok",
@@ -451,6 +467,8 @@ def verify_quest(
     
     if not spawn_id or player_lat is None or player_lng is None:
         raise HTTPException(status_code=400, detail="Thiếu thông tin xác thực")
+
+    player_lat, player_lng = validate_coordinates(player_lat, player_lng)
         
     now = datetime.utcnow()
     target_user_id = user.user_id if isinstance(user.user_id, UUID) else UUID(str(user.user_id))
@@ -569,6 +587,7 @@ def debug_spawn(
 ):
     """Force spawn an event or chest near the player (For Test/Demo)."""
     user = get_db_user(current_user, db)
+    require_development_or_admin(user)
     task_type = spawn_params.get("task_type", "CHEST")
     lat = spawn_params.get("latitude")
     lng = spawn_params.get("longitude")
@@ -576,6 +595,8 @@ def debug_spawn(
     
     if lat is None or lng is None:
         raise HTTPException(status_code=400, detail="Vui lòng cung cấp tọa độ GPS hiện tại")
+
+    lat, lng = validate_coordinates(lat, lng)
         
     now = datetime.utcnow()
     target_user_id = user.user_id if isinstance(user.user_id, UUID) else UUID(str(user.user_id))

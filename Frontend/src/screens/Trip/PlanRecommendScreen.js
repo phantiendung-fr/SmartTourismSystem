@@ -5,6 +5,7 @@ import { API_BASE } from '../../config/api';
 import { getCurrentPosition } from '../../platform/location';
 import { showAlert } from '../../platform/dialog';
 import { storageGet } from '../../platform/storage';
+import { ArrowLeft, ArrowRight, CheckCircle, Circle, AlertCircle } from 'lucide-react';
 import './PlanRecommendScreen.css';
 
 const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocationDetail, onSessionExpired }) => {
@@ -103,8 +104,8 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
             }
 
             const result = await createTrip(tripPayload, token);
-            await showAlert('Tạo lộ trình thành công!');
             onTripCreated(result.itinerary_id);
+            return;
         } catch (err) {
             const msg = typeof err.message === 'string' ? err.message : JSON.stringify(err.message);
             await showAlert(`Lỗi hệ thống: ${msg}`);
@@ -117,6 +118,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
         return (
             <div className="recommend-screen">
                 <div className="loading-state">
+                    <div className="plan-loader-spinner"></div>
                     <h2>Đang AI hóa lộ trình...</h2>
                     <p>Vui lòng đợi giây lát</p>
                 </div>
@@ -174,7 +176,9 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
     return (
         <div className="recommend-screen">
             <div className="recommend-header">
-                <button onClick={onBack} className="btn-back-icon">⬅️</button>
+                <button onClick={onBack} className="btn-back-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ArrowLeft size={20} />
+                </button>
                 <h2>Gợi ý địa điểm</h2>
             </div>
 
@@ -196,16 +200,21 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
                             {loc.score && <div className="loc-score">Điểm phù hợp: {Number(loc.score).toFixed(1)}</div>}
                             <div
                                 className="loc-view-detail"
+                                style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     onOpenLocationDetail(loc);
                                 }}
                             >
-                                Xem chi tiết ➔
+                                Xem chi tiết <ArrowRight size={14} />
                             </div>
                         </div>
-                        <div className="loc-checkbox">
-                            {selectedLocations.includes(loc.location_id) ? '✅' : '⚪'}
+                        <div className="loc-checkbox" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {selectedLocations.includes(loc.location_id) ? (
+                                <CheckCircle size={20} style={{ color: '#2ed573' }} />
+                            ) : (
+                                <Circle size={20} style={{ color: '#a4b0be' }} />
+                            )}
                         </div>
                     </div>
                 ))}
@@ -215,8 +224,12 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
                 <div className="budget-tracker">
                     <div className="budget-info">
                         <span>Ngân sách sử dụng: <strong>{new Intl.NumberFormat('vi-VN').format(totalBudgetUsed)}đ</strong> / {new Intl.NumberFormat('vi-VN').format(budgetLimit)}đ</span>
-                        <span className={`budget-status ${isOverBudget ? 'status-over' : 'status-ok'}`}>
-                            {isOverBudget ? '⚠️ Vượt ngân sách' : '✅ Trong tầm giá'}
+                        <span className={`budget-status ${isOverBudget ? 'status-over' : 'status-ok'}`} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {isOverBudget ? (
+                                <><AlertCircle size={14} /> Vượt ngân sách</>
+                            ) : (
+                                <><CheckCircle size={14} /> Trong tầm giá</>
+                            )}
                         </span>
                     </div>
                     <div className="budget-bar-container">
@@ -240,6 +253,16 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
                     </button>
                 </div>
             </div>
+
+            {creatingTrip && (
+                <div className="plan-creating-overlay">
+                    <div className="plan-creating-card">
+                        <div className="plan-loader-spinner"></div>
+                        <h3>Đang tạo lộ trình</h3>
+                        <p>Hệ thống đang sắp xếp các điểm dừng tối ưu cho bạn...</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

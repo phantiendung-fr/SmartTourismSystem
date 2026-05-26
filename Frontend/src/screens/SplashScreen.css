@@ -3,33 +3,48 @@
     height: 100dvh;
     width: 100%;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    justify-content: flex-end; /* Đẩy thanh tiến trình xuống đáy màn hình */
     align-items: center;
-    /* Dùng ảnh nền tối màu và phủ một lớp xanh dương mờ lên trên */
-    background: linear-gradient(rgba(26, 86, 131, 0.8), rgba(18, 62, 97, 0.9)), url('https://images.unsplash.com/photo-1449034446853-66c86144b0ad?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80') center/cover;
+    position: relative;
 }
 
-.splash-logo {
+.splash-bottom-section {
+    width: 100%;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 10px;
-    animation: fadeIn 1s ease-in-out;
+    padding-bottom: 50px; /* Khoảng cách từ đáy màn hình */
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%); /* Làm tối phần dưới để làm nổi bật thanh tải */
+    padding-top: 40px;
 }
 
-.splash-logo h1 {
-    color: white;
-    font-size: 36px;
-    font-weight: 800;
-    margin: 0;
-    font-family: 'Arial', sans-serif;
+.loading-text {
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    text-shadow: 1px 1px 4px rgba(0,0,0,0.8);
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 0.5px;
 }
 
-.splash-icon {
-    font-size: 40px;
-    text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+.progress-container {
+    width: 75%;
+    max-width: 300px;
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+.progress-bar {
+    height: 100%;
+    /* Màu vàng gradient giống màu rực rỡ của đồng xu trong hình */
+    background: linear-gradient(90deg, #f59e0b, #fcd34d);
+    border-radius: 10px;
+    transition: width 0.1s linear;
+    box-shadow: 0 0 10px rgba(252, 211, 77, 0.8); /* Viền sáng glow */
 }

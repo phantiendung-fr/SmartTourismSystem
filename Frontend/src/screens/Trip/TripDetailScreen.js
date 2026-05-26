@@ -14,6 +14,12 @@ import HiddenQuestDebug from '../../components/HiddenQuest/HiddenQuestDebug';
 import { storageGet } from '../../platform/storage';
 import { showAlert, showConfirm } from '../../platform/dialog';
 import { getCurrentPosition, startWatchingPosition } from '../../platform/location';
+import { SHOW_MASCOT } from '../../config/uiFlags';
+import { 
+  ArrowLeft, CheckCircle2, XCircle, AlertTriangle, 
+  MapPin, Sparkles, Coins, Star, Clock, Ticket, Gamepad2, X, Check, Flame, Award, HelpCircle,
+  QrCode, Camera
+} from 'lucide-react';
 
 const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, user }) => {
     const [loading, setLoading] = useState(true);
@@ -56,6 +62,20 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
     const [mascotMessage, setMascotMessage] = useState('');
     const [rewardData, setRewardData] = useState(null);
 
+    const syncUserPoints = async () => {
+        const callbacks = [onPointsUpdate, refreshUser]
+            .filter(callback => typeof callback === 'function');
+        await Promise.all([...new Set(callbacks)].map(callback => callback()));
+    };
+
+    const extractCompletionScore = (result) => {
+        const directScore = Number(result?.completion_score ?? result?.score_earned);
+        if (Number.isFinite(directScore)) return directScore;
+
+        const match = String(result?.detail || '').match(/(\d+)\s+điểm thưởng lộ trình/);
+        return match ? Number(match[1]) : null;
+    };
+
     useEffect(() => {
         if (!tripDetail) return;
         if (tripDetail.status === 'COMPLETED') {
@@ -97,7 +117,13 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
             if (!silent) setLoading(true);
             const token = await storageGet('access_token');
             const data = await getTripDetail(itineraryId, token);
-            setTripDetail(data);
+            setTripDetail(prev => {
+                if (!prev || prev.itinerary_id !== data.itinerary_id) return data;
+                return {
+                    ...data,
+                    score_earned: data.score_earned ?? prev.score_earned
+                };
+            });
         } catch (err) {
             if (!silent) setError(err.message || "Không thể tải chi tiết chuyến đi");
         } finally {
@@ -226,9 +252,9 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
     const isTripCancelled = tripDetail && tripDetail.status === 'CANCELLED';
 
     const getStatusLabel = () => { // eslint-disable-line no-unused-vars
-        if (isTripCompleted) return { text: '✅ Hoàn thành', className: 'status-completed' };
-        if (isTripCancelled) return { text: '❌ Đã hủy', className: 'status-cancelled' };
-        return { text: '🔄 Đang diễn ra', className: 'status-ongoing' };
+        if (isTripCompleted) return { text: 'Hoàn thành', className: 'status-completed' };
+        if (isTripCancelled) return { text: 'Đã hủy', className: 'status-cancelled' };
+        return { text: 'Đang diễn ra', className: 'status-ongoing' };
     };
 
     const handleCompleteTrip = async () => {
@@ -244,14 +270,20 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
         try {
             const token = await storageGet('access_token');
             const result = await completeTrip(itineraryId, token);
-            setActionMsg(`✅ ${result.detail}`);
-            // Refresh trip detail to get updated status
-            await fetchDetail(true);
+            const completionScore = extractCompletionScore(result);
+
+            setTripDetail(prev => prev ? {
+                ...prev,
+                status: 'COMPLETED',
+                score_earned: completionScore ?? prev.score_earned
+            } : prev);
+            setActionMsg(result.detail || 'Chuyến đi đã được hoàn thành. Điểm thưởng đã được cộng vào tài khoản.');
+            await Promise.all([fetchDetail(true), syncUserPoints()]);
         } catch (err) {
-            setActionMsg(`❌ ${err.message}`);
+            setActionMsg(err.message || 'Lỗi khi hoàn thành chuyến đi');
+            setTimeout(() => setActionMsg(''), 5000);
         } finally {
             setActionLoading(false);
-            setTimeout(() => setActionMsg(''), 3000);
         }
     };
 
@@ -268,14 +300,14 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
         try {
             const token = await storageGet('access_token');
             const result = await cancelTrip(itineraryId, token);
-            setActionMsg(`⚠️ ${result.detail}`);
+            setActionMsg(result.detail || 'Chuyến đi đã được hủy.');
             // Refresh trip detail to get updated status
-            await fetchDetail(true);
+            await Promise.all([fetchDetail(true), syncUserPoints()]);
         } catch (err) {
-            setActionMsg(`❌ ${err.message}`);
+            setActionMsg(err.message || 'Lỗi khi hủy chuyến đi');
+            setTimeout(() => setActionMsg(''), 5000);
         } finally {
             setActionLoading(false);
-            setTimeout(() => setActionMsg(''), 3000);
         }
     };
 
@@ -332,7 +364,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
             if (checkinInProgress.current) {
                 checkinInProgress.current = false;
                 setCheckinLoading(false);
-                setCheckinMsg('❌ Hết thời gian chờ. Vui lòng thử lại.');
+                setCheckinMsg('Hết thời gian chờ. Vui lòng thử lại.');
             }
         }, 12000);
 
@@ -350,7 +382,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                 clearTimeout(safetyTimer);
                 
                 // Lấy điểm thưởng từ API (nếu có) hoặc từ thông tin trạm
-                const earnedPoints = result.reward_points || targetStop.reward || 50;
+                const earnedPoints = result.reward_points ?? result.earned_points ?? targetStop.reward ?? 50;
 
                 // Hiển thị hiệu ứng rương kho báu đang rung
                 setRewardData({ 
@@ -397,15 +429,12 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
 
                     checkinInProgress.current = false;
                     setCheckinLoading(false);
-                    if (onPointsUpdate) onPointsUpdate();
-                    if (typeof refreshUser === 'function') {
-                        refreshUser();
-                    }
+                    syncUserPoints();
                 }, 4500);
 
             } catch (err) {
                 clearTimeout(safetyTimer);
-                setCheckinMsg(`❌ ${err.message}`);
+                setCheckinMsg(err.message);
                 checkinInProgress.current = false;
                 setCheckinLoading(false);
             }
@@ -440,7 +469,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                     clearTimeout(safetyTimer);
                     checkinInProgress.current = false;
                     setCheckinLoading(false);
-                    setCheckinMsg('❌ Đã hủy check-in');
+                    setCheckinMsg('Đã hủy check-in');
                 }
             }
         })();
@@ -453,117 +482,118 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
             return (
                 <div className="trip-detail-screen location-detail-mode">
                     <div className="detail-header">
-                        <button className="btn-back-icon" onClick={handleCloseDetail}>
-                        <i className="fas fa-arrow-left"></i>
-                    </button>
-                    <h2>{selectedStop.location_name}</h2>
-                </div>
-                
-                <div className="location-detail-content">
-                    {/* Ảnh minh họa giả lập (mock image) */}
-                    <div className="location-cover-image" style={{ 
-                        backgroundImage: `url('/assets/island/map-dao.png')` 
-                    }}>
-                        {isCheckedIn && (
-                            <div className="status-badge checked-in-badge">
-                                ✅ Đã Check-in
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="location-info-card">
-                        <div className="location-title-row">
-                            <h3>{selectedStop.location_name}</h3>
-                            <div className="rating-mock">
-                                ⭐ 4.8 <span>(124 đánh giá)</span>
-                            </div>
-                        </div>
-                        
-                        <p className="location-desc-mock">
-                            Một địa điểm tuyệt vời không thể bỏ qua trong hành trình của bạn. Nơi đây mang đậm dấu ấn văn hóa và lịch sử, hứa hẹn đem lại những trải nghiệm thú vị.
-                        </p>
-
-                        <div className="location-meta">
-                            <span><i className="fas fa-clock"></i> Mở cửa: 08:00 - 17:00</span>
-                            <span><i className="fas fa-ticket-alt"></i> Vé: Miễn phí</span>
-                        </div>
-                    </div>
-
-                    <div className="location-map-section">
-                        <h4>Bản đồ & Chỉ đường</h4>
-                        <RouteMap 
-                            stops={[selectedStop]} 
-                            routes={[]} 
-                            hiddenTasks={hiddenTasks}
-                            userLocation={userLocation}
-                            user={user}
-                            nextStop={selectedStop}
-                            onStopClick={setSelectedStop}
-                            onHiddenTaskClick={(task) => {
-                            setSelectedHiddenTask(task);
-                            setShowChestAnimation(true);
-                        }}
-                        />
+                        <button className="btn-back-icon" onClick={handleCloseDetail} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <ArrowLeft size={18} />
+                        </button>
+                        <h2>{selectedStop.location_name}</h2>
                     </div>
                     
-                    <div className="location-action-bar" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {isCheckedIn ? (
-                            <button className="btn-checkin-tab btn-already-checked" disabled>
-                                ✅ Bạn đã ghé thăm điểm này
-                            </button>
-                        ) : (
-                            isTripOngoing && (
-                                <button 
-                                    className="btn-checkin-tab" 
-                                    onClick={() => handleCheckin(selectedStop)}
-                                    disabled={checkinLoading}
-                                >
-                                    {checkinLoading ? 'Đang xử lý...' : '📍 Xác nhận Check-in'}
+                    <div className="location-detail-content">
+                        {/* Ảnh minh họa giả lập (mock image) */}
+                        <div className="location-cover-image" style={{ 
+                            backgroundImage: `url('/assets/island/map-dao.png')` 
+                        }}>
+                            {isCheckedIn && (
+                                <div className="status-badge checked-in-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <CheckCircle2 size={14} /> Đã Check-in
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="location-info-card">
+                            <div className="location-title-row">
+                                <h3>{selectedStop.location_name}</h3>
+                                <div className="rating-mock" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <Star size={14} fill="#f1c40f" color="#f1c40f" /> 4.8 <span>(124 đánh giá)</span>
+                                </div>
+                            </div>
+                            
+                            <p className="location-desc-mock">
+                                Một địa điểm tuyệt vời không thể bỏ qua trong hành trình của bạn. Nơi đây mang đậm dấu ấn văn hóa và lịch sử, hứa hẹn đem lại những trải nghiệm thú vị.
+                            </p>
+
+                            <div className="location-meta">
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={14} /> Mở cửa: 08:00 - 17:00</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Ticket size={14} /> Vé: Miễn phí</span>
+                            </div>
+                        </div>
+
+                        <div className="location-map-section">
+                            <h4>Bản đồ & Chỉ đường</h4>
+                            <RouteMap 
+                                stops={[selectedStop]} 
+                                routes={[]} 
+                                hiddenTasks={hiddenTasks}
+                                userLocation={userLocation}
+                                user={user}
+                                nextStop={selectedStop}
+                                onStopClick={setSelectedStop}
+                                onHiddenTaskClick={(task) => {
+                                setSelectedHiddenTask(task);
+                                setShowChestAnimation(true);
+                            }}
+                            />
+                        </div>
+                        
+                        <div className="location-action-bar" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {isCheckedIn ? (
+                                <button className="btn-checkin-tab btn-already-checked" disabled style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                    <CheckCircle2 size={16} /> Bạn đã ghé thăm điểm này
                                 </button>
-                            )
-                        )}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedLocationForTasks({
-                                    location_id: selectedStop.location_id,
-                                    location_name: selectedStop.location_name
-                                });
-                            }}
-                            className="btn-location-task"
-                            style={{
-                                backgroundColor: '#10b981',
-                                color: '#0b0f19',
-                                border: 'none',
-                                borderRadius: '12px',
-                                padding: '14px 16px',
-                                fontSize: '15px',
-                                fontWeight: 'bold',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '8px',
-                                boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
-                                width: '100%',
-                            }}
-                        >
-                            🎮 Nhiệm vụ địa điểm
-                        </button>
-                        {checkinMsg && (
-                            <div className="checkin-toast">{checkinMsg}</div>
-                        )}
+                            ) : (
+                                isTripOngoing && (
+                                    <button 
+                                        className="btn-checkin-tab" 
+                                        onClick={() => handleCheckin(selectedStop)}
+                                        disabled={checkinLoading}
+                                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                                    >
+                                        {checkinLoading ? 'Đang xử lý...' : <><MapPin size={16} /> Xác nhận Check-in</>}
+                                    </button>
+                                )
+                            )}
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedLocationForTasks({
+                                        location_id: selectedStop.location_id,
+                                        location_name: selectedStop.location_name
+                                    });
+                                }}
+                                className="btn-location-task"
+                                style={{
+                                    backgroundColor: '#10b981',
+                                    color: '#0b0f19',
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    padding: '14px 16px',
+                                    fontSize: '15px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px',
+                                    boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
+                                    width: '100%',
+                                }}
+                            >
+                                <Gamepad2 size={16} /> Nhiệm vụ địa điểm
+                            </button>
+                            {checkinMsg && (
+                                <div className="checkin-toast">{checkinMsg}</div>
+                            )}
+                        </div>
                     </div>
                 </div>
-            </div>
-        );
-    }
+            );
+        }
 
     return (
         <div className="trip-detail-screen">
             <div className="detail-header">
-                <button className="btn-back-icon" onClick={onBack}>
-                    <i className="fas fa-arrow-left"></i>
+                <button className="btn-back-icon" onClick={onBack} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ArrowLeft size={20} />
                 </button>
                 <h2>{tripDetail.name || "Chi tiết chuyến đi"}</h2>
                 {/* Deviation status badge — click to toggle for demo */}
@@ -579,43 +609,6 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                 )}
             </div>
 
-            {/* tripDetail.warning_message && (
-                <div className="budget-warning-banner">
-                    ⚠️ {tripDetail.warning_message}
-                </div>
-            ) */}
-
-            {/* <div className="trip-summary">
-                <div className="summary-item">
-                    <span className="icon">💰</span>
-                    <div>
-                        <small>Ngân sách</small>
-                        <strong>{new Intl.NumberFormat('vi-VN').format(tripDetail.total_budget)} {tripDetail.currency}</strong>
-                    </div>
-                </div>
-                <div className="summary-item">
-                    <span className="icon">⏱️</span>
-                    <div>
-                        <small>Thời gian</small>
-                        <strong>{tripDetail.total_travel_time} phút</strong>
-                    </div>
-                </div>
-                <div className="summary-item">
-                    <span className="icon">📏</span>
-                    <div>
-                        <small>Khoảng cách</small>
-                        <strong>{tripDetail.total_distance} km</strong>
-                    </div>
-                </div>
-                <div className="summary-item points-summary">
-                    <span className="icon">⭐</span>
-                    <div>
-                        <small>Điểm thưởng</small>
-                        <strong>{(tripDetail.stops || []).reduce((acc, s) => acc + (s.reward || 0), 0)} pts</strong>
-                    </div>
-                </div>
-            </div> */}
-
             {/* Trip action buttons — Hoàn thành / Hủy */}
             {isTripOngoing && (
                 <div className="trip-action-section">
@@ -623,15 +616,17 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                         className="btn-complete-trip"
                         onClick={handleCompleteTrip}
                         disabled={actionLoading}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                     >
-                        {actionLoading ? '⏳ Đang xử lý...' : '✅ Hoàn thành lịch trình'}
+                        {actionLoading ? 'Đang xử lý...' : <><CheckCircle2 size={16} /> Hoàn thành lịch trình</>}
                     </button>
                     <button
                         className="btn-cancel-trip"
                         onClick={handleCancelTrip}
                         disabled={actionLoading}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                     >
-                        {actionLoading ? '⏳ Đang xử lý...' : '❌ Hủy chuyến đi'}
+                        {actionLoading ? 'Đang xử lý...' : <><XCircle size={16} /> Hủy chuyến đi</>}
                     </button>
                 </div>
             )}
@@ -640,14 +635,13 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                 <div className="action-toast">{actionMsg}</div>
             )}
 
-            {/* Color legend */}
-            {/* <div className="color-legend">
-                <div className="legend-item"><span className="legend-dot legend-blue"></span> Chưa đến</div>
-                <div className="legend-item"><span className="legend-dot legend-orange"></span> Điểm tiếp theo</div>
-                <div className="legend-item"><span className="legend-dot legend-green"></span> Đã check-in</div>
-            </div> */}
-
-            {/* Check-in button for next stop (Removed to favor Map interaction) */}
+            {!actionMsg && isTripCompleted && (
+                <div className="action-toast">
+                    {tripDetail.score_earned
+                        ? `Chuyến đi đã hoàn thành. Bạn nhận được ${tripDetail.score_earned} điểm thưởng lộ trình.`
+                        : 'Chuyến đi đã hoàn thành. Điểm thưởng đã được cộng vào tài khoản.'}
+                </div>
+            )}
             
             {checkinMsg && (
                 <div className="checkin-toast">{checkinMsg}</div>
@@ -655,14 +649,13 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
 
             {/* Bản đồ Đảo (Island Map) thay thế RouteMap */}
             <div className="island-map-section" style={{ position: 'relative' }}>
-                {/* <p className="map-instruction">Nhấn vào các công trình trên đảo để xem chi tiết.</p> */}
                 <IslandMap
                     stops={allStops}
                     onBuildingClick={handleBuildingClick}
                 />
                 
                 {/* Mascot Layer */}
-                <Mascot message={mascotMessage} />
+                {SHOW_MASCOT && <Mascot message={mascotMessage} />}
             </div>
         </div>
         );
@@ -738,7 +731,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                         setSelectedHiddenTask(null);
                     }}
                     onClaim={(rewards) => {
-                        void showAlert(`🎉 Chúc mừng! Bạn nhận được +${rewards.reward_exp} EXP và +${rewards.reward_coin} Coin!`);
+                        void showAlert(`Chúc mừng! Bạn nhận được +${rewards.reward_exp} EXP và +${rewards.reward_coin} xu!`);
                         fetchHiddenTasks();
                     }}
                 />
@@ -748,7 +741,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                 <div className="quest-modal-overlay">
                     <div className="quest-modal-content">
                         <div className="quest-modal-header">
-                            <h3>🔮 {selectedHiddenTask.title || 'Sự kiện Doanh nghiệp'}</h3>
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Sparkles size={18} style={{ color: '#fbc531' }} /> {selectedHiddenTask.title || 'Sự kiện Doanh nghiệp'}</h3>
                             <button className="quest-close-btn" onClick={() => {
                                 setShowQuestModal(false);
                                 setQuestError('');
@@ -757,7 +750,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                                 setQuizAnswer('');
                                 setPhotoUploaded(false);
                                 setPhotoUrl('');
-                            }}>✕</button>
+                            }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={18} /></button>
                         </div>
                         
                         <div className="quest-modal-body">
@@ -766,16 +759,16 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                                     <p className="quest-desc">{selectedHiddenTask.description || 'Hoàn thành thử thách để nhận quà từ doanh nghiệp.'}</p>
                                     
                                     <div className="quest-meta-info">
-                                        <span>📍 Bán kính: {selectedHiddenTask.radius_meters}m</span>
-                                        <span>⭐ {selectedHiddenTask.reward_exp} EXP | 🪙 {selectedHiddenTask.reward_coin} Coin</span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={14} /> Bán kính: {selectedHiddenTask.radius_meters}m</span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Award size={14} /> {selectedHiddenTask.reward_exp} EXP | <Coins size={14} /> {selectedHiddenTask.reward_coin} xu</span>
                                     </div>
 
                                     {/* CHECKIN */}
                                     {selectedHiddenTask.quest_type === 'CHECKIN' && (
                                         <div className="quest-action-area">
-                                            <p className="quest-instruction">📍 Hệ thống sẽ xác thực vị trí GPS của bạn.</p>
-                                            <button className="quest-action-btn" onClick={() => handleVerifyQuest()} disabled={questLoading}>
-                                                {questLoading ? 'Đang xác thực...' : '📍 Check-in ngay'}
+                                            <p className="quest-instruction" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={14} /> Hệ thống sẽ xác thực vị trí GPS của bạn.</p>
+                                            <button className="quest-action-btn" onClick={() => handleVerifyQuest()} disabled={questLoading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                {questLoading ? 'Đang xác thực...' : <><MapPin size={16} /> Check-in ngay</>}
                                             </button>
                                         </div>
                                     )}
@@ -783,10 +776,10 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                                     {/* QR */}
                                     {selectedHiddenTask.quest_type === 'QR' && (
                                         <div className="quest-action-area">
-                                            <p className="quest-instruction">🔳 Nhập mã token hoặc quét QR:</p>
+                                            <p className="quest-instruction" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><QrCode size={14} /> Nhập mã token hoặc quét QR:</p>
                                             <input type="text" className="quest-input" placeholder="QR_EVENT_TOKEN_123" value={qrTokenInput} onChange={(e) => setQrTokenInput(e.target.value)} />
-                                            <button className="quest-action-btn" onClick={() => handleVerifyQuest({ qr_token: qrTokenInput })} disabled={questLoading || !qrTokenInput.trim()}>
-                                                {questLoading ? 'Đang xác thực...' : '✔️ Xác nhận mã QR'}
+                                            <button className="quest-action-btn" onClick={() => handleVerifyQuest({ qr_token: qrTokenInput })} disabled={questLoading || !qrTokenInput.trim()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                {questLoading ? 'Đang xác thực...' : <><Check size={16} /> Xác nhận mã QR</>}
                                             </button>
                                         </div>
                                     )}
@@ -794,7 +787,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                                     {/* QUIZ */}
                                     {selectedHiddenTask.quest_type === 'QUIZ' && (
                                         <div className="quest-action-area">
-                                            <p className="quest-instruction">❓ Trả lời câu hỏi:</p>
+                                            <p className="quest-instruction" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><HelpCircle size={14} /> Trả lời câu hỏi:</p>
                                             <div className="quiz-options-grid">
                                                 {[
                                                     { code: 'A', text: 'Dịch vụ lưu trú & Tour trọn gói' },
@@ -808,8 +801,8 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                                                     </button>
                                                 ))}
                                             </div>
-                                            <button className="quest-action-btn" onClick={() => handleVerifyQuest({ answer: quizAnswer, correct_answer: 'A' })} disabled={questLoading || !quizAnswer} style={{ marginTop: '15px' }}>
-                                                {questLoading ? 'Đang gửi...' : '✔️ Nộp đáp án'}
+                                            <button className="quest-action-btn" onClick={() => handleVerifyQuest({ answer: quizAnswer, correct_answer: 'A' })} disabled={questLoading || !quizAnswer} style={{ marginTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                {questLoading ? 'Đang gửi...' : <><Check size={16} /> Nộp đáp án</>}
                                             </button>
                                         </div>
                                     )}
@@ -817,34 +810,34 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                                     {/* PHOTO */}
                                     {selectedHiddenTask.quest_type === 'PHOTO' && (
                                         <div className="quest-action-area">
-                                            <p className="quest-instruction">📷 Chụp ảnh check-in:</p>
+                                            <p className="quest-instruction" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Camera size={14} /> Chụp ảnh check-in:</p>
                                             {photoUploaded ? (
                                                 <div className="photo-preview-box">
                                                     <img src={photoUrl} alt="Preview" />
-                                                    <button className="photo-reset" onClick={() => { setPhotoUploaded(false); setPhotoUrl(''); }}>✕ Xóa</button>
+                                                    <button className="photo-reset" onClick={() => { setPhotoUploaded(false); setPhotoUrl(''); }} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><X size={12} /> Xóa</button>
                                                 </div>
                                             ) : (
                                                 <div className="photo-upload-placeholder" onClick={() => { setPhotoUrl('/assets/island/map-dao.png'); setPhotoUploaded(true); }}>
-                                                    <span style={{ fontSize: '32px' }}>📷</span>
+                                                    <Camera size={32} style={{ color: '#a4b0be' }} />
                                                     <span>Chạm để tải lên / Chụp ảnh</span>
                                                 </div>
                                             )}
-                                            <button className="quest-action-btn" onClick={() => handleVerifyQuest({ image_url: photoUrl })} disabled={questLoading || !photoUploaded} style={{ marginTop: '15px' }}>
-                                                {questLoading ? 'Đang xác thực...' : '✔️ Xác nhận ảnh'}
+                                            <button className="quest-action-btn" onClick={() => handleVerifyQuest({ image_url: photoUrl })} disabled={questLoading || !photoUploaded} style={{ marginTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                {questLoading ? 'Đang xác thực...' : <><Check size={16} /> Xác nhận ảnh</>}
                                             </button>
                                         </div>
                                     )}
 
-                                    {questError && <div className="quest-error-msg">⚠️ {questError}</div>}
+                                    {questError && <div className="quest-error-msg" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><AlertTriangle size={14} /> {questError}</div>}
                                 </>
                             ) : (
                                 <div className="quest-success-screen">
-                                    <div className="success-icon">🎉</div>
+                                    <div className="success-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Sparkles size={48} style={{ color: '#2ed573' }} /></div>
                                     <h4>Thử thách hoàn thành!</h4>
                                     <p>Chúc mừng bạn đã nhận được phần thưởng:</p>
                                     <div className="success-reward-card">
-                                        <div className="success-reward-item"><span style={{ fontSize: '24px' }}>🔥</span><span><strong>+{questSuccess.reward_exp}</strong> EXP</span></div>
-                                        <div className="success-reward-item"><span style={{ fontSize: '24px' }}>🪙</span><span><strong>+{questSuccess.reward_coin}</strong> Coin</span></div>
+                                        <div className="success-reward-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Flame size={20} style={{ color: '#ff7f50' }} /><span><strong>+{questSuccess.reward_exp}</strong> EXP</span></div>
+                                        <div className="success-reward-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Coins size={20} style={{ color: '#fbc531' }} /><span><strong>+{questSuccess.reward_coin}</strong> Coin</span></div>
                                     </div>
                                     <button className="quest-close-success-btn" onClick={() => { setShowQuestModal(false); setQuestSuccess(null); setQrTokenInput(''); setQuizAnswer(''); setPhotoUploaded(false); setPhotoUrl(''); }}>
                                         Tuyệt vời! Tiếp tục hành trình

@@ -17,6 +17,7 @@ import HistoryScreen from './screens/Trip/HistoryScreen';
 import PlanRecommendScreen from './screens/Trip/PlanRecommendScreen';
 import TripDetailScreen from './screens/Trip/TripDetailScreen';
 import LocationDetailScreen from './screens/Trip/LocationDetailScreen';
+import AdminModerationScreen from './screens/AdminModerationScreen';
 import { API_BASE } from './config/api';
 import { storageGet, storageRemove } from './platform/storage';
 import { showConfirm } from './platform/dialog';
@@ -260,6 +261,7 @@ function App() {
                                     onOpenPlan={() => navigateTo('plan')}
                                     onOpenProfileEdit={() => navigateTo('profile_edit')}
                                     onOpenHistory={() => navigateTo('history')}
+                                    onOpenAdminModeration={() => navigateTo('admin_moderation')}
                                     onOpenTripDetail={(id) => {
                                         setCurrentItineraryId(id);
                                         navigateTo('trip_detail');
@@ -271,6 +273,13 @@ function App() {
 
                     {currentScreen === 'history' && (
                         <HistoryScreen onBack={() => goBackFromHistory('main')} />
+                    )}
+
+                    {currentScreen === 'admin_moderation' && (
+                        <AdminModerationScreen
+                            user={currentUser?.user || currentUser}
+                            onBack={() => navigateTo('main')}
+                        />
                     )}
 
                     {currentScreen === 'profile_edit' && (
@@ -336,7 +345,7 @@ function App() {
                     {currentScreen === 'trip_detail' && (
                         <TripDetailScreen
                             itineraryId={currentItineraryId}
-                            onBack={() => goBackFromHistory('main')}
+                            onBack={() => navigateTo('main', { resetHistory: true })}
                             refreshUser={refreshUser}
                             onPointsUpdate={refreshUser}
                             user={currentUser?.user || currentUser}

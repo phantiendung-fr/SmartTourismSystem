@@ -5,6 +5,7 @@ import math
 from uuid import UUID
 from sqlmodel import select
 from database import get_session
+from core.config import settings
 import core.security as security
 import crud.crud_user as crud_user
 from schemas import (
@@ -29,6 +30,21 @@ from core.algorithms import check_within_radius, tsp_dp_bitmask
 from core.google_maps import get_route_polyline
 
 router = APIRouter(prefix="/api/trips", tags=["Trips - Lộ trình & Theo dõi"])
+
+def dev_log(message: str) -> None:
+    if settings.ENVIRONMENT.lower() == "development":
+        print(message)
+
+def validate_coordinates(latitude, longitude) -> tuple[float, float]:
+    try:
+        lat = float(latitude)
+        lon = float(longitude)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Tọa độ GPS không hợp lệ")
+
+    if not -90 <= lat <= 90 or not -180 <= lon <= 180:
+        raise HTTPException(status_code=400, detail="Tọa độ GPS nằm ngoài phạm vi hợp lệ")
+    return lat, lon
 
 def get_current_user_id(db: Session, current_user_dict: dict) -> UUID:
     """Lấy user_id thực tế từ database dựa trên token sub."""
@@ -126,7 +142,14 @@ def complete_trip(
         unlocked_msg = f" 🎉 Bạn đã mở khóa thành tựu mới: {titles}!"
         
     db.commit()
-    return MessageResponse(detail=f"Chúc mừng bạn đã hoàn thành chuyến đi! Bạn nhận được {completion_score} điểm thưởng lộ trình và +{earned_from_trip} điểm đã tích lũy.{unlocked_msg}")
+    return MessageResponse(
+        detail=f"Chúc mừng bạn đã hoàn thành chuyến đi! Bạn nhận được {completion_score} điểm thưởng lộ trình và +{earned_from_trip} điểm đã tích lũy.{unlocked_msg}",
+        completion_score=completion_score,
+        earned_from_trip=earned_from_trip,
+        total_rewarded=completion_score + earned_from_trip,
+        new_total_points=profile.total_points if profile else None,
+        new_points_balance=profile.points_balance if profile else None,
+    )
 
 @router.put("/{itinerary_id}/cancel", response_model=MessageResponse, summary="Hủy chuyến đi")
 def cancel_trip(
@@ -328,12 +351,7 @@ def create_new_itinerary(
                         float(loc.latitude), float(loc.longitude)
                     )
                     
-                    # === DEBUG: Log nguồn tính toán ===
-                    print(f"Route: {prev_loc.location_name} -> {loc.location_name}")
-                    print(f"   Source: {route_info.source.upper()}")
-                    print(f"   Distance: {route_info.distance_km} km")
-                    print(f"   Time: {route_info.travel_time_min} phut")
-                    print(f"   Polyline: {route_info.polyline_data[:40]}...")
+                    dev_log(f"Route source: {route_info.source.upper()}, distance={route_info.distance_km}km, time={route_info.travel_time_min}m")
                     
                     # Cộng thời gian di chuyển vào current_dt
                     if route_info is not None:
@@ -341,7 +359,7 @@ def create_new_itinerary(
                         daily_time += route_info.travel_time_min
                 else:
                     route_info = None
-                    print(f"Diem xuat phat: {loc.location_name} (Ngay {day_index + 1})")
+                    dev_log(f"Diem xuat phat ngay {day_index + 1}")
 
                 # Thời gian đến (Arrival)
                 arrival_time = current_dt.time()
@@ -370,7 +388,7 @@ def create_new_itinerary(
                 prev_stop_id = new_stop.stop_id
 
             global_total_time += daily_time
-            print(f"Ngay {day_index + 1}: Tong {daily_time} phut")
+            dev_log(f"Ngay {day_index + 1}: Tong {daily_time} phut")
 
         # 5. Cập nhật tổng thời gian chuyến đi và ngân sách
         trip.total_travel_time = global_total_time
@@ -488,18 +506,15 @@ def checkin_stop(
     stop_data = get_stop_with_ownership(db, user_id, stop_id)
     if not stop_data:
         raise HTTPException(status_code=403, detail="Trạm không tồn tại hoặc không thuộc lộ trình của bạn.")
+
+    checkin_lat, checkin_lon = validate_coordinates(request.latitude, request.longitude)
         
     # Lớp 3: Kiểm tra không gian (bán kính)
     is_within, distance = check_within_radius(
-        request.latitude, request.longitude,
+        checkin_lat, checkin_lon,
         float(stop_data.latitude), float(stop_data.longitude),
         radius_m=stop_data.checkin_radius
     )
-
-    # --- HACK FOR DEMO ---
-    # Luôn cho phép check-in bất chấp khoảng cách
-    is_within = True  
-    # ---------------------
 
     if not is_within:
         raise HTTPException(
@@ -695,11 +710,12 @@ def track_user_location(
     if not stop_data:
         raise HTTPException(status_code=404, detail="Không tìm thấy trạm dừng")
     
+    tracking_lat, tracking_lon = validate_coordinates(request.latitude, request.longitude)
 
     # 2. Tính khoảng cách tới trạm đó
     from core.algorithms import haversine
     dist_km = haversine(
-        request.latitude, request.longitude,
+        tracking_lat, tracking_lon,
         float(stop_data.latitude), float(stop_data.longitude)
     )
 

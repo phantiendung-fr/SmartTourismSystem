@@ -1,7 +1,9 @@
-import random
+import secrets
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from sqlmodel import select
+from jose import jwt, JWTError
 
 from datetime import datetime, timedelta, timezone 
 from pydantic import BaseModel # Thêm thư viện này để tạo form nhận OTP
@@ -11,7 +13,7 @@ from database import get_session
 import crud.crud_user as crud_user
 import crud.crud_auth as crud_auth 
 import schemas
-from models import UserStatus
+from models import UserRole, UserStatus
 import core.security as security
 
 from google.oauth2 import id_token
@@ -38,6 +40,17 @@ class ResetPasswordReq(BaseModel):
 
 # BỘ NHỚ TẠM ĐỂ LƯU OTP (Hết hạn sau 5 phút)
 otp_storage = {}
+rate_limit_storage = {}
+
+def check_rate_limit(key: str, limit: int, window_seconds: int) -> None:
+    now = datetime.now(timezone.utc)
+    record = rate_limit_storage.get(key, {"count": 0, "reset_at": now + timedelta(seconds=window_seconds)})
+    if now > record["reset_at"]:
+        record = {"count": 0, "reset_at": now + timedelta(seconds=window_seconds)}
+    record["count"] += 1
+    rate_limit_storage[key] = record
+    if record["count"] > limit:
+        raise HTTPException(status_code=429, detail="Bạn thao tác quá nhiều lần. Vui lòng thử lại sau.")
 
 # ===========================================================================
 # 2. CÁC API XỬ LÝ AUTHENTICATION
@@ -57,7 +70,7 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_session)):
         email=user_data.email, 
         password=user_data.password,
         register_type=user_data.register_type, 
-        role=user_data.role,
+        role=UserRole.USER,
         status="ACTIVE" 
 
     )
@@ -65,6 +78,7 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_session)):
 
 @router.post("/login", response_model=schemas.TokenResponse)
 def login(credentials: schemas.UserLogin, db: Session = Depends(get_session)):
+    check_rate_limit(f"login:{credentials.email.lower()}", limit=5, window_seconds=300)
     user = crud_auth.get_user_by_email(db, email=credentials.email)
     
     # Dùng UserStatus.ACTIVE thay vì string "ACTIVE"
@@ -74,20 +88,18 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_session)):
     if not security.verify_password(credentials.password, user.passwordhash):
         raise HTTPException(status_code=401, detail="Mật khẩu không chính xác")
 
-    access_token = security.create_access_token(data={"sub": str(user.user_id), "role": user.role})
+    user_role_str = getattr(user.role, 'value', user.role)
+    access_token = security.create_access_token(data={"sub": str(user.user_id), "role": user_role_str})
     refresh_token = security.create_refresh_token(data={"sub": str(user.user_id)})
-    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=7)
 
     # Lấy device_id từ Frontend gửi lên, nếu không có thì mặc định là 'web-browser'
     device_id = credentials.device_id or 'web-browser'
-    crud_auth.create_user_session(
+    crud_user.create_user_session(
         db=db, 
         user_id=user.user_id, 
         device_id=device_id,
-        refresh_token_hash=refresh_token,
-        expires_at=expires_at
+        refresh_token=refresh_token,
     )
-    user_role_str = getattr(user.role, 'value', user.role)
     profile_data = {}
     
     # Import model (Bạn kiểm tra lại đường dẫn import file models của nhóm nhé)
@@ -144,8 +156,8 @@ def google_login(token_data: dict, db: Session = Depends(get_session)):
         
         user_role_str = getattr(user.role, 'value', user.role)
 
-        access_token = security.create_access_token(data={"sub": user.email, "role": user_role_str})
-        refresh_token = security.create_refresh_token(data={"sub": user.email})
+        access_token = security.create_access_token(data={"sub": str(user.user_id), "role": user_role_str})
+        refresh_token = security.create_refresh_token(data={"sub": str(user.user_id)})
         
         crud_user.create_user_session(db, user.user_id, device_id, refresh_token)
 
@@ -165,7 +177,13 @@ def google_login(token_data: dict, db: Session = Depends(get_session)):
 
 @router.post("/logout")
 def logout(refresh_token: str = Header(..., alias="Authorization-Refresh"), db: Session = Depends(get_session)):
-    success = crud_user.revoke_session(db, refresh_token=refresh_token)
+    try:
+        payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id = UUID(str(payload.get("sub")))
+    except (JWTError, ValueError, TypeError):
+        raise HTTPException(status_code=401, detail="Refresh token không hợp lệ")
+
+    success = crud_user.revoke_session(db, user_id=user_id, refresh_token=refresh_token)
     if not success:
         raise HTTPException(status_code=400, detail="Phiên không hợp lệ hoặc đã đăng xuất")
     return {"message": "Đăng xuất thành công"}
@@ -256,29 +274,25 @@ def update_profile(
 
 @router.post("/forgot-password")
 def forgot_password(req: ForgotPasswordReq, db: Session = Depends(get_session)):
+    check_rate_limit(f"forgot:{req.email.lower()}", limit=3, window_seconds=900)
     # 1. Kiểm tra email có tồn tại không
     user = crud_auth.get_user_by_email(db, email=req.email)
     if not user:
-        raise HTTPException(status_code=404, detail="Email này chưa được đăng ký!")
+        return {"message": "Nếu email tồn tại, mã OTP sẽ được gửi qua kênh đã cấu hình."}
 
     # 2. Sinh mã OTP ngẫu nhiên (6 chữ số)
-    otp_code = str(random.randint(100000, 999999))
+    otp_code = str(secrets.randbelow(900000) + 100000)
 
     # 3. Lưu OTP và thời gian hết hạn (5 phút) vào bộ nhớ tạm
     expire_time = datetime.now(timezone.utc) + timedelta(minutes=5)
     otp_storage[req.email] = {"otp": otp_code, "expire_time": expire_time}
 
-    # 4. In ra Terminal thay vì gửi Email thật để sinh viên dễ test
-    print("\n" + "="*55)
-    print(f"🚀 [HỆ THỐNG EMAIL TỰ ĐỘNG - DEMO]")
-    print(f"📧 Đã gửi thư khôi phục đến: {req.email}")
-    print(f"🔑 MÃ OTP CỦA BẠN LÀ: {otp_code}")
-    print("="*55 + "\n")
-
-    return {"message": "Mã OTP đã được tạo! Vui lòng mở Terminal Backend để lấy mã."}
+    # TODO: Gửi OTP qua email/SMS provider. Không ghi OTP ra log để tránh lộ mã.
+    return {"message": "Nếu email tồn tại, mã OTP sẽ được gửi qua kênh đã cấu hình."}
 
 @router.post("/reset-password")
 def reset_password(req: ResetPasswordReq, db: Session = Depends(get_session)):
+    check_rate_limit(f"reset:{req.email.lower()}", limit=5, window_seconds=900)
     # 1. Kiểm tra xem email này có đang yêu cầu OTP không
     record = otp_storage.get(req.email)
     if not record:

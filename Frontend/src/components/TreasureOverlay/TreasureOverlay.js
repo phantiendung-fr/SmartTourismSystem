@@ -1,4 +1,5 @@
 import React from 'react';
+import { Gem, Gift } from 'lucide-react';
 import './TreasureOverlay.css';
 
 const TreasureOverlay = ({ data }) => {
@@ -9,7 +10,7 @@ const TreasureOverlay = ({ data }) => {
     return (
         <div className="treasure-overlay">
             <div className={`treasure-chest ${stage}`}>
-                <div className="chest-emoji">{stage === 'open' ? '💎' : '🧰'}</div>
+                <div className="chest-emoji" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#f1c40f' }}>{stage === 'open' ? <Gem size={48} /> : <Gift size={48} />}</div>
             </div>
             
             {stage === 'open' && (

@@ -1,0 +1,278 @@
+/* FindCompanionsScreen.css */
+.find-companions-container {
+    padding: 16px;
+    height: 100%;
+    overflow-y: auto;
+    background-color: var(--st-bg, #e0f2fe);
+    font-family: 'Fredoka', 'Be Vietnam Pro', sans-serif;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.matching-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 8px;
+}
+
+.matching-title {
+    font-size: 26px;
+    font-weight: 900;
+    color: var(--game-border-color, #2c3e50);
+    text-shadow: 2px 2px 0px #ffffff;
+}
+
+.matching-subtitle {
+    font-size: 11px;
+    color: #747d8c;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+.matching-header-icon {
+    width: 44px;
+    height: 44px;
+    border: 2.5px solid var(--game-border-color, #2c3e50);
+    background-color: #ffffff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 0 var(--game-border-color, #2c3e50);
+}
+
+.spin-compass {
+    animation: spin 8s linear infinite;
+    color: var(--game-blue, #1e90ff);
+}
+
+.tabs-row {
+    display: flex;
+    padding: 4px;
+    background-color: #ffffff;
+}
+
+.tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 10px;
+    font-size: 12px;
+    font-weight: 900;
+    color: #747d8c;
+    cursor: pointer;
+    border-radius: 18px;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+}
+
+.tab-btn.active-tab {
+    background-color: var(--game-blue, #1e90ff);
+    color: #ffffff;
+    box-shadow: inset 0 -3px 0 rgba(0,0,0,0.15);
+}
+
+.discover-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+    position: relative;
+    padding-bottom: 60px;
+}
+
+.matching-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.match-card {
+    width: 100%;
+    max-width: 340px;
+    background-color: #ffffff;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.match-image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 280px;
+    background-color: #f1f2f6;
+    border-bottom: 3px solid var(--game-border-color, #2c3e50);
+}
+
+.match-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.match-percentage-badge {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background-color: var(--game-green, #2ed573);
+    color: #ffffff;
+    border: 2.5px solid var(--game-border-color, #2c3e50);
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 900;
+    box-shadow: 0 3px 0 var(--game-border-color, #2c3e50);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.match-info {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.match-name {
+    font-size: 20px;
+    font-weight: 900;
+    color: var(--game-border-color, #2c3e50);
+}
+
+.match-location-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #747d8c;
+    font-weight: 800;
+}
+
+.loc-pin-icon {
+    color: var(--game-red, #ff4757);
+}
+
+.match-bio {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: #57606f;
+    font-style: italic;
+}
+
+.tinder-actions {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    padding: 16px;
+    margin-top: -8px;
+}
+
+.action-swipe-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    box-shadow: 0 4px 0 var(--game-border-color, #2c3e50) !important;
+}
+
+.empty-companions {
+    width: 100%;
+    max-width: 320px;
+    padding: 40px 20px;
+    background-color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.empty-icon {
+    color: var(--game-orange, #ff9f1a);
+    animation: rotate 12s linear infinite;
+}
+
+@keyframes rotate {
+    to { transform: rotate(360deg); }
+}
+
+.pending-area {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.empty-pending {
+    padding: 32px;
+    background-color: #ffffff;
+    font-size: 13px;
+    color: #747d8c;
+    font-weight: 800;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.empty-icon-warning {
+    color: var(--game-yellow, #ffd32d);
+}
+
+.pending-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.pending-card {
+    background-color: #ffffff;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.pending-card-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pending-avatar {
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--game-border-color, #2c3e50);
+    border-radius: 50%;
+    background-color: var(--game-yellow, #ffd32d);
+}
+
+.pending-name {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--game-border-color, #2c3e50);
+}
+
+.pending-time {
+    font-size: 10px;
+    color: #a4b0be;
+    font-weight: 600;
+}
+
+.pending-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.respond-btn {
+    flex: 1;
+    font-size: 11px;
+    padding: 8px 12px;
+    border-radius: 12px;
+}

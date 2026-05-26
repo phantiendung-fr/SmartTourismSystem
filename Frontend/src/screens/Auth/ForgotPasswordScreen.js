@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { API_BASE } from '../../config/api';
+import { ArrowLeft } from 'lucide-react';
 import './LoginScreen.css';
 
 const ForgotPasswordScreen = ({ onBack, onSwitchToLogin }) => {
@@ -21,10 +22,10 @@ const ForgotPasswordScreen = ({ onBack, onSwitchToLogin }) => {
 
             if (!response.ok) throw new Error(data.detail || "Lỗi khi gửi OTP");
 
-            setMessage("✅ " + data.message);
+            setMessage(data.message);
             setStep(2); // Chuyển sang bước nhập OTP
         } catch (error) {
-            alert("❌ " + error.message);
+            alert(error.message);
         }
     };
 
@@ -44,17 +45,17 @@ const ForgotPasswordScreen = ({ onBack, onSwitchToLogin }) => {
 
             if (!response.ok) throw new Error(data.detail || "Lỗi xác nhận OTP");
 
-            alert("🎉 " + data.message);
+            alert(data.message);
             onSwitchToLogin(); // Thành công thì đẩy về màn hình đăng nhập
         } catch (error) {
-            alert("❌ " + error.message);
+            alert(error.message);
         }
     };
 
     return (
         <div className="login-container">
-            <div className="auth-back" onClick={onBack}>
-                ⬅️ Quay lại
+            <div className="auth-back" onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <ArrowLeft size={16} /> Quay lại
             </div>
 
             <h2 className="login-title">Khôi phục mật khẩu</h2>
@@ -63,7 +64,7 @@ const ForgotPasswordScreen = ({ onBack, onSwitchToLogin }) => {
                 <form onSubmit={handleSendOTP} className="auth-form-stack">
                     <p className="auth-helper-text">
                         Nhập email bạn đã đăng ký, chúng tôi sẽ gửi mã xác nhận cho bạn.
-                    </p>
+                     </p>
                     <input 
                         type="email" placeholder="Nhập Email của bạn" required
                         value={email} onChange={(e) => setEmail(e.target.value)}
@@ -98,3 +99,4 @@ const ForgotPasswordScreen = ({ onBack, onSwitchToLogin }) => {
 };
 
 export default ForgotPasswordScreen;
+

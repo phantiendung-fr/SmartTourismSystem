@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { authService } from '../../services/authService';
 import { GoogleLogin } from '@react-oauth/google';
+import { ArrowLeft, LogIn } from 'lucide-react';
 import './LoginScreen.css'; 
 
 // Thêm các hàm điều hướng vào tham số
@@ -18,7 +19,7 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onLoginSuccess,onForgotPasswo
             // Gửi cục data đó lên cho App.js
             onLoginSuccess(userData); 
         } catch (err) {
-            setError("❌ " + err.message);
+            setError(err.message);
         }
     };
 
@@ -27,7 +28,7 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onLoginSuccess,onForgotPasswo
             const userData = await authService.loginWithGoogle(credentialResponse.credential);
             onLoginSuccess(userData);
         } catch (err) {
-            setError("❌ " + err.message);
+            setError(err.message);
         }
     };
 
@@ -37,12 +38,15 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onLoginSuccess,onForgotPasswo
             <div 
                 className="auth-back"
                 onClick={onBack}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-                ⬅️ Quay lại
+                <ArrowLeft size={16} /> Quay lại
             </div>
 
             <form onSubmit={handleLogin}>
-                <h2 className="login-title">✈️ Đăng nhập</h2>
+                <h2 className="login-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <LogIn size={24} /> Đăng nhập
+                </h2>
                 <input 
                     className="login-input" 
                     placeholder="Email" type="email" required
@@ -58,7 +62,7 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onLoginSuccess,onForgotPasswo
                 <div className="auth-google-row">
                     <GoogleLogin
                         onSuccess={handleGoogleSuccess}
-                        onError={() => setError("❌ Đăng nhập Google thất bại")}
+                        onError={() => setError("Đăng nhập Google thất bại")}
                         theme="filled_blue"
                         shape="pill"
                         text="continue_with"
@@ -88,3 +92,4 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onLoginSuccess,onForgotPasswo
 };
 
 export default LoginScreen;
+

@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { getTripDetail } from '../../services/tripService';
 import { storageGet } from '../../platform/storage';
+import { 
+    ArrowLeft, CheckCircle2, XCircle, RefreshCw, Clock, 
+    Route, Circle 
+} from 'lucide-react';
 import './TripDetailScreen.css';
 
 const HistoryDetail = ({ itineraryId, onBack }) => {
@@ -35,7 +39,9 @@ const HistoryDetail = ({ itineraryId, onBack }) => {
         <div className="trip-detail-screen error">
             <h3>Lỗi</h3>
             <p>{error}</p>
-            <button className="btn-back" onClick={onBack}>Quay lại</button>
+            <button className="btn-back" onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <ArrowLeft size={16} /> Quay lại
+            </button>
         </div>
     );
 
@@ -58,25 +64,35 @@ const HistoryDetail = ({ itineraryId, onBack }) => {
     return (
         <div className="trip-detail-screen">
             <div className="detail-header">
-                <button className="btn-back-icon" onClick={onBack}>
-                    <i className="fas fa-arrow-left"></i> Quay lại
+                <button className="btn-back-icon" onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <ArrowLeft size={16} /> Quay lại
                 </button>
                 <h2>{tripDetail.name || "Chi tiết hành trình"}</h2>
-                <div className="status-badge-history">
-                    {tripDetail.status === 'COMPLETED' ? '✅ Hoàn thành' : tripDetail.status === 'CANCELLED' ? '❌ Đã hủy' : '🔄 Đang diễn ra'}
+                <div className="status-badge-history" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {tripDetail.status === 'COMPLETED' ? (
+                        <><CheckCircle2 size={14} /> Hoàn thành</>
+                    ) : tripDetail.status === 'CANCELLED' ? (
+                        <><XCircle size={14} /> Đã hủy</>
+                    ) : (
+                        <><RefreshCw size={14} /> Đang diễn ra</>
+                    )}
                 </div>
             </div>
 
             <div className="trip-summary">
                 <div className="summary-item">
-                    <span className="icon">⏱️</span>
+                    <span className="icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Clock size={20} style={{ color: '#0abde3' }} />
+                    </span>
                     <div>
                         <small>Tổng thời gian</small>
                         <strong>{tripDetail.total_travel_time} phút</strong>
                     </div>
                 </div>
                 <div className="summary-item">
-                    <span className="icon">📏</span>
+                    <span className="icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Route size={20} style={{ color: '#2ed573' }} />
+                    </span>
                     <div>
                         <small>Quãng đường</small>
                         <strong>{tripDetail.total_distance} km</strong>
@@ -104,8 +120,12 @@ const HistoryDetail = ({ itineraryId, onBack }) => {
                                             <div className="stop-card-header">
                                                 <h4>{stop.location_name}</h4>
                                             </div>
-                                            <p>
-                                                {stop.status === 'COMPLETED' ? '✅ Đã ghé thăm' : '⚪ Chưa ghé thăm'}
+                                            <p style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', margin: '5px 0 0' }}>
+                                                {stop.status === 'COMPLETED' ? (
+                                                    <><CheckCircle2 size={14} style={{ color: '#2ed573' }} /> Đã ghé thăm</>
+                                                ) : (
+                                                    <><Circle size={14} style={{ color: '#a4b0be' }} /> Chưa ghé thăm</>
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -119,5 +139,5 @@ const HistoryDetail = ({ itineraryId, onBack }) => {
     );
 };
 
-
 export default HistoryDetail;
+

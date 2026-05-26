@@ -1,20 +1,24 @@
 import React, { useState } from 'react';
 import { authService } from '../../services/authService';
+import { ArrowLeft, User, Building2 } from 'lucide-react';
 import './LoginScreen.css';
 
 const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
     // 1. Thêm trường 'role' vào formData, mặc định là 'USER' (Cá nhân)
     const [formData, setFormData] = useState({ fullName: '', email: '', password: '', role: 'USER' });
     const [message, setMessage] = useState('');
+    const [isError, setIsError] = useState(false);
 
     const handleRegister = async (e) => {
         e.preventDefault();
         try {
             // 2. Truyền thêm formData.role vào hàm gọi API
             await authService.register(formData.fullName, formData.email, formData.password, formData.role);
-            setMessage("🎉 Đăng ký thành công! Hãy bấm đăng nhập.");
+            setIsError(false);
+            setMessage("Đăng ký thành công! Hãy bấm đăng nhập.");
         } catch (error) {
-            setMessage("❌ Lỗi: " + error.message);
+            setIsError(true);
+            setMessage("Lỗi: " + error.message);
         }
     };
 
@@ -24,8 +28,9 @@ const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
             <div 
                 className="auth-back"
                 onClick={onBack}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-                ⬅️ Quay lại
+                <ArrowLeft size={16} /> Quay lại
             </div>
 
             <h2 className="login-title">Đăng ký tài khoản</h2>
@@ -36,15 +41,17 @@ const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
                     type="button"
                     onClick={() => setFormData({...formData, role: 'USER'})}
                     className={`role-toggle-btn ${formData.role === 'USER' ? 'user-active' : 'inactive'}`}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
-                    👤 Cá nhân
+                    <User size={16} /> Cá nhân
                 </button>
                 <button 
                     type="button"
                     onClick={() => setFormData({...formData, role: 'ENTERPRISE'})}
                     className={`role-toggle-btn ${formData.role === 'ENTERPRISE' ? 'enterprise-active' : 'inactive'}`}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
-                    🏢 Doanh nghiệp
+                    <Building2 size={16} /> Doanh nghiệp
                 </button>
             </div>
 
@@ -60,7 +67,7 @@ const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
                 </button>
             </form>
             
-            <p className={`auth-register-message ${message.includes('❌') ? 'error' : 'success'}`}>{message}</p>
+            {message && <p className={`auth-register-message ${isError ? 'error' : 'success'}`}>{message}</p>}
 
             {/* Chuyển sang đăng nhập */}
             <div className="auth-center-link-row">
@@ -76,3 +83,4 @@ const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
 };
 
 export default RegisterScreen;
+

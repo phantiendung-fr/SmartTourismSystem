@@ -36,6 +36,11 @@ from models import (
 class MessageResponse(BaseModel):
     """Generic API message (e.g. for delete / status endpoints)."""
     detail: str
+    completion_score: Optional[int] = None
+    earned_from_trip: Optional[int] = None
+    total_rewarded: Optional[int] = None
+    new_total_points: Optional[int] = None
+    new_points_balance: Optional[int] = None
 
 # USER SCHEMAS
 # ============================================================
@@ -375,6 +380,7 @@ class ItineraryResponse(BaseModel):
     currency: CurrencyEnum
     total_travel_time: int
     total_distance: Decimal
+    score_earned: Optional[int] = 0
     budget_category: Optional[str] = Field(default="MEDIUM", description="LOW, MEDIUM, or HIGH")
     warning_message: Optional[str] = None
     create_at: datetime
@@ -400,6 +406,11 @@ class ItineraryHistoryItem(BaseModel):
 class MessageResponse(BaseModel):
     """Generic API message (e.g. for delete / status endpoints)."""
     detail: str
+    completion_score: Optional[int] = None
+    earned_from_trip: Optional[int] = None
+    total_rewarded: Optional[int] = None
+    new_total_points: Optional[int] = None
+    new_points_balance: Optional[int] = None
 
 # ============================================================
 # SUGGESTION SCHEMAS (Phục vụ Gợi ý địa điểm)

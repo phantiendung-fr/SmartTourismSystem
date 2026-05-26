@@ -1,22 +1,85 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { createPlayerAvatarIcon } from '../PlayerAvatar/PlayerAvatar';
+import './MapComponent.css';
 
-const MapComponent = ({ stops = [], userLocation = null, hiddenTasks = [], onHiddenTaskClick = null }) => {
+const TILE_STYLES = {
+    voyager: {
+        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+        options: {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 20,
+        },
+    },
+    satellite: {
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        options: {
+            attribution: '&copy; Esri',
+            maxZoom: 20,
+        },
+    },
+    traffic: {
+        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        options: {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 20,
+        },
+    },
+};
+
+const getTileStyleConfig = (mapStyle) => TILE_STYLES[mapStyle] || TILE_STYLES.voyager;
+const USER_LOCATION_ZOOM = 18;
+
+const MapComponent = forwardRef(({ stops = [], userLocation = null, hiddenTasks = [], onHiddenTaskClick = null, fullScreen = false, mapStyle = 'voyager', showHiddenTasks = true, user = null }, ref) => {
     const mapRef = useRef(null);
     const mapInstance = useRef(null);
     const markersLayer = useRef(null);
+    const tileLayerRef = useRef(null);
+
+    useImperativeHandle(ref, () => ({
+        flyToUserLocation: () => {
+            if (mapInstance.current && userLocation?.lat && userLocation?.lng) {
+                const currentZoom = mapInstance.current.getZoom();
+                const targetZoom = Math.max(currentZoom, USER_LOCATION_ZOOM);
+                mapInstance.current.flyTo([userLocation.lat, userLocation.lng], targetZoom, { animate: true, duration: 0.8 });
+            } else {
+                alert("Vui lòng bật định vị GPS và chờ trong giây lát.");
+            }
+        },
+        flyToLocation: (lat, lon, name) => {
+            if (mapInstance.current && lat && lon) {
+                const targetZoom = Math.max(mapInstance.current.getZoom(), USER_LOCATION_ZOOM - 2);
+                mapInstance.current.flyTo([parseFloat(lat), parseFloat(lon)], targetZoom, { animate: true, duration: 1.2 });
+                
+                L.popup({ className: 'game-map-popup' })
+                    .setLatLng([parseFloat(lat), parseFloat(lon)])
+                    .setContent(`<b>${name || 'Địa điểm tìm kiếm'}</b>`)
+                    .openOn(mapInstance.current);
+            }
+        }
+    }));
 
     useEffect(() => {
         if (!mapRef.current || mapInstance.current) return;
 
-        const centerLat = stops.length > 0 ? parseFloat(stops[0].latitude) : 21.0285;
-        const centerLng = stops.length > 0 ? parseFloat(stops[0].longitude) : 105.8542;
+        const centerLat = stops.length > 0 ? parseFloat(stops[0].latitude) : 10.762622;
+        const centerLng = stops.length > 0 ? parseFloat(stops[0].longitude) : 106.660172;
 
-        mapInstance.current = L.map(mapRef.current).setView([centerLat, centerLng], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap',
-        }).addTo(mapInstance.current);
+        mapInstance.current = L.map(mapRef.current, {
+            zoomControl: !fullScreen, // Hide zoom control if full screen for cleaner look
+            zoomSnap: 0.25,
+            zoomDelta: 0.5,
+            wheelPxPerZoomLevel: 120,
+            bounceAtZoomLimits: false,
+            zoomAnimation: false,
+            fadeAnimation: false,
+            markerZoomAnimation: false
+        }).setView([centerLat, centerLng], 13);
+        const initialTileStyle = getTileStyleConfig(mapStyle);
+        tileLayerRef.current = L.tileLayer(initialTileStyle.url, initialTileStyle.options).addTo(mapInstance.current);
 
         markersLayer.current = L.layerGroup().addTo(mapInstance.current);
 
@@ -30,14 +93,27 @@ const MapComponent = ({ stops = [], userLocation = null, hiddenTasks = [], onHid
                 mapInstance.current = null;
             }
             markersLayer.current = null;
+            tileLayerRef.current = null;
         };
-    }, [stops]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fullScreen]); // stops is removed from dependencies to prevent recreating map when stops reference changes
+
+    useEffect(() => {
+        if (!mapInstance.current) return;
+
+        if (tileLayerRef.current) {
+            mapInstance.current.removeLayer(tileLayerRef.current);
+        }
+
+        const tileStyle = getTileStyleConfig(mapStyle);
+        tileLayerRef.current = L.tileLayer(tileStyle.url, tileStyle.options).addTo(mapInstance.current);
+        tileLayerRef.current.bringToBack();
+    }, [mapStyle]);
 
     useEffect(() => {
         if (!mapInstance.current || !markersLayer.current) return;
 
         markersLayer.current.clearLayers();
-        const bounds = [];
         const nextStop = stops.find((stop) => stop.status === 'PENDING' || stop.status === 'VISITING');
 
         stops.forEach((stop, index) => {
@@ -47,99 +123,93 @@ const MapComponent = ({ stops = [], userLocation = null, hiddenTasks = [], onHid
             const lng = parseFloat(stop.longitude);
             if (Number.isNaN(lat) || Number.isNaN(lng)) return;
 
-            let markerColor = '#2196F3';
-            if (stop.status === 'COMPLETED') markerColor = '#4CAF50';
-            else if (nextStop && stop.stop_id === nextStop.stop_id) markerColor = '#FF9800';
+            let markerColor = '#1e90ff';
+            let markerStatusClass = '';
+            if (stop.status === 'COMPLETED') {
+                markerColor = '#2ed573';
+                markerStatusClass = 'status-completed';
+            } else if (nextStop && stop.stop_id === nextStop.stop_id) {
+                markerColor = '#ff9f1a';
+                markerStatusClass = 'status-next';
+            }
 
             L.marker([lat, lng], {
                 icon: L.divIcon({
-                    className: 'custom-div-icon',
-                    html: `<div style="background-color:${markerColor};color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid white;font-weight:bold;font-size:12px;box-shadow:0 2px 5px rgba(0,0,0,0.3);">${index + 1}</div>`,
-                    iconSize: [24, 24],
-                    iconAnchor: [12, 12],
+                    className: 'custom-div-icon game-stop-icon',
+                    html: `<div class="game-stop-marker ${markerStatusClass}" style="--marker-color:${markerColor};">${index + 1}</div>`,
+                    iconSize: [40, 48],
+                    iconAnchor: [20, 42],
                 }),
             })
-                .bindPopup(`<b>${stop.location_name}</b><br/>${stop.arrival_time ? `Đến: ${stop.arrival_time.slice(0, 5)}` : ''}`)
+                .bindPopup(`<b>${stop.location_name}</b><br/>${stop.arrival_time ? `Đến: ${stop.arrival_time.slice(0, 5)}` : ''}`, {
+                    className: 'game-map-popup',
+                })
                 .addTo(markersLayer.current);
 
-            bounds.push([lat, lng]);
         });
 
+        // User location marker with shared game avatar style
         if (userLocation?.lat && userLocation?.lng) {
             L.marker([userLocation.lat, userLocation.lng], {
-                icon: L.divIcon({
-                    className: 'user-icon',
-                    html: `<div style="background-color:#F44336;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 0 10px rgba(244,67,54,0.6);position:relative;"><div style="position:absolute;top:-2px;left:-2px;right:-2px;bottom:-2px;border-radius:50%;border:2px solid #F44336;animation:pulse 2s infinite;"></div></div>`,
-                    iconSize: [20, 20],
-                    iconAnchor: [10, 10],
-                }),
+                icon: createPlayerAvatarIcon(user),
             })
-                .bindPopup('Vị trí của bạn')
+                .bindPopup('Vị trí của bạn', {
+                    className: 'game-map-popup',
+                })
                 .addTo(markersLayer.current);
 
-            bounds.push([userLocation.lat, userLocation.lng]);
         }
 
-        hiddenTasks.forEach((task) => {
-            if (!task.latitude || !task.longitude) return;
+        if (showHiddenTasks) {
+            hiddenTasks.forEach((task) => {
+                if (!task.latitude || !task.longitude) return;
 
-            const lat = parseFloat(task.latitude);
-            const lng = parseFloat(task.longitude);
-            if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+                const lat = parseFloat(task.latitude);
+                const lng = parseFloat(task.longitude);
+                if (Number.isNaN(lat) || Number.isNaN(lng)) return;
 
-            const rarityColors = {
-                COMMON: '#7f8c8d',
-                RARE: '#2980b9',
-                EPIC: '#8e44ad',
-                LEGENDARY: '#f1c40f',
-            };
-            const color = rarityColors[task.rarity] || '#7f8c8d';
+                const rarityColors = {
+                    COMMON: '#7f8c8d',
+                    RARE: '#2980b9',
+                    EPIC: '#8e44ad',
+                    LEGENDARY: '#f1c40f',
+                };
+                const color = rarityColors[task.rarity] || '#7f8c8d';
 
-            let emoji = '🎁';
-            let label = 'Rương kho báu';
-            if (task.task_type === 'DYNAMIC_QUEST') {
-                emoji = '🔮';
-                label = 'Sự kiện đặc biệt';
-            }
+                let iconHtml = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C12 3 12 8 12 8s0-5 4.5-5a2.5 2.5 0 0 1 0 5z"/></svg>';
+                let label = 'Rương kho báu';
+                if (task.task_type === 'DYNAMIC_QUEST') {
+                    iconHtml = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>';
+                    label = 'Sự kiện đặc biệt';
+                }
 
-            const marker = L.marker([lat, lng], {
-                icon: L.divIcon({
-                    className: 'hidden-task-icon',
-                    html: `<div class="glowing-chest" style="background-color:${color};border:2px solid white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 12px ${color};cursor:pointer;animation:float-effect 2s infinite ease-in-out;position:relative;">${emoji}<div style="position:absolute;width:40px;height:40px;border-radius:50%;border:2px dashed ${color};top:-6px;left:-6px;animation:spin-circle 8s infinite linear;"></div></div>`,
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 16],
-                }),
+                const marker = L.marker([lat, lng], {
+                    icon: L.divIcon({
+                        className: 'hidden-task-icon game-hidden-task-icon',
+                        html: `<div class="game-hidden-task-marker" style="--task-color:${color};">${iconHtml}<div class="game-hidden-task-orbit"></div></div>`,
+                        iconSize: [58, 58],
+                        iconAnchor: [29, 29],
+                    }),
+                });
+
+                marker.bindPopup(`<b>${task.title || label}</b><br/><small>${task.rarity} - Click để xem!</small>`, {
+                    className: 'game-map-popup',
+                });
+                marker.on('click', () => {
+                    if (onHiddenTaskClick) onHiddenTaskClick(task);
+                });
+                marker.addTo(markersLayer.current);
             });
-
-            marker.bindPopup(`<b>${task.title || label}</b><br/><small>${task.rarity} - Click để xem!</small>`);
-            marker.on('click', () => {
-                if (onHiddenTaskClick) onHiddenTaskClick(task);
-            });
-            marker.addTo(markersLayer.current);
-            bounds.push([lat, lng]);
-        });
-
-        if (bounds.length > 0) {
-            mapInstance.current.fitBounds(bounds, { padding: [40, 40] });
         }
-    }, [stops, userLocation, hiddenTasks, onHiddenTaskClick]);
+    }, [stops, userLocation, hiddenTasks, onHiddenTaskClick, showHiddenTasks, user]);
 
     return (
-        <div
-            style={{
-                height: '350px',
-                width: '100%',
-                marginBottom: '25px',
-                position: 'relative',
-                background: '#e0e0e0',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            }}
-        >
-            <div ref={mapRef} style={{ height: '100%', width: '100%' }} />
+        <div className={`game-map-shell ${fullScreen ? 'full' : 'card'} map-style-${mapStyle}`}>
+            <div className="game-map-frame">
+                <div ref={mapRef} className="game-map-canvas" />
+            </div>
         </div>
     );
-};
+});
 
 export default MapComponent;

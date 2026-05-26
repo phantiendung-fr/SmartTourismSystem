@@ -218,9 +218,8 @@ async def verify_image_with_gemini(user_image_bytes: bytes, reference_image_url:
         # --- LỚP 2: BẮT LỖI PARSE ĐỂ KHÔNG SẬP APP ---
         try:
             result = json.loads(clean_text)
-        except json.JSONDecodeError as e:
-            print(f"⚠️ [CẢNH BÁO] Lỗi Parse JSON từ Gemini: {str(e)}")
-            print(f"Chuỗi AI trả về bị lỗi: {raw_text}")
+        except json.JSONDecodeError:
+            print("⚠️ [CẢNH BÁO] Lỗi Parse JSON từ Gemini")
             
             # --- LỚP 3: DỮ LIỆU BẢO HIỂM ---
             # Trả về kết quả an toàn thay vì crash màn hình đỏ

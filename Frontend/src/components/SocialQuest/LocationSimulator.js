@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSocialQuest } from './SocialQuestProvider';
+import { Radio, Send } from 'lucide-react';
 
 const LocationSimulator = () => {
     const { sendLocation, questState } = useSocialQuest();
@@ -46,7 +47,7 @@ const LocationSimulator = () => {
                 }}
                 title="Mở Mock GPS"
             >
-                🛰️
+                <Radio size={20} />
             </button>
         );
     }
@@ -66,7 +67,9 @@ const LocationSimulator = () => {
         }}>
             {/* Header có nút Tắt (X) */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <h4 style={{ margin: 0, color: '#2ecc71', fontSize: '14px' }}>🛰️ MOCK GPS</h4>
+                <h4 style={{ margin: 0, color: '#2ecc71', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Radio size={14} /> MOCK GPS
+                </h4>
                 <button 
                     onClick={() => setIsOpen(false)}
                     style={{ background: 'none', border: 'none', color: '#ff7675', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
@@ -98,10 +101,14 @@ const LocationSimulator = () => {
                 style={{
                     ...btnStyle, 
                     background: '#e74c3c',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
                 }} 
             >
-                🚀 Phát Tín Hiệu
+                <Send size={14} /> Phát Tín Hiệu
             </button>
         </div>
     );

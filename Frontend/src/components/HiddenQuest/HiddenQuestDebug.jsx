@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { API_BASE } from '../../config/api';
 import { storageGet } from '../../platform/storage';
+import { Wrench, X, Package, Sparkles, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import './HiddenQuestDebug.css';
 
 const HiddenQuestDebug = ({ userLocation, onSpawnSuccess, onTestClaim }) => {
@@ -26,12 +27,12 @@ const HiddenQuestDebug = ({ userLocation, onSpawnSuccess, onTestClaim }) => {
 
     const handleSpawn = async (type) => {
         if (!userLocation) {
-            setStatusMsg("❌ Lỗi: Chưa xác định được vị trí GPS hiện tại!");
+            setStatusMsg("Lỗi: Chưa xác định được vị trí GPS hiện tại!");
             return;
         }
 
         setLoading(true);
-        setStatusMsg("⏳ Đang gửi yêu cầu sinh ảo...");
+        setStatusMsg("Đang gửi yêu cầu sinh ảo...");
 
         try {
             const token = await storageGet('access_token');
@@ -58,7 +59,7 @@ const HiddenQuestDebug = ({ userLocation, onSpawnSuccess, onTestClaim }) => {
                 throw new Error(data.detail || "Sinh thất bại");
             }
 
-            setStatusMsg(`✅ Sinh thành công! Vị trí ${type}: ${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}`);
+            setStatusMsg(`Sinh thành công! Vị trí ${type}: ${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}`);
             setLastSpawnedChest({
                 lat: data.latitude,
                 lng: data.longitude,
@@ -71,7 +72,7 @@ const HiddenQuestDebug = ({ userLocation, onSpawnSuccess, onTestClaim }) => {
             }
         } catch (err) {
             console.error(err);
-            setStatusMsg(`❌ Lỗi: ${err.message || 'Lỗi server'}`);
+            setStatusMsg(`Lỗi: ${err.message || 'Lỗi server'}`);
         } finally {
             setLoading(false);
         }
@@ -95,8 +96,8 @@ const HiddenQuestDebug = ({ userLocation, onSpawnSuccess, onTestClaim }) => {
     return (
         <>
             {/* Floating FAB */}
-            <div className="debug-fab" onClick={togglePanel} title="Chế độ nhà phát triển">
-                🛠️
+            <div className="debug-fab" onClick={togglePanel} title="Chế độ nhà phát triển" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Wrench size={20} />
             </div>
 
             {/* Debug Panel */}
@@ -104,7 +105,9 @@ const HiddenQuestDebug = ({ userLocation, onSpawnSuccess, onTestClaim }) => {
                 <div className="debug-panel">
                     <div className="debug-header">
                         <h3>DEBUG GAMIFICATION</h3>
-                        <button className="debug-close" onClick={togglePanel}>✕</button>
+                        <button className="debug-close" onClick={togglePanel} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <X size={14} />
+                        </button>
                     </div>
 
                     <div className="debug-section">
@@ -127,15 +130,17 @@ const HiddenQuestDebug = ({ userLocation, onSpawnSuccess, onTestClaim }) => {
                             className="debug-btn btn-primary" 
                             onClick={() => handleSpawn('CHEST')}
                             disabled={loading}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                         >
-                            📦 Sinh Rương Kho Báu
+                            <Package size={16} /> Sinh Rương Kho Báu
                         </button>
                         <button 
                             className="debug-btn btn-secondary" 
                             onClick={() => handleSpawn('DYNAMIC_QUEST')}
                             disabled={loading}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                         >
-                            🔮 Sinh Sự Kiện Doanh Nghiệp
+                            <Sparkles size={16} /> Sinh Sự Kiện Doanh Nghiệp
                         </button>
                     </div>
 
@@ -144,14 +149,20 @@ const HiddenQuestDebug = ({ userLocation, onSpawnSuccess, onTestClaim }) => {
                         <button 
                             className="debug-btn btn-accent" 
                             onClick={handleTestClaimClick}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                         >
-                            ✨ Chạy thử Animation Rương
+                            <Sparkles size={16} /> Chạy thử Animation Rương
                         </button>
                     </div>
 
                     {statusMsg && (
-                        <div className="debug-status">
-                            {statusMsg}
+                        <div className="debug-status" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {statusMsg.toLowerCase().includes('lỗi') ? (
+                                <AlertTriangle size={14} style={{ color: '#ff7675', flexShrink: 0 }} />
+                            ) : statusMsg.toLowerCase().includes('thành công') ? (
+                                <CheckCircle2 size={14} style={{ color: '#2ecc71', flexShrink: 0 }} />
+                            ) : null}
+                            <span>{statusMsg}</span>
                         </div>
                     )}
 
@@ -165,13 +176,14 @@ const HiddenQuestDebug = ({ userLocation, onSpawnSuccess, onTestClaim }) => {
                             border: '1px dashed #0abde3',
                             textAlign: 'left'
                         }}>
-                            <div style={{ fontWeight: 'bold', color: '#0abde3', marginBottom: '4px' }}>
-                                📦 Vị trí {lastSpawnedChest.type === 'CHEST' ? 'Rương' : 'Sự kiện'} vừa sinh:
+                            <div style={{ fontWeight: 'bold', color: '#0abde3', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Package size={14} /> Vị trí {lastSpawnedChest.type === 'CHEST' ? 'Rương' : 'Sự kiện'} vừa sinh:
                             </div>
                             <div>• Lat: <strong>{lastSpawnedChest.lat.toFixed(6)}</strong></div>
                             <div>• Lng: <strong>{lastSpawnedChest.lng.toFixed(6)}</strong></div>
                             <div style={{ marginTop: '5px', fontSize: '11px' }}>
-                                📏 Khoảng cách hiện tại: <strong style={{ color: calculateDistance(userLocation.lat, userLocation.lng, lastSpawnedChest.lat, lastSpawnedChest.lng) <= 5.0 ? '#2ecc71' : '#ff7675', fontSize: '12px' }}>
+                                <span>Khoảng cách hiện tại: </span>
+                                <strong style={{ color: calculateDistance(userLocation.lat, userLocation.lng, lastSpawnedChest.lat, lastSpawnedChest.lng) <= 5.0 ? '#2ecc71' : '#ff7675', fontSize: '12px' }}>
                                     {calculateDistance(userLocation.lat, userLocation.lng, lastSpawnedChest.lat, lastSpawnedChest.lng).toFixed(1)}m
                                 </strong>
                                 {calculateDistance(userLocation.lat, userLocation.lng, lastSpawnedChest.lat, lastSpawnedChest.lng) <= 5.0 ? (
@@ -188,8 +200,8 @@ const HiddenQuestDebug = ({ userLocation, onSpawnSuccess, onTestClaim }) => {
                             GPS: {userLocation.lat.toFixed(5)}, {userLocation.lng.toFixed(5)}
                         </div>
                     ) : (
-                        <div style={{ fontSize: '10px', color: '#ff7675', marginTop: '10px', textAlign: 'center' }}>
-                            ⚠️ Không tìm thấy toạ độ GPS
+                        <div style={{ fontSize: '10px', color: '#ff7675', marginTop: '10px', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                            <AlertTriangle size={12} /> Không tìm thấy toạ độ GPS
                         </div>
                     )}
                 </div>
