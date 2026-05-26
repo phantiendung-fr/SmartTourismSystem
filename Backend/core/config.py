@@ -4,7 +4,7 @@
 # ``settings`` instance used throughout the application.
 # ============================================================
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +23,16 @@ class Settings(BaseSettings):
     # --- Database -----------------------------------------------------------
     DATABASE_URL: str = "postgresql://user:password@localhost:6543/postgres"
     DB_ECHO: bool = False
+
+    # --- Runtime / HTTP -----------------------------------------------------
+    ENVIRONMENT: str = "development"
+    CORS_ORIGINS: str = (
+        "http://localhost:3000,"
+        "http://localhost:3001,"
+        "http://127.0.0.1:3000,"
+        "http://localhost,"
+        "capacitor://localhost"
+    )
 
     # --- Auth / JWT ---------------------------------------------------------
     SECRET_KEY: str = "YOUR_SUPER_SECRET_KEY_HERE"
@@ -52,6 +62,19 @@ class Settings(BaseSettings):
         if ":5432" in v:
             v = v.replace(":5432", ":6543")
         return v
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> "Settings":
+        if self.ENVIRONMENT.lower() == "production":
+            if self.SECRET_KEY == "YOUR_SUPER_SECRET_KEY_HERE" or len(self.SECRET_KEY) < 32:
+                raise ValueError("Production requires a strong SECRET_KEY from environment variables.")
+            if "user:password@localhost" in self.DATABASE_URL or "postgres:password@localhost" in self.DATABASE_URL:
+                raise ValueError("Production requires DATABASE_URL from environment variables.")
+        return self
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
 
 # ---------------------------------------------------------------------------

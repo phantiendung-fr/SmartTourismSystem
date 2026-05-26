@@ -59,26 +59,6 @@ def check_admin_access(current_user: dict = Depends(verify_token), db: Session =
         raise HTTPException(status_code=401, detail="User ID không hợp lệ")
 
     user = db.exec(select(models.Users).where(models.Users.user_id == user_uuid)).first()
-    
-    # Self-healing fallback cho super admin
-    email = current_user.get("sub") or current_user.get("email")
-    if email == "ngocxuan02032006btx@gmail.com":
-        if not user:
-            user = models.Users(
-                user_id=user_uuid,
-                email=email,
-                full_name="Ngọc Xuân Admin",
-                role=models.UserRole.ADMIN,
-                status=models.UserStatus.ACTIVE
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-        elif user.role != models.UserRole.ADMIN:
-            user.role = models.UserRole.ADMIN
-            db.add(user)
-            db.commit()
-        return user
 
     if not user or user.role not in [models.UserRole.ADMIN, "OWNER", "CS"]:
         raise HTTPException(status_code=403, detail="Bạn không có quyền truy cập tính năng này.")

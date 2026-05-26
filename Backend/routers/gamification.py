@@ -22,6 +22,7 @@ from models import (
     UserTaskHistory
 )
 from core.gps import calculate_haversine_distance
+from core.security import verify_token
 from services.ai_verification import verify_image_with_gemini
 
 router = APIRouter(
@@ -33,8 +34,23 @@ class ClaimTreasureRequest(BaseModel):
     spawn_id: uuid.UUID
     item_id: Optional[int] = None
 
+def get_authenticated_user_id(current_user: dict = Depends(verify_token)) -> uuid.UUID:
+    try:
+        return uuid.UUID(str(current_user.get("sub")))
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=401, detail="Token không chứa user_id hợp lệ")
+
+def ensure_same_user(requested_user_id: uuid.UUID, token_user_id: uuid.UUID) -> None:
+    if requested_user_id != token_user_id:
+        raise HTTPException(status_code=403, detail="Không được thao tác dữ liệu của người dùng khác")
+
 @router.post("/claim-newbie-gift/{user_id}")
-def api_claim_newbie_gift(user_id: uuid.UUID, session: Session = Depends(get_session)):
+def api_claim_newbie_gift(
+    user_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    token_user_id: uuid.UUID = Depends(get_authenticated_user_id),
+):
+    ensure_same_user(user_id, token_user_id)
     claimed = crud.check_newbie_gift(session, user_id)
     if claimed:
         raise HTTPException(status_code=400, detail="Newbie gift already claimed")
@@ -46,7 +62,12 @@ def api_claim_newbie_gift(user_id: uuid.UUID, session: Session = Depends(get_ses
     return {"status": "success", "message": "Newbie gift claimed successfully"}
 
 @router.post("/daily-attendance/{user_id}")
-def api_daily_attendance(user_id: uuid.UUID, session: Session = Depends(get_session)):
+def api_daily_attendance(
+    user_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    token_user_id: uuid.UUID = Depends(get_authenticated_user_id),
+):
+    ensure_same_user(user_id, token_user_id)
     result = crud.daily_attendance(session, user_id)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -54,12 +75,23 @@ def api_daily_attendance(user_id: uuid.UUID, session: Session = Depends(get_sess
     return {"status": "success", "data": result}
 
 @router.get("/nearby-treasures/{user_id}")
-def api_get_nearby_treasures(user_id: uuid.UUID, session: Session = Depends(get_session)):
+def api_get_nearby_treasures(
+    user_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    token_user_id: uuid.UUID = Depends(get_authenticated_user_id),
+):
+    ensure_same_user(user_id, token_user_id)
     treasures = crud.get_nearby_treasures(session, user_id)
     return {"status": "success", "data": treasures}
 
 @router.post("/claim-treasure/{user_id}")
-def api_claim_treasure(user_id: uuid.UUID, request: ClaimTreasureRequest, session: Session = Depends(get_session)):
+def api_claim_treasure(
+    user_id: uuid.UUID,
+    request: ClaimTreasureRequest,
+    session: Session = Depends(get_session),
+    token_user_id: uuid.UUID = Depends(get_authenticated_user_id),
+):
+    ensure_same_user(user_id, token_user_id)
     try:
         success = crud.claim_treasure(session, user_id, request.spawn_id, request.item_id)
         if not success:
@@ -83,13 +115,15 @@ def get_location_tasks(
     location_id: uuid.UUID, 
     itinerary_id: uuid.UUID,
     user_id: uuid.UUID,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    token_user_id: uuid.UUID = Depends(get_authenticated_user_id),
 ):
     """
     API Tích hợp: Lấy toàn bộ danh sách nhiệm vụ tại địa điểm (Gồm PHOTO, QA, QR)
     kèm theo trạng thái thực hiện của User.
     """
     # 1. Kiểm tra địa điểm tồn tại
+    ensure_same_user(user_id, token_user_id)
     location = session.get(Locations, location_id)
     if not location:
         raise HTTPException(status_code=404, detail="Không tìm thấy địa điểm du lịch này.")
@@ -184,7 +218,14 @@ def get_location_tasks(
     return result
 
 @router.post("/tasks/{task_id}/start")
-def start_task(task_id: uuid.UUID, user_id: uuid.UUID, itinerary_id: uuid.UUID, session: Session = Depends(get_session)):
+def start_task(
+    task_id: uuid.UUID,
+    user_id: uuid.UUID,
+    itinerary_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    token_user_id: uuid.UUID = Depends(get_authenticated_user_id),
+):
+    ensure_same_user(user_id, token_user_id)
     task = session.get(PhotoTasks, task_id)
     if not task:
         return {"message": "Bỏ qua khởi tạo tuần tự cho QA/QR", "status": "IN_PROGRESS"}
@@ -198,7 +239,14 @@ def start_task(task_id: uuid.UUID, user_id: uuid.UUID, itinerary_id: uuid.UUID, 
     return {"message": "Đã bắt đầu", "progress_id": new_progress.progress_id, "status": "IN_PROGRESS"}
 
 @router.post("/tasks/{task_id}/cancel")
-def cancel_task(task_id: uuid.UUID, user_id: uuid.UUID, itinerary_id: uuid.UUID, session: Session = Depends(get_session)):
+def cancel_task(
+    task_id: uuid.UUID,
+    user_id: uuid.UUID,
+    itinerary_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    token_user_id: uuid.UUID = Depends(get_authenticated_user_id),
+):
+    ensure_same_user(user_id, token_user_id)
     progress = session.exec(select(UserTaskProgress).where(UserTaskProgress.user_id == user_id, UserTaskProgress.task_id == task_id, UserTaskProgress.itinerary_id == itinerary_id)).first()
     if progress:
         progress.status = ProgressStatusEnum.CANCELLED
@@ -207,10 +255,18 @@ def cancel_task(task_id: uuid.UUID, user_id: uuid.UUID, itinerary_id: uuid.UUID,
     return {"message": "Đã hủy thành công", "status": "CANCELLED"}
 
 @router.post("/submissions/submit-photo")
-async def submit_photo_task(progress_id: uuid.UUID = Form(...), latitude: float = Form(...), longitude: float = Form(...), photo: UploadFile = File(...), session: Session = Depends(get_session)):
+async def submit_photo_task(
+    progress_id: uuid.UUID = Form(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    photo: UploadFile = File(...),
+    session: Session = Depends(get_session),
+    token_user_id: uuid.UUID = Depends(get_authenticated_user_id),
+):
     progress = session.get(UserTaskProgress, progress_id)
     if not progress or progress.status == ProgressStatusEnum.COMPLETED:
         raise HTTPException(status_code=400, detail="Tiến trình không hợp lệ hoặc đã hoàn thành.")
+    ensure_same_user(progress.user_id, token_user_id)
     task = session.get(PhotoTasks, progress.task_id)
     distance = calculate_haversine_distance(latitude, longitude, float(task.latitude), float(task.longitude))
     if distance > task.radius_meters:

@@ -9,10 +9,11 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 from contextlib import asynccontextmanager
 # pyrefly: ignore [missing-import]
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 # pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
 
+from core.config import settings
 from database import create_db_and_tables
 
 
@@ -60,17 +61,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-        "http://localhost",
-        "capacitor://localhost",
-    ], 
-    allow_origin_regex=".*",
-
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -133,6 +125,8 @@ from schemas import UserCreate
 
 @app.post("/test-create-user", tags=["Test"])
 def test_db(user: UserCreate, db: Session = Depends(get_session)):
+    if settings.ENVIRONMENT.lower() != "development":
+        raise HTTPException(status_code=404, detail="Not found")
     return create_user(
         db=db,
         full_name=user.full_name,
