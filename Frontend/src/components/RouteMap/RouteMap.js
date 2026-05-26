@@ -226,9 +226,9 @@ const RouteMap = ({ stops = [], routes = [], hiddenTasks = [], userLocation = nu
 
         // Vẽ lại sương mù dựa trên vị trí user
         if (fogEnabled && userLocation) {
-            fogLayerRef.current = createFogLayer(mapInstance.current, userLocation);
+            fogLayerRef.current = createFogLayer(stops, userLocation).addTo(mapInstance.current);
         }
-    }, [fogEnabled, userLocation]);
+    }, [fogEnabled, userLocation, stops]);
 
     if (stops.length === 0) return null;
 

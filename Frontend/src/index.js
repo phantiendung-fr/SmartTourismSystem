@@ -24,6 +24,32 @@ if (L && L.DomUtil) {
   };
 }
 
+if (L && L.Map) {
+  const originalGetMapPanePos = L.Map.prototype._getMapPanePos;
+  L.Map.prototype._getMapPanePos = function () {
+    if (!this._mapPane) {
+      return L.point(0, 0);
+    }
+    return originalGetMapPanePos.call(this);
+  };
+
+  const originalSetView = L.Map.prototype.setView;
+  L.Map.prototype.setView = function (...args) {
+    if (!this._mapPane) {
+      return this;
+    }
+    return originalSetView.apply(this, args);
+  };
+
+  const originalResetView = L.Map.prototype._resetView;
+  L.Map.prototype._resetView = function (...args) {
+    if (!this._mapPane) {
+      return this;
+    }
+    return originalResetView.apply(this, args);
+  };
+}
+
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

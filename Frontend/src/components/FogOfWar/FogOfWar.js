@@ -59,6 +59,8 @@ const FogLayer = L.Layer.extend({
             this._svgEl.parentNode.removeChild(this._svgEl);
         }
         map.off('moveend zoomend', this._updateFog, this);
+        this._map = null;
+        this._svgEl = null;
         return this;
     },
 
