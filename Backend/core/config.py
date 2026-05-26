@@ -26,6 +26,11 @@ class Settings(BaseSettings):
 
     # --- Runtime / HTTP -----------------------------------------------------
     ENVIRONMENT: str = "development"
+    REQUIRE_HTTPS: bool = False
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_REQUESTS: int = 120
+    RATE_LIMIT_WINDOW_SECONDS: int = 60
+    RATE_LIMIT_EXEMPT_PATHS: str = "/health"
     CORS_ORIGINS: str = (
         "http://localhost:3000,"
         "http://localhost:3001,"
@@ -33,6 +38,7 @@ class Settings(BaseSettings):
         "http://localhost,"
         "capacitor://localhost"
     )
+    TRUSTED_HOSTS: str = "localhost,127.0.0.1,0.0.0.0"
 
     # --- Auth / JWT ---------------------------------------------------------
     SECRET_KEY: str = "YOUR_SUPER_SECRET_KEY_HERE"
@@ -70,11 +76,21 @@ class Settings(BaseSettings):
                 raise ValueError("Production requires a strong SECRET_KEY from environment variables.")
             if "user:password@localhost" in self.DATABASE_URL or "postgres:password@localhost" in self.DATABASE_URL:
                 raise ValueError("Production requires DATABASE_URL from environment variables.")
+            if not self.REQUIRE_HTTPS:
+                raise ValueError("Production requires REQUIRE_HTTPS=true to protect data in transit.")
         return self
 
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+
+    @property
+    def trusted_hosts_list(self) -> list[str]:
+        return [host.strip() for host in self.TRUSTED_HOSTS.split(",") if host.strip()]
+
+    @property
+    def rate_limit_exempt_paths_list(self) -> list[str]:
+        return [path.strip() for path in self.RATE_LIMIT_EXEMPT_PATHS.split(",") if path.strip()]
 
 
 # ---------------------------------------------------------------------------
