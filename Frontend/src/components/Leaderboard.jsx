@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE } from '../config/api';
 import { storageGet } from '../platform/storage';
+import { Trophy, Crown, AlertTriangle, MapPin, Compass, Star } from 'lucide-react';
 import './Leaderboard.css';
 
 const Leaderboard = () => {
@@ -18,11 +19,11 @@ const Leaderboard = () => {
 
     // List các phân hạng (Tiers) có sẵn để làm bộ lọc
     const availableTiers = [
-        { name: 'Bronze', label: '🥉 Đồng (Lv 1 - 5)' },
-        { name: 'Silver', label: '🥈 Bạc (Lv 6 - 15)' },
-        { name: 'Gold', label: '🥇 Vàng (Lv 16 - 30)' },
-        { name: 'Platinum', label: '💎 Bạch Kim (Lv 31 - 50)' },
-        { name: 'Diamond', label: '👑 Kim Cương (Lv 51+)' }
+        { name: 'Bronze', label: 'Đồng (Lv 1 - 5)' },
+        { name: 'Silver', label: 'Bạc (Lv 6 - 15)' },
+        { name: 'Gold', label: 'Vàng (Lv 16 - 30)' },
+        { name: 'Platinum', label: 'Bạch Kim (Lv 31 - 50)' },
+        { name: 'Diamond', label: 'Kim Cương (Lv 51+)' }
     ];
 
     // Hàm lấy dữ liệu từ Backend API
@@ -96,8 +97,8 @@ const Leaderboard = () => {
         <div className="leaderboard-container">
             {/* Header: Tiêu đề & Chọn danh mục */}
             <div className="leaderboard-header">
-                <h2 className="leaderboard-title">
-                    <span>🏆</span> Bảng Xếp Hạng Check-in
+                <h2 className="leaderboard-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Trophy size={22} style={{ color: '#f1c40f' }} /> Bảng Xếp Hạng Check-in
                 </h2>
                 <div className="category-tabs">
                     <button 
@@ -162,8 +163,8 @@ const Leaderboard = () => {
 
             {/* Lỗi tải dữ liệu */}
             {error && !loading && (
-                <div className="leaderboard-empty">
-                    <div className="leaderboard-empty-icon">⚠️</div>
+                <div className="leaderboard-empty" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <AlertTriangle size={32} style={{ color: '#e67e22', marginBottom: '8px' }} />
                     <p>{error}</p>
                     <button onClick={fetchLeaderboard} style={{ marginTop: '10px', padding: '8px 16px', background: '#6c5ce7', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Thử lại</button>
                 </div>
@@ -173,8 +174,8 @@ const Leaderboard = () => {
             {!loading && !error && (
                 <>
                     {leaderboardData.length === 0 ? (
-                        <div className="leaderboard-empty">
-                            <div className="leaderboard-empty-icon">🏝️</div>
+                        <div className="leaderboard-empty" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <Compass size={40} style={{ color: '#a4b0be', marginBottom: '8px' }} />
                             <p>Chưa có ai check-in tại danh mục này.</p>
                             <p style={{ fontSize: '12px', color: '#a4b0be', marginTop: '5px' }}>Bắt đầu đi du lịch để tích lũy điểm thưởng nhé!</p>
                         </div>
@@ -200,8 +201,8 @@ const Leaderboard = () => {
                                     {/* HẠNG 1 (Ở GIỮA) */}
                                     {firstPlace ? (
                                         <div className="podium-item first-place">
-                                            <div className="podium-avatar-wrapper">
-                                                <span className="podium-crown">👑</span>
+                                            <div className="podium-avatar-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                <Crown size={22} style={{ color: '#f1c40f', marginBottom: '2px' }} />
                                                 <img src={getAvatarSrc(firstPlace)} alt={firstPlace.full_name} className="podium-avatar" />
                                                 <span className="podium-rank-badge">1</span>
                                             </div>
@@ -244,9 +245,9 @@ const Leaderboard = () => {
                                                         {item.tier_vi}
                                                     </span>
                                                     <span>•</span>
-                                                    <span>Lv {item.level}</span>
+                                                    <span><Star size={12} style={{ display: 'inline' }} /> Lv {item.level}</span>
                                                     <span>•</span>
-                                                    <span>📍 {item.base_location}</span>
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}><MapPin size={12} /> {item.base_location}</span>
                                                 </div>
                                             </div>
                                             <div className="item-points">
@@ -279,9 +280,9 @@ const Leaderboard = () => {
                             <div className="my-rank-tier">
                                 <span>{myRank.tier_vi}</span>
                                 <span>•</span>
-                                <span>Cấp {myRank.level}</span>
+                                <span><Star size={12} style={{ display: 'inline' }} /> Cấp {myRank.level}</span>
                                 <span>•</span>
-                                <span>📍 {myRank.base_location}</span>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}><MapPin size={12} /> {myRank.base_location}</span>
                             </div>
                         </div>
                     </div>

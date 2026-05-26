@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getTripHistory } from '../services/tripService';
 import { storageGet } from '../platform/storage';
+import { Compass, Award, History, Settings, HelpCircle, MessageSquare, LogOut, Clock, Map, Coins, MapPin, Star } from 'lucide-react';
 import './Travel_trip.css';
 
 const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpenLocationRegister, onOpenProfileEdit, onOpenHistory, onOpenTripDetail }) => {
@@ -42,15 +43,15 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
 
     const featuredTours = [
         {
-            id: 1, title: "Vịnh Hạ Long", location: "Quảng Ninh, Việt Nam", price: "$120", rating: "⭐ 4.8",
+            id: 1, title: "Vịnh Hạ Long", location: "Quảng Ninh, Việt Nam", price: "$120", rating: "4.8",
             image: "https://images.unsplash.com/photo-1528127269322-539801943592?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
         },
         {
-            id: 2, title: "Ruộng Bậc Thang", location: "Mù Cang Chải", price: "$85", rating: "⭐ 4.9",
+            id: 2, title: "Ruộng Bậc Thang", location: "Mù Cang Chải", price: "$85", rating: "4.9",
             image: "https://images.unsplash.com/photo-1576485290814-1c72aa4bbb8e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
         },
         {
-            id: 3, title: "Phố Cổ Hội An", location: "Quảng Nam, Việt Nam", price: "$50", rating: "⭐ 4.7",
+            id: 3, title: "Phố Cổ Hội An", location: "Quảng Nam, Việt Nam", price: "$50", rating: "4.7",
             image: "https://images.unsplash.com/photo-1555921015-5532091f6026?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
         }
     ];
@@ -66,11 +67,11 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
                     <div className="greeting">
                         <p>{isGuest ? 'Chào bạn mới,' : getGreeting()}</p>
                         <h2>
-                            {isGuest ? 'Khách du lịch 🎒' : `${user?.user?.full_name || user?.full_name || 'Bạn'} 🎒`}
+                            {isGuest ? 'Khách du lịch' : `${user?.user?.full_name || user?.full_name || 'Bạn'}`}
                         </h2>
                         {!isGuest && (
-                            <div className="points-badge-inline">
-                                <span className="pts-icon">⭐</span>
+                            <div className="points-badge-inline" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <Award size={14} style={{ color: '#f1c40f' }} />
                                 <span className="pts-value">
                                     {(user?.user?.points_balance || user?.points_balance || 0) + (user?.user?.total_points || user?.total_points || 0)} pts
                                 </span>
@@ -93,22 +94,22 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
                         {/* Khung Menu Tác vụ */}
                         {showMenu && !isGuest && (
                             <div className="user-menu">
-                                <button className="menu-btn" onClick={onOpenHistory}>
-                                    <span>📜</span> Lịch sử chuyến đi
+                                <button className="menu-btn" onClick={onOpenHistory} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <History size={16} /> Lịch sử chuyến đi
                                 </button>
-                                <button className="menu-btn" onClick={() => {
+                                <button className="menu-btn" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => {
                                     if (onOpenProfileEdit) {
                                         onOpenProfileEdit();
                                     } else {
-                                        alert("❌ Lỗi: Chưa truyền onOpenProfileEdit!");
+                                        alert("Lỗi: Chưa truyền onOpenProfileEdit!");
                                     }
                                 }}>
-                                    <span>⚙️</span> Cài đặt quyền riêng tư
+                                    <Settings size={16} /> Cài đặt quyền riêng tư
                                 </button>
-                                <button className="menu-btn"><span>❓</span> Trợ giúp và hỗ trợ</button>
-                                <button className="menu-btn"><span>💬</span> Đóng góp ý kiến</button>
-                                <button className="menu-btn logout-btn" onClick={onLogout}>
-                                    <span>🚪</span> Đăng xuất
+                                <button className="menu-btn" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><HelpCircle size={16} /> Trợ giúp và hỗ trợ</button>
+                                <button className="menu-btn" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><MessageSquare size={16} /> Đóng góp ý kiến</button>
+                                <button className="menu-btn logout-btn" onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <LogOut size={16} /> Đăng xuất
                                 </button>
                             </div>
                         )}
@@ -132,15 +133,16 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
                     <button
                         onClick={isGuest ? onRequireLogin : onOpenPlan}
                         className="plan-banner-btn"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                     >
-                        Bắt đầu 🚀
+                        Bắt đầu <Compass size={16} />
                     </button>
                 </div>
 
                 {/* Lộ trình đang diễn ra */}
                 {!isGuest && loadingTrips && (
-                    <div className="inline-loading">
-                        ⏳ Đang tải lộ trình...
+                    <div className="inline-loading" style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                        <Clock size={16} /> Đang tải lộ trình...
                     </div>
                 )}
                 {!isGuest && ongoingTrips.length > 0 && (
@@ -153,17 +155,17 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
                                     className="ongoing-trip-card"
                                     onClick={() => onOpenTripDetail && onOpenTripDetail(trip.itinerary_id)}
                                 >
-                                    <div className="card-status ongoing">
-                                        🔄 Đang diễn ra
+                                    <div className="card-status ongoing" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                        <Compass size={12} /> Đang diễn ra
                                     </div>
                                     <div className="card-info">
                                         <h3 className="ongoing-trip-title">{trip.name || 'Hành trình không tên'}</h3>
                                         <p className="ongoing-trip-meta">
                                             Ngày tạo: {formatDate(trip.create_at)}
                                         </p>
-                                        <div className="ongoing-trip-stats">
-                                            <span>🛣️ {trip.total_distance} km</span>
-                                            <span>💰 {new Intl.NumberFormat('vi-VN').format(trip.total_budget)} đ</span>
+                                        <div className="ongoing-trip-stats" style={{ display: 'flex', gap: '12px' }}>
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}><Map size={12} /> {trip.total_distance} km</span>
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}><Coins size={12} /> {new Intl.NumberFormat('vi-VN').format(trip.total_budget)} đ</span>
                                         </div>
                                     </div>
                                 </div>
@@ -195,10 +197,10 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onLogout, onOpenPlan, onOpe
                         <div className="tour-card" key={tour.id}>
                             <img src={tour.image} alt={tour.title} className="tour-image" />
                             <h3 className="tour-title">{tour.title}</h3>
-                            <p className="tour-location">📍 {tour.location}</p>
+                             <p className="tour-location" style={{ display: 'flex', alignItems: 'center', gap: '2px' }}><MapPin size={12} /> {tour.location}</p>
                             <div className="tour-footer">
                                 <div className="tour-price">{tour.price} <span>/người</span></div>
-                                <div className="tour-rating">{tour.rating}</div>
+                                <div className="tour-rating" style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}><Star size={12} style={{ color: '#f1c40f' }} /> {tour.rating}</div>
                             </div>
                         </div>
                     ))}

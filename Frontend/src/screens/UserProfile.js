@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE } from '../config/api';
 import { storageGet } from '../platform/storage';
+import { ArrowLeft, Edit2, Award, Camera, Save } from 'lucide-react';
 import './UserProfile.css';
 
 const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
@@ -69,7 +70,7 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
             });
 
             if (response.ok) {
-                alert("Cập nhật hồ sơ thành công! ✨");
+                alert("Cập nhật hồ sơ thành công!");
                 setIsEditing(false); // Thành công thì khóa form lại (Chế độ xem)
                 // const newName = isEnterprise ? profileData.business_name : profileData.full_name;
                 // if (onUpdateSuccess) onUpdateSuccess(newName);
@@ -118,8 +119,8 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
         <div className="user-profile-screen">
             {/* Header & Back Button */}
             <div className="user-profile-header">
-                <button onClick={onBack} className="user-profile-back-btn">
-                    ⬅️ Quay lại
+                <button onClick={onBack} className="user-profile-back-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <ArrowLeft size={16} /> Quay lại
                 </button>
 
                 {/* NÚT BẬT TẮT CHẾ ĐỘ SỬA */}
@@ -127,8 +128,9 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
                     <button
                         onClick={() => setIsEditing(true)}
                         className="user-profile-edit-btn"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                     >
-                        ✏️ Sửa hồ sơ
+                        <Edit2 size={16} /> Sửa hồ sơ
                     </button>
                 )}
             </div>
@@ -140,7 +142,9 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
             {/* HIỂN THỊ ĐIỂM THƯỞNG (Nếu không phải doanh nghiệp) */}
             {!isEnterprise && (
                 <div className="user-profile-points-card">
-                    <div className="user-profile-points-icon">⭐</div>
+                    <div className="user-profile-points-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Award size={20} style={{ color: '#f1c40f' }} />
+                    </div>
                     <div>
                         <div className="user-profile-points-label">Điểm thưởng tích lũy</div>
                         <div className="user-profile-points-value">
@@ -159,7 +163,9 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
                         className="user-profile-avatar-img"
                     />
                     {isEditing && (
-                        <button className="user-profile-avatar-edit-btn">📷</button>
+                        <button className="user-profile-avatar-edit-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Camera size={14} />
+                        </button>
                     )}
                 </div>
             </div>
@@ -217,8 +223,8 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
                 {/* Các nút bấm chỉ hiện khi ở chế độ Edit */}
                 {isEditing && (
                     <div className="user-profile-actions">
-                        <button type="submit" className="user-profile-save-btn">
-                            💾 Lưu hồ sơ
+                        <button type="submit" className="user-profile-save-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <Save size={16} /> Lưu hồ sơ
                         </button>
                         <button type="button" onClick={() => setIsEditing(false)} className="user-profile-cancel-btn">
                             Hủy

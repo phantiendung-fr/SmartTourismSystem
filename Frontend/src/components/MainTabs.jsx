@@ -1,5 +1,28 @@
 // src/components/MainTabs.jsx
 import React, { useState, useEffect, useRef } from 'react';
+import { 
+    Map, 
+    MapPin, 
+    Users, 
+    Heart, 
+    User, 
+    Compass, 
+    Award, 
+    ShieldCheck, 
+    AlertTriangle, 
+    Trophy, 
+    Settings, 
+    HelpCircle, 
+    MessageSquare, 
+    LogOut, 
+    Sparkles, 
+    Coins, 
+    QrCode, 
+    Camera, 
+    CheckCircle2, 
+    Globe,
+    Activity
+} from 'lucide-react';
 import './MainTabs.css';
 
 // Tạm thời import file trang chủ cũ của bạn vào Tab 1
@@ -148,7 +171,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                 try {
                     const res = await pingLocation(currentLoc.lat, currentLoc.lng);
                     if (res.spawned) {
-                        void showAlert(`🔮 Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện gần bạn!`);
+                        void showAlert(`[Nhiệm vụ ẩn] Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện gần bạn!`);
                         fetchActiveTasks();
                     }
                 } catch (err) {
@@ -187,7 +210,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                     pingLocation(loc.lat, loc.lng)
                         .then((res) => {
                             if (res.spawned) {
-                                void showAlert(`🔮 Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện!`);
+                                void showAlert(`[Nhiệm vụ ẩn] Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện!`);
                             }
                             fetchActiveTasks();
                         })
@@ -240,11 +263,19 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
 
             {/* Map Menu Overlay */}
             {showMapMenu && (
-                <div className="map-menu-overlay" style={{ position: 'absolute', top: '100px', right: '20px', background: '#fff', borderRadius: '16px', padding: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', zIndex: 20, display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '150px' }}>
-                    <button onClick={() => { setMapStyle('voyager'); setShowMapMenu(false); }} style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', padding: '5px', color: '#3b82f6', fontWeight: mapStyle === 'voyager' ? 'bold' : 'normal' }}>🗺️ Bản đồ gốc</button>
-                    <button onClick={() => { setMapStyle('satellite'); setShowMapMenu(false); }} style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', padding: '5px', fontWeight: mapStyle === 'satellite' ? 'bold' : 'normal' }}>🛰️ Bản đồ Vệ tinh</button>
-                    <button onClick={() => { setMapStyle('traffic'); setShowMapMenu(false); }} style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', padding: '5px', fontWeight: mapStyle === 'traffic' ? 'bold' : 'normal' }}>🚗 Bản đồ Tối (Giao thông)</button>
-                    <button onClick={() => { setShowHiddenTasks(!showHiddenTasks); setShowMapMenu(false); }} style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', padding: '5px', color: '#8e44ad' }}>🔮 {showHiddenTasks ? 'Ẩn nhiệm vụ' : 'Hiện nhiệm vụ ẩn'}</button>
+                <div className="map-menu-overlay" style={{ position: 'absolute', top: '100px', right: '20px', background: '#fff', borderRadius: '16px', padding: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', zIndex: 20, display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '180px' }}>
+                    <button onClick={() => { setMapStyle('voyager'); setShowMapMenu(false); }} style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', padding: '5px', color: '#3b82f6', fontWeight: mapStyle === 'voyager' ? 'bold' : 'normal', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Map size={16} /> Bản đồ gốc
+                    </button>
+                    <button onClick={() => { setMapStyle('satellite'); setShowMapMenu(false); }} style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', padding: '5px', fontWeight: mapStyle === 'satellite' ? 'bold' : 'normal', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Globe size={16} /> Bản đồ Vệ tinh
+                    </button>
+                    <button onClick={() => { setMapStyle('traffic'); setShowMapMenu(false); }} style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', padding: '5px', fontWeight: mapStyle === 'traffic' ? 'bold' : 'normal', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Activity size={16} /> Bản đồ Tối (Giao thông)
+                    </button>
+                    <button onClick={() => { setShowHiddenTasks(!showHiddenTasks); setShowMapMenu(false); }} style={{ background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', padding: '5px', color: '#8e44ad', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Sparkles size={16} /> {showHiddenTasks ? 'Ẩn nhiệm vụ' : 'Hiện nhiệm vụ ẩn'}
+                    </button>
                 </div>
             )}
 
@@ -273,20 +304,35 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
             </div>
         </div>
     );
-    const FriendsScreen = () => <div className="placeholder-screen"><h2>👥 Bạn bè & Cộng đồng</h2><p>Ghép đôi và danh sách bạn bè...</p></div>;
-    const FavoritesScreen = () => <div className="placeholder-screen"><h2>❤️ Yêu thích</h2><p>Các địa điểm, bài đăng đã lưu...</p></div>;
+    const FriendsScreen = () => (
+        <div className="placeholder-screen">
+            <h2 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <Users size={24} /> Bạn bè & Cộng đồng
+            </h2>
+            <p>Ghép đôi và danh sách bạn bè...</p>
+        </div>
+    );
+    const FavoritesScreen = () => (
+        <div className="placeholder-screen">
+            <h2 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <Heart size={24} style={{ color: '#e74c3c' }} /> Yêu thích
+            </h2>
+            <p>Các địa điểm, bài đăng đã lưu...</p>
+        </div>
+    );
     const GuestPlaceholder = ({ title, icon }) => (
         <div className="guest-placeholder">
-            <div className="guest-placeholder-icon">{icon}</div>
+            <div className="guest-placeholder-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px', color: '#636e72' }}>{icon}</div>
             <h2>{title}</h2>
             <p>
                 Tính năng này yêu cầu đăng nhập. Hãy tạo tài khoản để lưu lại hành trình của riêng bạn nhé!
             </p>
             <button
-                onClick={onRequireLogin} // Gọi hàm quay về trang đăng nhập
+                onClick={onRequireLogin}
                 className="guest-login-btn"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}
             >
-                Đăng nhập ngay 🚀
+                Đăng nhập ngay <Compass size={18} />
             </button>
         </div>
     );
@@ -317,8 +363,8 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
             <div className="profile-stats-card">
                 {/* Điểm thưởng */}
                 <div className="profile-stat-item">
-                    <div className="profile-stat-icon reward">
-                        ⭐
+                    <div className="profile-stat-icon reward" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Award size={18} style={{ color: '#f1c40f' }} />
                     </div>
                     <div className="profile-stat-text">
                         <small className="profile-stat-label">Điểm thưởng</small>
@@ -332,8 +378,8 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
 
                 {/* Trạng thái bảo mật */}
                 <div className="profile-stat-item">
-                    <div className={`profile-stat-icon ${user?.kyc_status === 'APPROVED' ? 'approved' : 'pending'}`}>
-                        {user?.kyc_status === 'APPROVED' ? '🛡️' : '⚠️'}
+                    <div className={`profile-stat-icon ${user?.kyc_status === 'APPROVED' ? 'approved' : 'pending'}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {user?.kyc_status === 'APPROVED' ? <ShieldCheck size={18} style={{ color: '#2ecc71' }} /> : <AlertTriangle size={18} style={{ color: '#e67e22' }} />}
                     </div>
                     <div className="profile-stat-text">
                         <small className="profile-stat-label">Trạng thái</small>
@@ -369,8 +415,8 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
 
             {/* THÀNH TỰU & HUY HIỆU */}
             <div className="achievements-card">
-                <h4 className="achievements-title">
-                    🏆 Huy hiệu thám hiểm ({achievements.filter(a => a.is_unlocked).length}/{achievements.length})
+                <h4 className="achievements-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Trophy size={18} style={{ color: '#f1c40f' }} /> Huy hiệu thám hiểm ({achievements.filter(a => a.is_unlocked).length}/{achievements.length})
                 </h4>
                 
                 {/* Thanh bộ lọc thành tựu */}
@@ -390,8 +436,8 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                 </div>
                 
                 {loadingAch ? (
-                    <div className="profile-loading">
-                        🔄 Đang tải thành tựu...
+                    <div className="profile-loading" style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                        <Sparkles size={16} /> Đang tải thành tựu...
                     </div>
                 ) : achievements.length === 0 ? (
                     <div className="profile-empty">
@@ -442,8 +488,8 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                                         )}
                                         
                                         {ach.is_unlocked && ach.unlocked_at && (
-                                            <span className="achievement-unlock-date">
-                                                ✨ Đạt được ngày {new Date(ach.unlocked_at).toLocaleDateString('vi-VN')}
+                                            <span className="achievement-unlock-date" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <Sparkles size={14} style={{ color: '#f1c40f' }} /> Đạt được ngày {new Date(ach.unlocked_at).toLocaleDateString('vi-VN')}
                                             </span>
                                         )}
                                     </div>
@@ -460,17 +506,17 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                     className="profile-menu-btn"
                     onClick={onOpenProfileEdit} // Khi nhấn sẽ đổi currentScreen sang 'profile_edit'
                 >
-                    <span className="profile-menu-icon settings">⚙️</span>
+                    <Settings size={18} className="profile-menu-icon" />
                     <span className="profile-menu-label">Cài đặt quyền riêng tư</span>
                 </button>
 
                 <button className="profile-menu-btn">
-                    <span className="profile-menu-icon">❓</span>
+                    <HelpCircle size={18} className="profile-menu-icon" />
                     <span className="profile-menu-label">Trợ giúp và hỗ trợ</span>
                 </button>
 
                 <button className="profile-menu-btn">
-                    <span className="profile-menu-icon">💬</span>
+                    <MessageSquare size={18} className="profile-menu-icon" />
                     <span className="profile-menu-label">Đóng góp ý kiến</span>
                 </button>
 
@@ -479,7 +525,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                     onClick={onLogout}
                     className="profile-menu-btn profile-logout-btn"
                 >
-                    <span className="profile-menu-icon">🚪</span>
+                    <LogOut size={18} className="profile-menu-icon" />
                     <span className="logout-text">Đăng xuất</span>
                 </button>
             </div>
@@ -498,19 +544,19 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                     onOpenTripDetail={onOpenTripDetail}
                 />;
             case 'location':
-                return isGuest ? <GuestPlaceholder title="Bản đồ & Lịch trình" icon="📍" /> : <LocationScreen />;
+                return isGuest ? <GuestPlaceholder title="Bản đồ & Lịch trình" icon={<MapPin size={48} />} /> : <LocationScreen />;
 
             case 'leaderboard':
                 return <Leaderboard />;
 
             case 'friends':
-                return isGuest ? <GuestPlaceholder title="Cộng đồng Du lịch" icon="👥" /> : <FriendsScreen />;
+                return isGuest ? <GuestPlaceholder title="Cộng đồng Du lịch" icon={<Users size={48} />} /> : <FriendsScreen />;
 
             case 'favorites':
-                return isGuest ? <GuestPlaceholder title="Địa điểm Yêu thích" icon="❤️" /> : <FavoritesScreen />;
+                return isGuest ? <GuestPlaceholder title="Địa điểm Yêu thích" icon={<Heart size={48} style={{ color: '#e74c3c' }} />} /> : <FavoritesScreen />;
 
             case 'profile':
-                return isGuest ? <GuestPlaceholder title="Hồ sơ Cá nhân" icon="👤" /> : <ProfileScreen />;
+                return isGuest ? <GuestPlaceholder title="Hồ sơ Cá nhân" icon={<User size={48} />} /> : <ProfileScreen />;
 
             default:
                 return <Traveltrip />;
@@ -577,7 +623,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                         setSelectedTask(null);
                     }}
                     onClaim={(rewards) => {
-                        void showAlert(`🎉 Chúc mừng! Bạn nhận được +${rewards.reward_exp} EXP và +${rewards.reward_coin} Coin!`);
+                        void showAlert(`Chúc mừng! Bạn nhận được +${rewards.reward_exp} EXP và +${rewards.reward_coin} Coin!`);
                         fetchActiveTasks();
                     }}
                 />
@@ -587,7 +633,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                 <div className="quest-modal-overlay">
                     <div className="quest-modal-content">
                         <div className="quest-modal-header">
-                            <h3>🔮 {selectedTask.title || 'Sự kiện Doanh nghiệp'}</h3>
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Sparkles size={20} style={{ color: '#8e44ad' }} /> {selectedTask.title || 'Sự kiện Doanh nghiệp'}</h3>
                             <button className="quest-close-btn" onClick={() => {
                                 setShowQuestModal(false);
                                 setQuestError('');
@@ -604,21 +650,21 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                                 <>
                                     <p className="quest-desc">{selectedTask.description || 'Hoàn thành thử thách để nhận quà từ doanh nghiệp.'}</p>
                                     
-                                    <div className="quest-meta-info">
-                                        <span>📍 Bán kính: {selectedTask.radius_meters}m</span>
-                                        <span>⭐ Thưởng: {selectedTask.reward_exp} EXP | 🪙 {selectedTask.reward_coin} Coin</span>
+                                    <div className="quest-meta-info" style={{ display: 'flex', gap: '15px' }}>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><MapPin size={14} /> Bán kính: {selectedTask.radius_meters}m</span>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Award size={14} style={{ color: '#f1c40f' }} /> Thưởng: {selectedTask.reward_exp} EXP | <Coins size={14} style={{ color: '#f1c40f', marginLeft: '4px' }} /> {selectedTask.reward_coin} Coin</span>
                                     </div>
 
                                     {/* 1. CHECKIN QUEST */}
                                     {selectedTask.quest_type === 'CHECKIN' && (
                                         <div className="quest-action-area">
-                                            <p className="quest-instruction">📍 Hệ thống sẽ xác thực vị trí GPS của bạn so với địa điểm sự kiện.</p>
+                                            <p className="quest-instruction" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><MapPin size={16} /> Hệ thống sẽ xác thực vị trí GPS của bạn so với địa điểm sự kiện.</p>
                                             <button 
                                                 className="quest-action-btn"
                                                 onClick={() => handleVerifyQuest()}
                                                 disabled={questLoading}
                                             >
-                                                {questLoading ? 'Đang xác thực...' : '📍 Đăng ký Check-in ngay'}
+                                                {questLoading ? 'Đang xác thực...' : 'Đăng ký Check-in ngay'}
                                             </button>
                                         </div>
                                     )}
@@ -626,7 +672,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                                     {/* 2. QR QUEST */}
                                     {selectedTask.quest_type === 'QR' && (
                                         <div className="quest-action-area">
-                                            <p className="quest-instruction">🔳 Vui lòng nhập mã token nhận được từ doanh nghiệp hoặc quét QR:</p>
+                                            <p className="quest-instruction" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><QrCode size={16} /> Vui lòng nhập mã token nhận được từ doanh nghiệp hoặc quét QR:</p>
                                             <input 
                                                 type="text" 
                                                 className="quest-input"
@@ -639,7 +685,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                                                 onClick={() => handleVerifyQuest({ qr_token: qrTokenInput })}
                                                 disabled={questLoading || !qrTokenInput.trim()}
                                             >
-                                                {questLoading ? 'Đang xác thực...' : '✔️ Xác nhận mã QR'}
+                                                {questLoading ? 'Đang xác thực...' : 'Xác nhận mã QR'}
                                             </button>
                                         </div>
                                     )}
@@ -647,7 +693,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                                     {/* 3. QUIZ QUEST */}
                                     {selectedTask.quest_type === 'QUIZ' && (
                                         <div className="quest-action-area">
-                                            <p className="quest-instruction">❓ Trả lời câu hỏi trắc nghiệm dưới đây:</p>
+                                            <p className="quest-instruction" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><HelpCircle size={16} /> Trả lời câu hỏi trắc nghiệm dưới đây:</p>
                                             <div className="quest-quiz-question">
                                                 <strong>Câu hỏi:</strong> Địa điểm/Doanh nghiệp này cung cấp loại dịch vụ du lịch nào đặc trưng nhất?
                                             </div>
@@ -673,7 +719,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                                                 disabled={questLoading || !quizAnswer}
                                                 className="quest-action-btn with-top-margin"
                                             >
-                                                {questLoading ? 'Đang gửi đáp án...' : '✔️ Nộp đáp án'}
+                                                {questLoading ? 'Đang gửi đáp án...' : 'Nộp đáp án'}
                                             </button>
                                         </div>
                                     )}
@@ -681,7 +727,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                                     {/* 4. PHOTO QUEST */}
                                     {selectedTask.quest_type === 'PHOTO' && (
                                         <div className="quest-action-area">
-                                            <p className="quest-instruction">📷 Chụp ảnh hiện vật hoặc biển hiệu để xác nhận sự hiện diện:</p>
+                                            <p className="quest-instruction" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Camera size={16} /> Chụp ảnh hiện vật hoặc biển hiệu để xác nhận sự hiện diện:</p>
                                             
                                             {photoUploaded ? (
                                                 <div className="photo-preview-box">
@@ -693,7 +739,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                                                     setPhotoUrl("/assets/island/map-dao.png");
                                                     setPhotoUploaded(true);
                                                 }}>
-                                                    <span className="photo-camera-icon">📷</span>
+                                                    <span className="photo-camera-icon" style={{ display: 'flex', justifyContent: 'center' }}><Camera size={28} /></span>
                                                     <span>Chạm để tải lên / Chụp ảnh check-in</span>
                                                     <small className="photo-helper-text">(Mô phỏng tự động chọn ảnh chất lượng cao)</small>
                                                 </div>
@@ -704,30 +750,30 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                                                 disabled={questLoading || !photoUploaded}
                                                 className="quest-action-btn with-top-margin"
                                             >
-                                                {questLoading ? 'Đang xác thực ảnh...' : '✔️ Xác nhận ảnh chụp'}
+                                                {questLoading ? 'Đang xác thực ảnh...' : 'Xác nhận ảnh chụp'}
                                             </button>
                                         </div>
                                     )}
 
                                     {questError && (
-                                        <div className="quest-error-msg">
-                                            ⚠️ Lỗi: {questError}
+                                        <div className="quest-error-msg" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <AlertTriangle size={16} /> Lỗi: {questError}
                                         </div>
                                     )}
                                 </>
                             ) : (
                                 <div className="quest-success-screen">
-                                    <div className="success-icon">🎉</div>
+                                    <div className="success-icon" style={{ display: 'flex', justifyContent: 'center', color: '#2ecc71', marginBottom: '10px' }}><CheckCircle2 size={48} /></div>
                                     <h4>Thử thách hoàn thành!</h4>
                                     <p>Chúc mừng bạn đã hoàn thành nhiệm vụ và nhận được phần thưởng:</p>
                                     
                                     <div className="success-reward-card">
                                         <div className="success-reward-item">
-                                            <span className="success-reward-icon">🔥</span>
+                                            <span className="success-reward-icon" style={{ display: 'inline-flex', alignItems: 'center' }}><Sparkles size={16} style={{ color: '#e67e22' }} /></span>
                                             <span><strong>+{questSuccess.reward_exp}</strong> EXP</span>
                                         </div>
                                         <div className="success-reward-item">
-                                            <span className="success-reward-icon">🪙</span>
+                                            <span className="success-reward-icon" style={{ display: 'inline-flex', alignItems: 'center' }}><Coins size={16} style={{ color: '#f1c40f' }} /></span>
                                             <span><strong>+{questSuccess.reward_coin}</strong> Coin</span>
                                         </div>
                                     </div>

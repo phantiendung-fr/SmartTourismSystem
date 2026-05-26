@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { getTripHistory } from '../../services/tripService';
 import { storageGet } from '../../platform/storage';
+import { 
+    ArrowLeft, Filter, Calendar, Search, CheckCircle2, 
+    XCircle, RefreshCw, MapPin, Wallet 
+} from 'lucide-react';
 import HistoryDetail from './HistoryDetail';
 import './HistoryScreen.css';
 
@@ -67,8 +71,8 @@ const HistoryScreen = ({ onBack }) => {
     return (
         <div className="history-container">
             <div className="history-header">
-                <button className="back-btn" onClick={onBack}>
-                    <i className="fas fa-arrow-left"></i> Quay lại
+                <button className="back-btn" onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <ArrowLeft size={16} /> Quay lại
                 </button>
                 <h1>Lịch sử hành trình</h1>
             </div>
@@ -76,7 +80,9 @@ const HistoryScreen = ({ onBack }) => {
             {/* Thanh bộ lọc mới */}
             <div className="filter-bar">
                 <div className="filter-group">
-                    <label><i className="fas fa-filter"></i> Trạng thái</label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Filter size={16} /> Trạng thái
+                    </label>
                     <select
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
@@ -90,7 +96,9 @@ const HistoryScreen = ({ onBack }) => {
                 </div>
 
                 <div className="filter-group">
-                    <label><i className="fas fa-calendar-alt"></i> Chọn ngày</label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Calendar size={16} /> Chọn ngày
+                    </label>
                     <div className="date-input-wrapper">
                         <input
                             type="date"
@@ -112,7 +120,7 @@ const HistoryScreen = ({ onBack }) => {
                 </div>
             ) : filteredHistory.length === 0 ? (
                 <div className="empty-state">
-                    <i className="fas fa-search"></i>
+                    <Search size={32} style={{ marginBottom: '10px', color: '#a4b0be' }} />
                     <p>Không tìm thấy hành trình nào khớp với bộ lọc.</p>
                     {(filterStatus !== 'ALL' || filterDate !== '') && (
                         <button className="reset-filter-btn" onClick={() => { setFilterStatus('ALL'); setFilterDate(''); }}>
@@ -128,20 +136,26 @@ const HistoryScreen = ({ onBack }) => {
                             className="history-card"
                             onClick={() => setSelectedTripId(item.itinerary_id)}
                         >
-                            <div className="card-status" data-status={item.status === 'DRAFT' || item.status === 'CONFIRMED' ? 'ONGOING' : item.status}>
-                                {item.status === 'COMPLETED' ? '✅ Hoàn thành' : item.status === 'CANCELLED' ? '❌ Đã hủy' : '🔄 Đang diễn ra'}
+                            <div className="card-status" data-status={item.status === 'DRAFT' || item.status === 'CONFIRMED' ? 'ONGOING' : item.status} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                {item.status === 'COMPLETED' ? (
+                                    <><CheckCircle2 size={14} /> Hoàn thành</>
+                                ) : item.status === 'CANCELLED' ? (
+                                    <><XCircle size={14} /> Đã hủy</>
+                                ) : (
+                                    <><RefreshCw size={14} /> Đang diễn ra</>
+                                )}
                             </div>
                             <div className="card-info">
                                 <h3>{item.name || 'Hành trình không tên'}</h3>
-                                <p className="card-date">
-                                    <i className="far fa-calendar-alt"></i> {formatDate(item.create_at)}
+                                <p className="card-date" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Calendar size={14} /> {formatDate(item.create_at)}
                                 </p>
                                 <div className="card-stats">
-                                    <span>
-                                        <i className="fas fa-map-marker-alt"></i> {item.total_distance} km
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <MapPin size={14} /> {item.total_distance} km
                                     </span>
-                                    <span>
-                                        <i className="fas fa-wallet"></i> {new Intl.NumberFormat('vi-VN').format(item.total_budget)} đ
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <Wallet size={14} /> {new Intl.NumberFormat('vi-VN').format(item.total_budget)} đ
                                     </span>
                                 </div>
                             </div>
@@ -154,4 +168,5 @@ const HistoryScreen = ({ onBack }) => {
 };
 
 export default HistoryScreen;
+
 

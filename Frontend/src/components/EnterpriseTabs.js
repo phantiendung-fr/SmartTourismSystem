@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Eye, Edit2, BarChart2, ShoppingBag, Settings, LogOut } from 'lucide-react';
 import EnterpriseDashboard from './EnterpriseDashboard';
 import './EnterpriseTabs.css';
 
@@ -36,8 +37,8 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister, onOpenProfileE
                                         </span>
                                     </div>
                                     <div className="enterprise-service-bottom">
-                                        <span>👁️ {service.views} lượt xem</span>
-                                        <button type="button">✏️ Sửa</button>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center' }}><Eye size={14} style={{ marginRight: '4px' }} /> {service.views} lượt xem</span>
+                                        <button type="button" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Edit2 size={14} /> Sửa</button>
                                     </div>
                                 </article>
                             ))}
@@ -51,24 +52,26 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister, onOpenProfileE
                     type="button"
                     className={activeTab === 'dashboard' ? 'active' : ''}
                     onClick={() => setActiveTab('dashboard')}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
                 >
-                    <span>📊</span>
+                    <BarChart2 size={20} />
                     <small>Tổng quan</small>
                 </button>
                 <button
                     type="button"
                     className={activeTab === 'services' ? 'active' : ''}
                     onClick={() => setActiveTab('services')}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
                 >
-                    <span>🛍️</span>
+                    <ShoppingBag size={20} />
                     <small>Quản lý</small>
                 </button>
-                <button type="button" onClick={onOpenProfileEdit}>
-                    <span>⚙️</span>
+                <button type="button" onClick={onOpenProfileEdit} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <Settings size={20} />
                     <small>Cài đặt</small>
                 </button>
-                <button type="button" className="logout" onClick={onLogout}>
-                    <span>🚪</span>
+                <button type="button" className="logout" onClick={onLogout} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <LogOut size={20} />
                     <small>Đăng xuất</small>
                 </button>
             </nav>

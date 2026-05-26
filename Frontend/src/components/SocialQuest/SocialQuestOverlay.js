@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSocialQuest } from './SocialQuestProvider';
+import { Users, Clock, MapPin, Trophy, Sparkles } from 'lucide-react';
 
 const SocialQuestOverlay = () => {
     const { 
@@ -16,7 +17,7 @@ const SocialQuestOverlay = () => {
                 {/* TRẠNG THÁI 1: CHƯA XÁC NHẬN */}
                 {questState === 'MATCHING' && (
                     <>
-                        <div style={{fontSize: '45px', marginBottom: '10px'}}>🤝</div>
+                        <div style={{ display: 'flex', justifyContent: 'center', color: '#f39c12', marginBottom: '16px' }}><Users size={48} /></div>
                         <h2 style={{color: '#f39c12'}}>{currentQuest?.title}</h2>
                         <p>{questMessage}</p>
                         <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
@@ -29,7 +30,7 @@ const SocialQuestOverlay = () => {
                 {/* TRẠNG THÁI 2: ĐÃ XÁC NHẬN - CHỜ ĐỐI PHƯƠNG */}
                 {questState === 'WAITING' && (
                     <>
-                        <div style={{fontSize: '45px', marginBottom: '10px'}}>⏳</div>
+                        <div style={{ display: 'flex', justifyContent: 'center', color: '#f39c12', marginBottom: '16px' }}><Clock size={48} /></div>
                         <h2 style={{color: '#f39c12'}}>Đang kết nối...</h2>
                         <p>{questMessage}</p>
                     </>
@@ -38,7 +39,7 @@ const SocialQuestOverlay = () => {
                 {/* TRẠNG THÁI 3: TRONG NHIỆM VỤ - TÌM NHAU */}
                 {questState === 'IN_QUEST' && (
                     <>
-                        <div style={{fontSize: '45px', marginBottom: '10px'}}>📍</div>
+                        <div style={{ display: 'flex', justifyContent: 'center', color: '#3498db', marginBottom: '16px' }}><MapPin size={48} /></div>
                         <h2 style={{color: '#3498db'}}>Điểm Hẹn Lữ Khách</h2>
                         
                         {/* Thông báo từ Server (sẽ đổi màu đỏ nếu bị báo đứng xa) */}
@@ -59,8 +60,8 @@ const SocialQuestOverlay = () => {
                         </p>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px', width: '100%' }}>
-                            <button onClick={interact} style={btnStyle('#9b59b6', '100%')}>
-                                👋 Đã gặp nhau - Quét GPS!
+                            <button onClick={interact} style={{ ...btnStyle('#9b59b6', '100%'), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                <Users size={16} /> Đã gặp nhau - Quét GPS!
                             </button>
                             
                             <button onClick={rejectQuest} style={{...btnStyle('#636e72', '100%'), padding: '8px'}}>
@@ -73,10 +74,11 @@ const SocialQuestOverlay = () => {
                 {/* TRẠNG THÁI 4: THÀNH CÔNG */}
                 {questState === 'SUCCESS' && (
                     <>
-                        <div style={{fontSize: '45px', marginBottom: '10px'}}>🏆</div>
+                        <div style={{ display: 'flex', justifyContent: 'center', color: '#f1c40f', marginBottom: '16px' }}><Trophy size={48} /></div>
                         <h2 style={{color: '#f1c40f'}}>Tuyệt Vời!</h2>
                         <p>{questMessage}</p>
-                        <div style={{background: 'rgba(46, 204, 113, 0.2)', padding: '10px', borderRadius: '10px', margin: '15px 0', border: '1px solid #2ecc71'}}>
+                        <div style={{background: 'rgba(46, 204, 113, 0.2)', padding: '10px', borderRadius: '10px', margin: '15px 0', border: '1px solid #2ecc71', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
+                            <Sparkles size={18} style={{ color: '#2ecc71' }} />
                             <span style={{color: '#2ecc71', fontWeight: 'bold', fontSize: '18px'}}>+50 EXP</span>
                         </div>
                         <button onClick={resetQuest} style={btnStyle('#f39c12', '100%')}>

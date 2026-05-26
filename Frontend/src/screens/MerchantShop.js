@@ -1,28 +1,28 @@
 import React, { useState } from 'react';
+import { Coffee, Landmark, Hotel, Puzzle, Coins, ArrowLeft } from 'lucide-react';
 
 const MerchantShop = ({ user, onBack }) => {
     const [purchased, setPurchased] = useState([]);
     
-    // Fake data for now since the backend API for quests/vouchers isn't fully implemented yet
+    // Voucher configurations with Lucide icons
     const vouchers = [
-        { id: 1, title: 'Voucher -20% Highland Coffee', cost: 150, image: '☕' },
-        { id: 2, title: 'Vé vào cổng Dinh Độc Lập', cost: 300, image: '🏛️' },
-        { id: 3, title: 'Buffet Khách sạn 5 sao', cost: 1500, image: '🏨' },
-        { id: 4, title: 'Mảnh ghép Áo choàng phiêu lưu', cost: 50, image: '🧩' },
+        { id: 1, title: 'Voucher -20% Highland Coffee', cost: 150, IconComponent: Coffee },
+        { id: 2, title: 'Vé vào cổng Dinh Độc Lập', cost: 300, IconComponent: Landmark },
+        { id: 3, title: 'Buffet Khách sạn 5 sao', cost: 1500, IconComponent: Hotel },
+        { id: 4, title: 'Mảnh ghép Áo choàng phiêu lưu', cost: 50, IconComponent: Puzzle },
     ];
 
     const handleBuy = (item) => {
-        // In a real app, you would call an API: purchaseVoucher(item.id, user.id)
         if (user.points_balance < item.cost) {
-            alert('Bạn không đủ 🪙 để đổi vật phẩm này!');
+            alert('Bạn không đủ xu để đổi vật phẩm này!');
             return;
         }
         
-        if (window.confirm(`Bạn có chắc muốn đổi ${item.cost} 🪙 lấy ${item.title} không?`)) {
+        if (window.confirm(`Bạn có chắc muốn đổi ${item.cost} xu lấy ${item.title} không?`)) {
             // Deduct points locally for demo
             user.points_balance -= item.cost;
             setPurchased([...purchased, item.id]);
-            alert(`🎉 Chúc mừng! Bạn đã nhận được ${item.title}`);
+            alert(`Chúc mừng! Bạn đã nhận được ${item.title}`);
         }
     };
 
@@ -31,9 +31,9 @@ const MerchantShop = ({ user, onBack }) => {
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
                 <button 
                     onClick={onBack}
-                    style={{ background: 'none', border: 'none', color: '#fbc531', fontSize: '24px', cursor: 'pointer', marginRight: '15px' }}
+                    style={{ background: 'none', border: 'none', color: '#fbc531', fontSize: '24px', cursor: 'pointer', marginRight: '15px', display: 'flex', alignItems: 'center' }}
                 >
-                    <i className="fas fa-arrow-left"></i>
+                    <ArrowLeft size={24} />
                 </button>
                 <h2 style={{ margin: 0, color: '#fbc531' }}>Quầy Thương Nhân (NPC)</h2>
             </div>
@@ -52,8 +52,8 @@ const MerchantShop = ({ user, onBack }) => {
                     <h3 style={{ margin: 0, fontSize: '16px', color: '#a4b0be' }}>Túi đồ của bạn</h3>
                     <p style={{ margin: '5px 0 0', fontSize: '14px' }}>Số dư hiện tại:</p>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f39c12' }}>
-                    🪙 {user?.points_balance || 0}
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f39c12', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Coins size={24} style={{ color: '#fbc531' }} /> {user?.points_balance || 0}
                 </div>
             </div>
             
@@ -62,6 +62,7 @@ const MerchantShop = ({ user, onBack }) => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
                 {vouchers.map(item => {
                     const isPurchased = purchased.includes(item.id);
+                    const Icon = item.IconComponent;
                     return (
                         <div key={item.id} style={{ 
                             backgroundColor: '#57606f', 
@@ -72,12 +73,14 @@ const MerchantShop = ({ user, onBack }) => {
                             justifyContent: 'space-between'
                         }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                <div style={{ fontSize: '32px', background: '#2f3542', padding: '10px', borderRadius: '12px' }}>
-                                    {item.image}
+                                <div style={{ background: '#2f3542', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbc531' }}>
+                                    <Icon size={32} />
                                 </div>
                                 <div>
                                     <h4 style={{ margin: 0, fontSize: '15px', color: '#ffffff' }}>{item.title}</h4>
-                                    <p style={{ margin: '5px 0 0', color: '#ffa502', fontWeight: 'bold' }}>{item.cost} 🪙</p>
+                                    <p style={{ margin: '5px 0 0', color: '#ffa502', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        {item.cost} <Coins size={16} style={{ color: '#fbc531' }} />
+                                    </p>
                                 </div>
                             </div>
                             <button 

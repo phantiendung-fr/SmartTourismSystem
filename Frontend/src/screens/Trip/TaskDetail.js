@@ -5,6 +5,11 @@ import { useGeolocation } from '../../hooks/useGeolocation';
 import { API_BASE } from '../../config/api';
 import { capturePhotoFile, pickPhotoFile, releasePreviewUrl } from '../../platform/camera';
 import { storageGet } from '../../platform/storage';
+import { 
+  ArrowLeft, Gamepad2, Award, Radio, AlertTriangle, 
+  Camera, RefreshCw, Info, Send, HelpCircle, 
+  QrCode, Lock, Trophy, Flame, Flag 
+} from 'lucide-react';
 import './TaskDetail.css';
 
 const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
@@ -56,8 +61,8 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
 
   if (isNative) {
     return (
-      <div className="submit-error-banner" style={{ width: '100%', marginTop: '10px' }}>
-        ⚠️ QR scanner web không ổn định trên WebView. Vui lòng dùng ô nhập mã thủ công bên dưới.
+      <div className="submit-error-banner" style={{ width: '100%', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <AlertTriangle size={14} /> QR scanner web không ổn định trên WebView. Vui lòng dùng ô nhập mã thủ công bên dưới.
       </div>
     );
   }
@@ -254,8 +259,12 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
   return (
     <div className="task-detail-screen-gami">
       <div className="task-detail-header-gami">
-        <button onClick={onBack} className="btn-back-gami">🡨 Rời Thử Thách</button>
-        <span className="header-title-gami">🎮 CHINH PHỤC CỘT MỐC</span>
+        <button onClick={onBack} className="btn-back-gami" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <ArrowLeft size={16} /> Rời Thử Thách
+        </button>
+        <span className="header-title-gami" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Gamepad2 size={18} style={{ color: '#0abde3' }} /> CHINH PHỤC CỘT MỐC
+        </span>
       </div>
 
       <div className="task-detail-body-gami">
@@ -270,7 +279,9 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
                 event.currentTarget.src = '/assets/island/map-dao.png';
               }}
             />
-            <div className="reward-overlay">⭐ +{task.reward_exp} EXP</div>
+            <div className="reward-overlay" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Award size={14} /> +{task.reward_exp} EXP
+            </div>
           </div>
           <div className="target-info">
             <span className="diff-badge">{task.difficulty}</span>
@@ -283,7 +294,9 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
           <>
             <div className="gps-status-box">
               <div className="gps-status-header">
-                <h4>📡 SÓNG ĐỊNH VỊ GPS THỜI GIAN THỰC</h4>
+                <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Radio size={16} style={{ color: '#0abde3' }} /> SÓNG ĐỊNH VỊ GPS THỜI GIAN THỰC
+                </h4>
                 <span className={`gps-pill ${loading ? 'loading' : isWithinRadius ? 'valid' : 'invalid'}`}>
                   {loading ? 'Đang tìm GPS' : isWithinRadius ? 'Đã vào phạm vi' : 'Chưa đến điểm'}
                 </span>
@@ -295,15 +308,19 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
                   <span className="stat-hint">Yêu cầu ≤ {task.radius_meters}m</span>
                 </div>
               </div>
-              {error && <div className="gps-error-alert">⚠️ {error}</div>}
+              {error && <div className="gps-error-alert" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><AlertTriangle size={14} /> {error}</div>}
             </div>
 
             <div className="camera-interact-box">
-              <h4>📷 BÁO CÁO HÌNH ẢNH</h4>
+              <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Camera size={18} /> BÁO CÁO HÌNH ẢNH
+              </h4>
               {!previewUrl ? (
                 <div className={`camera-dash-upload ${isWithinRadius ? 'unlocked' : 'locked'}`}>
                   <div className="camera-upload-label">
-                    <div className="camera-icon-circle">📷</div>
+                    <div className="camera-icon-circle" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Camera size={24} />
+                    </div>
                     <h5>Chụp toàn cảnh kiến trúc</h5>
                     <p>Bạn cần ở trong bán kính check-in để mở camera.</p>
                   </div>
@@ -331,14 +348,16 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
               ) : (
                 <div className="image-preview-card">
                   <img src={previewUrl} alt="Preview" className="preview-img" />
-                  <button className="btn-capture-again" onClick={clearPhotoSelection}>🔄 Chụp lại</button>
+                  <button className="btn-capture-again" onClick={clearPhotoSelection} style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                    <RefreshCw size={14} /> Chụp lại
+                  </button>
                 </div>
               )}
-              {photoHint && <div className="submit-error-banner">ℹ️ {photoHint}</div>}
-              {submitError && <div className="submit-error-banner">⚠️ {submitError}</div>}
+              {photoHint && <div className="submit-error-banner" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Info size={14} /> {photoHint}</div>}
+              {submitError && <div className="submit-error-banner" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><AlertTriangle size={14} /> {submitError}</div>}
               {previewUrl && (
-                <button className={`btn-submit-verification ${submitting ? 'loading' : ''}`} onClick={() => handleSubmit()} disabled={submitting}>
-                  {submitting ? 'AI đang quét kiểm định...' : '🚀 Gửi phân tích ảnh'}
+                <button className={`btn-submit-verification ${submitting ? 'loading' : ''}`} onClick={() => handleSubmit()} disabled={submitting} style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                  {submitting ? 'AI đang quét kiểm định...' : <><Send size={16} /> Gửi phân tích ảnh</>}
                 </button>
               )}
             </div>
@@ -347,7 +366,9 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
 
         {task.task_type === 'QA' && (
           <div className="camera-interact-box" style={{ gap: '15px' }}>
-            <h4 style={{ color: '#34d399' }}>❓ TRẢ LỜI CÂU HỎI TRẮC NGHIỆM KHÁM PHÁ</h4>
+            <h4 style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <HelpCircle size={18} /> TRẢ LỜI CÂU HỎI TRẮC NGHIỆM KHÁM PHÁ
+            </h4>
             <p style={{ fontSize: '15px', fontWeight: 'bold', lineHeight: '1.4' }}>{task.question}</p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
@@ -370,16 +391,18 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
                 );
               })}
             </div>
-            {submitError && <div className="submit-error-banner">⚠️ {submitError}</div>}
-            <button className="btn-submit-verification" onClick={() => handleSubmit()} disabled={submitting || !selectedOption}>
-              {submitting ? 'Đang chấm điểm...' : '🚀 Nộp kết quả'}
+            {submitError && <div className="submit-error-banner" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><AlertTriangle size={14} /> {submitError}</div>}
+            <button className="btn-submit-verification" onClick={() => handleSubmit()} disabled={submitting || !selectedOption} style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+              {submitting ? 'Đang chấm điểm...' : <><Send size={16} /> Nộp kết quả</>}
             </button>
           </div>
         )}
 
         {task.task_type === 'QR' && (
           <div className="camera-interact-box">
-            <h4 style={{ color: '#fbbf24' }}>🔳 QUÉT MÃ QR XÁC THỰC HIỆN DIỆN</h4>
+            <h4 style={{ color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <QrCode size={18} /> QUÉT MÃ QR XÁC THỰC HIỆN DIỆN
+            </h4>
             <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '10px' }}>
               Hướng camera vào QR code hoặc nhập mã định danh:
             </p>
@@ -390,8 +413,8 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
             />
 
             {qrScannerError && (
-              <div className="submit-error-banner" style={{ width: '100%', marginTop: '10px' }}>
-                ⚠️ {qrScannerError}
+              <div className="submit-error-banner" style={{ width: '100%', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <AlertTriangle size={14} /> {qrScannerError}
               </div>
             )}
 
@@ -409,15 +432,15 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
                 backgroundColor: 'rgba(0,0,0,0.3)', color: '#fff', fontSize: '14px', boxSizing: 'border-box'
               }}
             />
-            {submitError && <div className="submit-error-banner" style={{ width: '100%', marginTop: '10px' }}>⚠️ {submitError}</div>}
+            {submitError && <div className="submit-error-banner" style={{ width: '100%', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}><AlertTriangle size={14} /> {submitError}</div>}
 
             <button
               className="btn-submit-verification"
               onClick={() => handleSubmit()}
               disabled={submitting || !qrTokenInput.trim()}
-              style={{ marginTop: '15px' }}
+              style={{ marginTop: '15px', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}
             >
-              {submitting ? 'Hệ thống đang kiểm tra...' : '🔒 Xác thực mã QR'}
+              {submitting ? 'Hệ thống đang kiểm tra...' : <><Lock size={16} /> Xác thực mã QR</>}
             </button>
           </div>
         )}
@@ -426,7 +449,9 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
       {showSuccessModal && (
         <div className="success-gami-modal">
           <div className="modal-card">
-            <div className="badge-3d-hexagon">🏆</div>
+            <div className="badge-3d-hexagon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Trophy size={40} style={{ color: '#fbc531' }} />
+            </div>
             <h2>THỬ THÁCH HOÀN THÀNH!</h2>
             <p className="success-congrats-msg">{successData?.message}</p>
             <div className="score-reward-summary">
@@ -436,11 +461,13 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
               </div>
               <div className="reward-score-pill">
                 <span className="score-label">ĐỘ CHÍNH XÁC</span>
-                <span className="score-val">{successData?.confidence_score}% 🔥</span>
+                <span className="score-val" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {successData?.confidence_score}% <Flame size={14} style={{ color: '#ff7f50' }} />
+                </span>
               </div>
             </div>
-            <button className="btn-close-modal-gami" onClick={() => { setShowSuccessModal(false); onCompleteSuccess(); }}>
-              Nhận Quà & Quay lại hành trình 🏁
+            <button className="btn-close-modal-gami" onClick={() => { setShowSuccessModal(false); onCompleteSuccess(); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+              Nhận Quà & Quay lại hành trình <Flag size={16} />
             </button>
           </div>
         </div>
@@ -450,3 +477,4 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
 };
 
 export default TaskDetail;
+

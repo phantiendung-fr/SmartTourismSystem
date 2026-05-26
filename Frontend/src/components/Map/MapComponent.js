@@ -25,7 +25,10 @@ const MapComponent = forwardRef(({ stops = [], userLocation = null, hiddenTasks 
         const centerLng = stops.length > 0 ? parseFloat(stops[0].longitude) : 106.660172;
 
         mapInstance.current = L.map(mapRef.current, {
-            zoomControl: !fullScreen // Hide zoom control if full screen for cleaner look
+            zoomControl: !fullScreen, // Hide zoom control if full screen for cleaner look
+            zoomAnimation: false,
+            fadeAnimation: false,
+            markerZoomAnimation: false
         }).setView([centerLat, centerLng], 13);
         // Initial tile layer setup
         tileLayerRef.current = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -48,7 +51,8 @@ const MapComponent = forwardRef(({ stops = [], userLocation = null, hiddenTasks 
             markersLayer.current = null;
             tileLayerRef.current = null;
         };
-    }, [stops, fullScreen]); // mapStyle is handled in a separate effect
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fullScreen]); // stops is removed from dependencies to prevent recreating map when stops reference changes
 
     useEffect(() => {
         if (!tileLayerRef.current) return;
@@ -131,17 +135,17 @@ const MapComponent = forwardRef(({ stops = [], userLocation = null, hiddenTasks 
                 };
                 const color = rarityColors[task.rarity] || '#7f8c8d';
 
-                let emoji = '🎁';
+                let iconHtml = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C12 3 12 8 12 8s0-5 4.5-5a2.5 2.5 0 0 1 0 5z"/></svg>';
                 let label = 'Rương kho báu';
                 if (task.task_type === 'DYNAMIC_QUEST') {
-                    emoji = '🔮';
+                    iconHtml = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>';
                     label = 'Sự kiện đặc biệt';
                 }
 
                 const marker = L.marker([lat, lng], {
                     icon: L.divIcon({
                         className: 'hidden-task-icon',
-                        html: `<div class="glowing-chest" style="background-color:${color};border:2px solid white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 12px ${color};cursor:pointer;animation:float-effect 2s infinite ease-in-out;position:relative;">${emoji}<div style="position:absolute;width:40px;height:40px;border-radius:50%;border:2px dashed ${color};top:-6px;left:-6px;animation:spin-circle 8s infinite linear;"></div></div>`,
+                        html: `<div class="glowing-chest" style="background-color:${color};border:2px solid white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 12px ${color};cursor:pointer;animation:float-effect 2s infinite ease-in-out;position:relative;">${iconHtml}<div style="position:absolute;width:40px;height:40px;border-radius:50%;border:2px dashed ${color};top:-6px;left:-6px;animation:spin-circle 8s infinite linear;"></div></div>`,
                         iconSize: [32, 32],
                         iconAnchor: [16, 16],
                     }),
@@ -157,7 +161,7 @@ const MapComponent = forwardRef(({ stops = [], userLocation = null, hiddenTasks 
         }
 
         if (bounds.length > 0) {
-            mapInstance.current.fitBounds(bounds, { padding: [40, 40] });
+            mapInstance.current.fitBounds(bounds, { padding: [40, 40], animate: false });
         }
     }, [stops, userLocation, hiddenTasks, onHiddenTaskClick, showHiddenTasks]);
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE } from '../../config/api';
+import { ArrowLeft, ArrowRight, Compass } from 'lucide-react';
 import './TripInputForm.css';
 
 // Nhận vào hàm onSubmit từ component cha 
@@ -142,7 +143,9 @@ const TripInputForm = ({ onSubmitPlan, onCancel }) => {
                         <input type="number" min="0" value={tripData.pax_children} onChange={(e) => handleChange('pax_children', parseInt(e.target.value))} />
                     </div>
                     <div className="btn-row">
-                        <button className="btn-next" onClick={() => setStep(2)}>Tiếp tục ➡️</button>
+                        <button className="btn-next" onClick={() => setStep(2)} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            Tiếp tục <ArrowRight size={16} />
+                        </button>
                     </div>
                 </div>
             )}
@@ -165,14 +168,18 @@ const TripInputForm = ({ onSubmitPlan, onCancel }) => {
                         </small>
                     </div>
                     <div className="btn-row">
-                        <button className="btn-back" onClick={() => setStep(1)}>⬅️ Quay lại</button>
-                        <button className="btn-next" style={{ width: 'auto' }} onClick={() => {
+                        <button className="btn-back" onClick={() => setStep(1)} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <ArrowLeft size={16} /> Quay lại
+                        </button>
+                        <button className="btn-next" style={{ width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={() => {
                             if (!tripData.budget || tripData.budget <= 0) {
                                 alert("Vui lòng nhập ngân sách tối đa dự kiến của bạn.");
                                 return;
                             }
                             setStep(3);
-                        }}>Tiếp tục ➡️</button>
+                        }}>
+                            Tiếp tục <ArrowRight size={16} />
+                        </button>
                     </div>
                 </div>
             )}
@@ -194,13 +201,15 @@ const TripInputForm = ({ onSubmitPlan, onCancel }) => {
                         ))}
                     </div>
                     <div className="btn-row">
-                        <button className="btn-back" onClick={() => setStep(2)}>⬅️ Quay lại</button>
+                        <button className="btn-back" onClick={() => setStep(2)} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <ArrowLeft size={16} /> Quay lại
+                        </button>
                         <button
                             className="btn-next"
-                            style={{ width: 'auto', background: '#0abde3' }}
+                            style={{ width: 'auto', background: '#0abde3', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                             onClick={handleFinalSubmit}
                         >
-                            🚀 Tạo Lộ Trình
+                            <Compass size={18} /> Tạo Lộ Trình
                         </button>
                     </div>
                 </div>

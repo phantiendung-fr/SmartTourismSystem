@@ -1,4 +1,5 @@
 import React from 'react';
+import { CheckCircle, Eye, Star, MapPin, Coins } from 'lucide-react';
 import './EnterpriseDashboard.css';
 
 const EnterpriseDashboard = ({ user }) => {
@@ -19,27 +20,27 @@ const EnterpriseDashboard = ({ user }) => {
                         Xin chào, <strong>{displayName}</strong>
                     </p>
                 </div>
-                <span className="enterprise-verified-badge">✅ Đã xác minh</span>
+                <span className="enterprise-verified-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><CheckCircle size={14} /> Đã xác minh</span>
             </div>
 
             <div className="enterprise-stats-grid">
                 <div className="enterprise-stat-card">
-                    <span className="enterprise-stat-icon">👁️</span>
+                    <span className="enterprise-stat-icon" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Eye size={18} /></span>
                     <h3>{mockStats.views}</h3>
                     <p>Lượt xem dịch vụ</p>
                 </div>
                 <div className="enterprise-stat-card">
-                    <span className="enterprise-stat-icon">⭐</span>
+                    <span className="enterprise-stat-icon" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Star size={18} /></span>
                     <h3>{mockStats.rating}/5</h3>
                     <p>Điểm đánh giá TB</p>
                 </div>
                 <div className="enterprise-stat-card">
-                    <span className="enterprise-stat-icon">📍</span>
+                    <span className="enterprise-stat-icon" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}><MapPin size={18} /></span>
                     <h3>{mockStats.checkins}</h3>
                     <p>Lượt Check-in</p>
                 </div>
                 <div className="enterprise-stat-card">
-                    <span className="enterprise-stat-icon">💰</span>
+                    <span className="enterprise-stat-icon" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}><Coins size={18} /></span>
                     <h3>{mockStats.revenue}</h3>
                     <p>Doanh thu ước tính</p>
                 </div>
