@@ -65,6 +65,11 @@ def get_trip_history(
     current_user: dict = Depends(security.verify_token)
 ):
     user_id = get_current_user_id(db, current_user)
+    
+    # Tự động hủy các chuyến đi đã hết hạn của user này
+    from crud.crud_itinerary import auto_cancel_expired_trips
+    auto_cancel_expired_trips(db, user_id=user_id)
+    
     history = get_itinerary_history(db, user_id=user_id)
     return history
 
@@ -418,6 +423,11 @@ def get_trip_detail(itinerary_id: UUID, db: Session = Depends(get_session)):
     trip = get_itinerary_by_id(db, itinerary_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi")
+        
+    # Tự động hủy nếu chuyến đi này (hoặc các chuyến đi khác của user) đã hết hạn
+    from crud.crud_itinerary import auto_cancel_expired_trips
+    auto_cancel_expired_trips(db, user_id=trip.user_id)
+    db.refresh(trip)
     
     # 1. Viết câu SQL nối bảng (JOIN) để gom toàn bộ Stops, Days và Locations của Lộ trình này
     statement = (

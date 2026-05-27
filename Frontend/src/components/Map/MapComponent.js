@@ -70,13 +70,12 @@ const MapComponent = forwardRef(({ stops = [], userLocation = null, hiddenTasks 
 
         mapInstance.current = L.map(mapRef.current, {
             zoomControl: !fullScreen, // Hide zoom control if full screen for cleaner look
-            zoomSnap: 0.25,
-            zoomDelta: 0.5,
-            wheelPxPerZoomLevel: 120,
+            zoomSnap: 1,
+            zoomDelta: 1,
             bounceAtZoomLimits: false,
-            zoomAnimation: false,
-            fadeAnimation: false,
-            markerZoomAnimation: false
+            zoomAnimation: true,
+            fadeAnimation: true,
+            markerZoomAnimation: true
         }).setView([centerLat, centerLng], 13);
         const initialTileStyle = getTileStyleConfig(mapStyle);
         tileLayerRef.current = L.tileLayer(initialTileStyle.url, initialTileStyle.options).addTo(mapInstance.current);

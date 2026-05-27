@@ -24,7 +24,8 @@ import {
     Activity,
     HelpCircle,
     AlertTriangle,
-    ShieldAlert
+    ShieldAlert,
+    Clock
 } from 'lucide-react';
 import './MainTabs.css';
 
@@ -1150,6 +1151,11 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                         <span className="menu-btn-arrow">›</span>
                     </button>
                 )}
+                <button className="profile-menu-btn" onClick={onOpenHistory}>
+                    <span className="menu-btn-icon"><Clock size={18} /></span>
+                    <span className="profile-menu-label">Lịch sử hành trình</span>
+                    <span className="menu-btn-arrow">›</span>
+                </button>
                 <button className="profile-menu-btn" onClick={onOpenProfileEdit}>
                     <span className="menu-btn-icon"><Settings size={18} /></span>
                     <span className="profile-menu-label">Cài đặt quyền riêng tư</span>

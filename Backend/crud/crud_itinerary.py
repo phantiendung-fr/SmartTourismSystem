@@ -353,3 +353,56 @@ def get_itinerary_stops_with_locations(db: Session, itinerary_id: UUID) -> list:
         .order_by(ItineraryDays.day_order.asc(), ItineraryStops.stop_order.asc())
     )
     return db.exec(statement).all()
+
+
+# ---------------------------------------------------------------------------
+# Q9 – Tự động hủy các chuyến đi hết hạn (sau thời gian kết thúc chuyến đi)
+# ---------------------------------------------------------------------------
+
+def auto_cancel_expired_trips(db: Session, user_id: Optional[UUID] = None) -> list[Itineraries]:
+    """
+    Tự động hủy các chuyến đi đã hết hạn (quá ngày kết thúc chuyến đi)
+    nhưng chưa được hoàn thành hoặc hủy trước đó.
+    Đồng thời trả lại điểm tích lũy của chuyến đi (total_points) về points_balance của user.
+    """
+    from datetime import datetime, timezone, timedelta
+    # GMT+7 timezone for Vietnam
+    vietnam_tz = timezone(timedelta(hours=7))
+    current_local_date = datetime.now(vietnam_tz).date()
+
+    # Query all itineraries that are not COMPLETED/CANCELLED, and join PlanningSessions
+    from models import PlanningSessions, UserProfiles
+    
+    statement = (
+        select(Itineraries, PlanningSessions)
+        .join(PlanningSessions, Itineraries.session_id == PlanningSessions.session_id)
+        .where(Itineraries.status.notin_([ItineraryStatus.COMPLETED, ItineraryStatus.CANCELLED]))
+        .where(PlanningSessions.end_day < current_local_date)
+    )
+    
+    if user_id:
+        statement = statement.where(Itineraries.user_id == user_id)
+        
+    results = db.exec(statement).all()
+    cancelled_trips = []
+    
+    for itinerary, session in results:
+        itinerary.status = ItineraryStatus.CANCELLED
+        itinerary.update_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        db.add(itinerary)
+        cancelled_trips.append(itinerary)
+        
+        # Trả lại điểm tích lũy của chuyến đi (total_points) về points_balance của user
+        profile = db.exec(select(UserProfiles).where(UserProfiles.user_id == itinerary.user_id)).first()
+        if profile and profile.total_points > 0:
+            profile.points_balance += profile.total_points
+            profile.total_points = 0
+            db.add(profile)
+            
+    if results:
+        db.commit()
+        for itinerary, _ in results:
+            db.refresh(itinerary)
+            
+    return cancelled_trips
+

@@ -177,7 +177,7 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onOpenPlan, onOpenHistory, 
                     </div>
                 )}
 
-                {!isGuest && ongoingTrips.length > 0 && (
+                {!isGuest && (
                     <div className="ongoing-section">
                         <div className="section-title">
                             <span>Ải Đang Chinh Phục</span>
@@ -185,33 +185,52 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onOpenPlan, onOpenHistory, 
                                 <History size={13} className="inline-icon" /> Lịch sử
                             </button>
                         </div>
-                        <div className="ongoing-trips-list">
-                            {ongoingTrips.map((trip) => (
-                                <div
-                                    key={trip.itinerary_id}
-                                    className="ongoing-trip-card"
-                                    onClick={() => onOpenTripDetail && onOpenTripDetail(trip.itinerary_id)}
-                                >
-                                    <div className="card-info">
-                                        <h3 className="ongoing-trip-title">{trip.name || 'Hành trình không tên'}</h3>
-                                        <p className="ongoing-trip-meta">Ngày kích hoạt: {formatDate(trip.create_at)}</p>
-                                        <div className="ongoing-trip-stats">
-                                            <span className="ongoing-stat-item">
-                                                <Map size={13} className="stat-icon" /> {trip.total_distance} km
-                                            </span>
-                                            <span className="ongoing-stat-item">
-                                                <Coins size={13} className="stat-icon" /> {new Intl.NumberFormat('vi-VN').format(trip.total_budget)} đ
-                                            </span>
+                        {ongoingTrips.length > 0 ? (
+                            <div className="ongoing-trips-list">
+                                {ongoingTrips.map((trip) => (
+                                    <div
+                                        key={trip.itinerary_id}
+                                        className="ongoing-trip-card"
+                                        onClick={() => onOpenTripDetail && onOpenTripDetail(trip.itinerary_id)}
+                                    >
+                                        <div className="card-info">
+                                            <h3 className="ongoing-trip-title">{trip.name || 'Hành trình không tên'}</h3>
+                                            <p className="ongoing-trip-meta">Ngày kích hoạt: {formatDate(trip.create_at)}</p>
+                                            <div className="ongoing-trip-stats">
+                                                <span className="ongoing-stat-item">
+                                                    <Map size={13} className="stat-icon" /> {trip.total_distance} km
+                                                </span>
+                                                <span className="ongoing-stat-item">
+                                                    <Coins size={13} className="stat-icon" /> {new Intl.NumberFormat('vi-VN').format(trip.total_budget)} đ
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="enter-dungeon-action">
+                                            <button className="enter-btn squishy-btn green">
+                                                Vào ải <Gamepad2 size={14} />
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="enter-dungeon-action">
-                                        <button className="enter-btn squishy-btn green">
-                                            Vào ải <Gamepad2 size={14} />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="ongoing-empty-card" style={{ 
+                                padding: '24px 16px', 
+                                textAlign: 'center', 
+                                background: 'rgba(255, 255, 255, 0.6)', 
+                                border: '2.5px dashed #2c3e50', 
+                                borderRadius: '16px', 
+                                color: '#7f8c8d',
+                                fontWeight: 'bold',
+                                fontSize: '13px',
+                                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
+                            }}>
+                                Bạn chưa có hành trình nào đang diễn ra.<br/>
+                                <span style={{ fontSize: '11px', fontWeight: 'normal', color: '#95a5a6', marginTop: '4px', display: 'inline-block' }}>
+                                    Nhấn "BẮT ĐẦU" ở trên để thiết lập lộ trình mới!
+                                </span>
+                            </div>
+                        )}
                     </div>
                 )}
 

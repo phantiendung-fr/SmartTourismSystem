@@ -6,6 +6,7 @@ Backend: FastAPI | Database: Supabase (PostgreSQL) | ORM: SQLModel
 import sys
 # Reconfigure stdout to use UTF-8 on Windows
 sys.stdout.reconfigure(encoding='utf-8')
+import asyncio
 
 from contextlib import asynccontextmanager
 from time import monotonic
@@ -92,9 +93,28 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 # Lifespan: startup / shutdown events
 # ============================================================
 
+async def auto_cancel_expired_trips_worker():
+    """Background task to cancel expired trips every 10 minutes."""
+    while True:
+        try:
+            from sqlmodel import Session
+            from database import engine
+            from crud.crud_itinerary import auto_cancel_expired_trips
+            with Session(engine) as session:
+                cancelled = auto_cancel_expired_trips(session)
+                if cancelled:
+                    print(f"[Worker] Da tu dong huy {len(cancelled)} chuyen di het han.")
+        except Exception as e:
+            print(f"[Worker] Loi khi tu dong huy chuyen di het han: {e}")
+        # Sleep for 10 minutes (600 seconds)
+        await asyncio.sleep(600)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Run startup tasks before accepting requests."""
+    # Khởi chạy background worker tự động hủy chuyến đi hết hạn
+    worker_task = asyncio.create_task(auto_cancel_expired_trips_worker())
+    
     try:
         print("Dang kiem tra ket noi Database...")
         create_db_and_tables()
@@ -115,7 +135,15 @@ async def lifespan(app: FastAPI):
         else:
             print(f"LOI KET NOI DATABASE: {type(e).__name__}")
         print("Canh bao: Server van chay nhung cac chuc nang lien quan den DB se loi.")
+    
     yield
+    
+    # Hủy background task khi tắt server
+    worker_task.cancel()
+    try:
+        await worker_task
+    except asyncio.CancelledError:
+        pass
 
 
 # ============================================================

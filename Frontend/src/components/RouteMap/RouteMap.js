@@ -82,13 +82,12 @@ const RouteMap = ({ stops = [], routes = [], hiddenTasks = [], userLocation = nu
             mapInstance.current = L.map(mapRef.current, {
                 zoomControl: true,
                 attributionControl: true,
-                zoomSnap: 0.25,
-                zoomDelta: 0.5,
-                wheelPxPerZoomLevel: 120,
+                zoomSnap: 1,
+                zoomDelta: 1,
                 bounceAtZoomLimits: false,
-                zoomAnimation: false,
-                fadeAnimation: false,
-                markerZoomAnimation: false
+                zoomAnimation: true,
+                fadeAnimation: true,
+                markerZoomAnimation: true
             }).setView([startLat, startLng], 14);
 
             L.tileLayer(ROUTE_TILE_STYLE.url, ROUTE_TILE_STYLE.options).addTo(mapInstance.current);
