@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { API_BASE } from '../config/api';
 import { storageGet } from '../platform/storage';
 import { ArrowLeft, Edit2, Award, Camera, Save } from 'lucide-react';
@@ -10,6 +10,8 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
     // 1. Kiểm tra vai trò người dùng (Bắt lỗi nếu user lồng nhau)
     const userInfo = user?.user || user;
     const isEnterprise = userInfo?.role === 'ENTERPRISE';
+
+    const fileInputRef = useRef(null);
 
     // Biến kiểm soát chế độ Xem hay Sửa
     const [isEditing, setIsEditing] = useState(false);
@@ -58,6 +60,26 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
         setProfileData({ ...profileData, [field]: value });
     };
 
+    const handleAvatarClick = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    };
+
+    const handleAvatarChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setProfileData((prev) => ({
+                ...prev,
+                avatar_url: reader.result,
+            }));
+        };
+        reader.readAsDataURL(file);
+    };
+
     const handleSaveProfile = async (e) => {
         e.preventDefault();
         try {
@@ -72,12 +94,11 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
             });
 
             if (response.ok) {
+                const resData = await response.json();
                 void showAlert('Cập nhật hồ sơ thành công!');
                 setIsEditing(false); // Thành công thì khóa form lại (Chế độ xem)
-                // const newName = isEnterprise ? profileData.business_name : profileData.full_name;
-                // if (onUpdateSuccess) onUpdateSuccess(newName);
                 if (onUpdateSuccess) {
-                    onUpdateSuccess(profileData);
+                    onUpdateSuccess(resData.user || profileData);
                 }
             } else {
                 const errorData = await response.json();
@@ -169,9 +190,23 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
                         }}
                     />
                     {isEditing && (
-                        <button className="user-profile-avatar-edit-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Camera size={14} />
-                        </button>
+                        <>
+                            <button 
+                                type="button" 
+                                onClick={handleAvatarClick} 
+                                className="user-profile-avatar-edit-btn" 
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                <Camera size={14} />
+                            </button>
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                onChange={handleAvatarChange} 
+                                accept="image/*" 
+                                style={{ display: 'none' }} 
+                            />
+                        </>
                     )}
                 </div>
             </div>

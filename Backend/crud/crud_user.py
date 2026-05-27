@@ -720,24 +720,56 @@ def update_user_profile(
     user_id: UUID,
     **kwargs
 ) -> Optional[UserProfiles]:
-    """
-    Cập nhật thông tin profile của user — chỉ ghi đè các field được truyền vào
-    (truthy check; ``None`` nghĩa là "không thay đổi field đó").
-
-    Columns có thể cập nhật:
-        avatar_url, bio, base_location, travel_style, privacy_status,
-        identity_doc_url, selfie_url.
-    """
     row = db.exec(
         select(UserProfiles).where(UserProfiles.user_id == user_id)
     ).first()
+    
+    is_new = False
     if row is None:
+        is_new = True
         row = UserProfiles(user_id=user_id)
+        # Bổ sung các cột NOT NULL bắt buộc cho hàng mới
+        user_record = db.exec(select(Users).where(Users.user_id == user_id)).first()
+        row.full_name = user_record.full_name if user_record else "Thám hiểm gia"
+        row.date_of_birth = date(1990, 1, 1)
+        row.gender = "OTHER"
     
     for key, value in kwargs.items():
-        # Nếu value không bị None VÀ bảng UserProfiles thực sự có cái cột (key) đó
-        if value is not None and hasattr(row, key):
-            setattr(row, key, value) # Cập nhật giá trị mới vào dòng dữ liệu
+        if not hasattr(row, key):
+            continue
+            
+        # Clean empty string values for specific fields to avoid constraint / type errors
+        if value == "":
+            if key == "date_of_birth":
+                if is_new:
+                    row.date_of_birth = date(1990, 1, 1)
+                continue
+            elif key == "travel_style":
+                value = None
+            elif key == "gender":
+                if is_new:
+                    row.gender = "OTHER"
+                continue
+            elif key == "privacy_status":
+                if is_new:
+                    row.privacy_status = "PUBLIC"
+                continue
+            elif key == "kyc_status":
+                if is_new:
+                    row.kyc_status = "UNVERIFIED"
+                continue
+                
+        if key == "date_of_birth" and value is not None:
+            # Xử lý parse ngày sinh nếu được gửi lên dạng chuỗi
+            if isinstance(value, str):
+                try:
+                    value = date.fromisoformat(value)
+                except ValueError:
+                    continue  # Bỏ qua nếu định dạng chuỗi không hợp lệ
+
+        # Cập nhật giá trị
+        if value is not None:
+            setattr(row, key, value)
 
     # Cập nhật thời gian sửa đổi
     row.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)

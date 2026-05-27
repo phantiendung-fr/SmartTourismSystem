@@ -168,6 +168,7 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_session)):
                 "privacy_status": getattr(profile.privacy_status, 'value', profile.privacy_status) if profile.privacy_status else "PUBLIC",
                 "total_points": profile.total_points or 0,
                 "points_balance": profile.points_balance or 0,
+                "avatar_url": profile.avatar_url or "",
             }
     return {
         "access_token": access_token,
@@ -277,6 +278,7 @@ def get_my_profile(
                 "privacy_status": getattr(profile.privacy_status, 'value', profile.privacy_status) if profile.privacy_status else "PUBLIC",
                 "total_points": profile.total_points or 0,
                 "points_balance": profile.points_balance or 0,
+                "avatar_url": profile.avatar_url or "",
             }
 
     # 3. Trả về cấu trúc bọc trong key "user" GIỐNG HỆT với API /login
