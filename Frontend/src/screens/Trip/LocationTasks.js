@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE } from '../../config/api';
+import { storageGet } from '../../platform/storage';
 import { 
   MapPin, X, Star, Target, AlertCircle, CheckCircle, 
   Circle, Camera, HelpCircle, Scan, Award, Tag, ArrowRight 
@@ -39,8 +40,14 @@ export const LocationTasks = ({ locationId, locationName, itineraryId, userId, o
     const fetchTasks = async () => {
       try {
         setLoading(true);
+        const token = await storageGet('access_token');
         const response = await fetch(
-          `${API_BASE}/api/gamification/locations/${locationId}/tasks?itinerary_id=${itineraryId}&user_id=${userId}`
+          `${API_BASE}/api/gamification/locations/${locationId}/tasks?itinerary_id=${itineraryId}&user_id=${userId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
         );
         if (!response.ok) {
           throw new Error('Không thể lấy danh sách nhiệm vụ.');
