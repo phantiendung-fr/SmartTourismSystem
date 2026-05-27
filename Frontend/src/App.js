@@ -24,6 +24,8 @@ import { showConfirm } from './platform/dialog';
 
 import { SocialQuestProvider } from './components/SocialQuest/SocialQuestProvider';
 import SocialQuestOverlay from './components/SocialQuest/SocialQuestOverlay';
+import AudioControl from './components/AudioControl/AudioControl';
+import { playBGM, playSound } from './utils/soundUtils';
 // Bỏ comment nếu muốn test giả lập tương tác
 //import LocationSimulator from './components/SocialQuest/LocationSimulator';
 
@@ -50,6 +52,28 @@ function App() {
     useEffect(() => {
         currentScreenRef.current = currentScreen;
     }, [currentScreen]);
+
+    useEffect(() => {
+        const handleGlobalClick = (e) => {
+            // Kích hoạt BGM ở lần tương tác đầu tiên
+            if (!window._bgmStarted) {
+                window._bgmStarted = true;
+                playBGM();
+            }
+
+            // Phát âm thanh click nếu nhấn vào button hoặc phần tử có thể click (ngoại trừ nút tắt/mở loa tổng)
+            const isClickableTag = e.target.closest('button, a, [role="button"], input[type="button"], input[type="submit"]');
+            const style = window.getComputedStyle(e.target);
+            const isPointer = style.cursor === 'pointer';
+
+            if ((isClickableTag || isPointer) && !e.target.closest('.audio-control-btn')) {
+                playSound('click.mp3');
+            }
+        };
+        
+        document.addEventListener('click', handleGlobalClick);
+        return () => document.removeEventListener('click', handleGlobalClick);
+    }, []);
 
     const navigateTo = useCallback((nextScreen, options = {}) => {
         const { resetHistory = false } = options;
@@ -197,6 +221,9 @@ function App() {
         <SocialQuestProvider user={currentUser?.user || currentUser}>
             <div className="app-outer">
                 <div className="app-container">
+                    {['splash', 'welcome'].includes(currentScreen) && (
+                        <AudioControl />
+                    )}
                     <SocialQuestOverlay />
                     {/* ❌ XÓA HOẶC COMMENT DÒNG NÀY ĐỂ ẨN BẢNG GIẢ LẬP: */}
                     {/* <LocationSimulator /> */}
