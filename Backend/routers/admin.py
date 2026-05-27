@@ -131,11 +131,23 @@ def _create_location_from_submission(
 
     db.add(models.BusinessLocation(business_id=sub.enterprise_id, location_id=location.location_id))
 
-    for category_id in data.get("category_ids") or []:
-        db.add(models.LocationCategories(location_id=location.location_id, category_id=int(category_id)))
+    # Validate categories against existing category_ids to avoid foreign key violations
+    category_ids = [int(cid) for cid in (data.get("category_ids") or [])]
+    if category_ids:
+        existing_categories = db.exec(select(models.Categories.category_id).where(models.Categories.category_id.in_(category_ids))).all()
+        valid_category_ids = set(existing_categories)
+        for category_id in category_ids:
+            if category_id in valid_category_ids:
+                db.add(models.LocationCategories(location_id=location.location_id, category_id=category_id))
 
-    for tag_id in data.get("tag_ids") or []:
-        db.add(models.LocationTags(location_id=location.location_id, tag_id=int(tag_id)))
+    # Validate tags against existing tag_ids to avoid foreign key violations
+    tag_ids = [int(tid) for tid in (data.get("tag_ids") or [])]
+    if tag_ids:
+        existing_tags = db.exec(select(models.Tags.tag_id).where(models.Tags.tag_id.in_(tag_ids))).all()
+        valid_tag_ids = set(existing_tags)
+        for tag_id in tag_ids:
+            if tag_id in valid_tag_ids:
+                db.add(models.LocationTags(location_id=location.location_id, tag_id=tag_id))
 
     for index, image_url in enumerate(data.get("images") or [], start=1):
         if image_url:
@@ -201,7 +213,7 @@ def grant_points(
 def get_all_users(admin: models.Users = Depends(check_admin_access), db: Session = Depends(get_session)):
     """Lấy danh sách người dùng đầy đủ cho Admin"""
     stmt = select(models.Users, models.UserProfiles).join(
-        models.UserProfiles, models.Users.user_id == models.UserProfiles.user_id
+        models.UserProfiles, models.Users.user_id == models.UserProfiles.user_id, isouter=True
     ).where(
         models.Users.status != models.UserStatus.INACTIVE
     )
@@ -213,9 +225,9 @@ def get_all_users(admin: models.Users = Depends(check_admin_access), db: Session
             "name": u.full_name,
             "email": u.email,
             "role": getattr(u.role, "value", u.role),
-            "points": p.points_balance,
-            "total_points": p.total_points,
-            "rank": p.status,
+            "points": p.points_balance if p else 0,
+            "total_points": p.total_points if p else 0,
+            "rank": p.status if p else None,
             "status": getattr(u.status, "value", u.status),
             "created_at": u.create_at
         } for u, p in users

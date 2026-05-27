@@ -25,7 +25,7 @@ import { showConfirm } from './platform/dialog';
 import { SocialQuestProvider } from './components/SocialQuest/SocialQuestProvider';
 import SocialQuestOverlay from './components/SocialQuest/SocialQuestOverlay';
 import AudioControl from './components/AudioControl/AudioControl';
-import { playBGM, playSound } from './utils/soundUtils';
+import { playBGM, pauseBGM, playSound } from './utils/soundUtils';
 // Bỏ comment nếu muốn test giả lập tương tác
 //import LocationSimulator from './components/SocialQuest/LocationSimulator';
 
@@ -57,6 +57,16 @@ function App() {
         currentScreenRef.current = currentScreen;
         workModeRef.current = isWorkMode;
     }, [currentScreen, isWorkMode]);
+
+    useEffect(() => {
+        if (isWorkMode) {
+            pauseBGM();
+        } else {
+            if (window._bgmStarted) {
+                playBGM();
+            }
+        }
+    }, [isWorkMode]);
 
     useEffect(() => {
         const handleGlobalClick = (e) => {

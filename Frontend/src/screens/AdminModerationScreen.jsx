@@ -5,6 +5,8 @@ import {
     BarChart3,
     Building2,
     Check,
+    ClipboardList,
+    Coins,
     FileText,
     Lock,
     MapPin,
@@ -80,6 +82,7 @@ export default function AdminModerationScreen({ onBack }) {
     const [rejectModal, setRejectModal] = useState(null);
     const [rejectReason, setRejectReason] = useState('');
     const [confirmModal, setConfirmModal] = useState(null);
+    const [isViolationMode, setIsViolationMode] = useState(false);
 
     const loadOverview = useCallback(async () => {
         setOverviewLoading(true);
@@ -143,9 +146,17 @@ export default function AdminModerationScreen({ onBack }) {
                     totalPoints: data.total_points_awarded,
                 }));
             } else if (activeTab === 'reports') {
-                const data = await adminService.getReports();
-                setReports(data);
-                setOverview((current) => ({ ...current, reports: data.length }));
+                const [reportsData, usersData] = await Promise.all([
+                    adminService.getReports(),
+                    adminService.getAdminUsers(),
+                ]);
+                setReports(reportsData);
+                setUsersList(usersData);
+                setOverview((current) => ({
+                    ...current,
+                    reports: reportsData.length,
+                    totalUsers: usersData.length,
+                }));
             }
         } catch (err) {
             setError(err.message || 'Không thể tải dữ liệu quản trị.');
@@ -206,32 +217,6 @@ export default function AdminModerationScreen({ onBack }) {
         );
     }, [usersList, userSearch]);
 
-    const overviewCards = useMemo(() => ([
-        {
-            id: 'enterprise',
-            label: 'DN',
-            value: overview.pendingEnterprises,
-            icon: Building2,
-        },
-        {
-            id: 'location',
-            label: 'Địa điểm',
-            value: overview.pendingLocations,
-            icon: MapPin,
-        },
-        {
-            id: 'users',
-            label: 'Users',
-            value: overview.totalUsers,
-            icon: Users,
-        },
-        {
-            id: 'reports',
-            label: 'Reports',
-            value: overview.reports,
-            icon: FileText,
-        },
-    ]), [overview]);
 
     const getTabCount = (tabId) => {
         if (tabId === 'enterprise') return overview.pendingEnterprises;
@@ -241,8 +226,7 @@ export default function AdminModerationScreen({ onBack }) {
         return null;
     };
 
-    const activeTabMeta = tabs.find((tab) => tab.id === activeTab) || tabs[0];
-    const ActiveTabIcon = activeTabMeta.icon;
+
     const openQueueCount = overview.pendingEnterprises === null && overview.pendingLocations === null
         ? null
         : Number(overview.pendingEnterprises || 0) + Number(overview.pendingLocations || 0);
@@ -251,6 +235,7 @@ export default function AdminModerationScreen({ onBack }) {
         setUserActionTarget(null);
         setUserActionView('menu');
         setPointsAmount('');
+        setIsViolationMode(false);
     };
 
     const runUserAction = async (action, successMessage) => {
@@ -281,6 +266,32 @@ export default function AdminModerationScreen({ onBack }) {
             () => adminService.updateUserPoints(userActionTarget.id, 'deduct', parseInt(pointsAmount, 10)),
             `Đã trừ ${pointsAmount} điểm của ${userActionTarget.name}.`
         );
+    };
+
+    const handleActionUser = async (targetUserId) => {
+        const targetIdLower = targetUserId.toLowerCase();
+        let foundUser = usersList.find((u) => u.id.toLowerCase() === targetIdLower);
+        if (!foundUser) {
+            try {
+                setLoading(true);
+                const data = await adminService.getAdminUsers();
+                setUsersList(data);
+                foundUser = data.find((u) => u.id.toLowerCase() === targetIdLower);
+            } catch (err) {
+                setError('Không thể tải danh sách người dùng.');
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        if (foundUser) {
+            setUserActionTarget(foundUser);
+            setUserActionView('menu');
+            setPointsAmount('');
+            setIsViolationMode(true);
+        } else {
+            setError('Không tìm thấy thành viên này trong hệ thống.');
+        }
     };
 
     const renderEnterprise = () => {
@@ -499,7 +510,7 @@ export default function AdminModerationScreen({ onBack }) {
         const statsItems = [
             { label: 'Tổng thành viên', value: stats.total_users, icon: Users },
             { label: 'Tổng bài viết', value: stats.total_posts, icon: FileText },
-            { label: 'Điểm đã phát', value: stats.total_points_awarded, icon: BarChart3 },
+            { label: 'Điểm đã phát', value: stats.total_points_awarded, icon: Coins },
             { label: 'DN chờ duyệt', value: stats.pending_enterprises, icon: Building2 },
         ];
         return (
@@ -528,6 +539,9 @@ export default function AdminModerationScreen({ onBack }) {
                 {reports.map((report) => {
                     const content = report.content || '';
                     const postId = content.includes('Post ID:') ? content.split('Post ID: ')[1]?.split(' |')[0] : null;
+                    const userIdMatch = content.match(/Target User ID:\s*([a-fA-F0-9-]+)/);
+                    const targetUserId = userIdMatch ? userIdMatch[1] : null;
+
                     return (
                         <div className="admin-report-row" key={report.feedback_id}>
                             <div>
@@ -535,20 +549,31 @@ export default function AdminModerationScreen({ onBack }) {
                                 <small>{formatDate(report.created_at)}</small>
                                 <p>{content}</p>
                             </div>
-                            {postId && (
-                                <button
-                                    type="button"
-                                    className="admin-danger-btn"
-                                    onClick={() => setConfirmModal({
-                                        title: 'Xóa bài viết',
-                                        message: 'Xóa bài viết bị báo cáo khỏi cộng đồng?',
-                                        action: () => adminService.deletePost(postId),
-                                        success: 'Đã xóa bài viết vi phạm.',
-                                    })}
-                                >
-                                    <Trash2 size={16} /> Xóa
-                                </button>
-                            )}
+                            <div className="admin-action-row" style={{ marginTop: '6px' }}>
+                                {postId && (
+                                    <button
+                                        type="button"
+                                        className="admin-danger-btn"
+                                        onClick={() => setConfirmModal({
+                                            title: 'Xóa bài viết',
+                                            message: 'Xóa bài viết bị báo cáo khỏi cộng đồng?',
+                                            action: () => adminService.deletePost(postId),
+                                            success: 'Đã xóa bài viết vi phạm.',
+                                        })}
+                                    >
+                                        <Trash2 size={16} /> Xóa
+                                    </button>
+                                )}
+                                {targetUserId && (
+                                    <button
+                                        type="button"
+                                        className="admin-danger-btn"
+                                        onClick={() => handleActionUser(targetUserId)}
+                                    >
+                                        <AlertTriangle size={16} /> Xử lý
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     );
                 })}
@@ -616,35 +641,26 @@ export default function AdminModerationScreen({ onBack }) {
             <main className="admin-content-body">
                 <section className="admin-overview-panel">
                     <div className="admin-overview-copy">
-                        <span className="admin-overview-icon"><ActiveTabIcon size={18} /></span>
+                        <span className="admin-overview-icon"><ClipboardList size={18} /></span>
                         <div>
-                            <h2>{activeTabMeta.title}</h2>
+                            <p>Yêu cầu chờ duyệt</p>
+                            <h2>
+                                {openQueueCount === null
+                                    ? 'Đang tải thông tin...'
+                                    : openQueueCount === 0
+                                    ? 'Tất cả yêu cầu đã được xử lý'
+                                    : `Có ${formatMetric(openQueueCount)} yêu cầu đang chờ duyệt`}
+                            </h2>
+                            <small>
+                                {openQueueCount === null
+                                    ? 'Vui lòng đợi trong giây lát'
+                                    : openQueueCount === 0
+                                    ? 'Hệ thống không còn hồ sơ doanh nghiệp hoặc địa điểm nào chờ duyệt.'
+                                    : 'Vui lòng kiểm tra và phê duyệt hồ sơ doanh nghiệp hoặc địa điểm mới.'}
+                            </small>
                         </div>
                     </div>
-                    <div className="admin-queue-card">
-                        <strong>{formatMetric(openQueueCount)}</strong>
-                        <span>việc</span>
-                    </div>
                 </section>
-
-                <div className="admin-scroll-shell admin-summary-shell">
-                    <section className="admin-summary-grid" aria-label="Admin overview">
-                        {overviewCards.map((card) => {
-                            const Icon = card.icon;
-                            return (
-                                <button
-                                    key={card.id}
-                                    type="button"
-                                    className={`admin-summary-card ${activeTab === card.id ? 'active' : ''}`}
-                                    onClick={() => setActiveTab(card.id)}
-                                >
-                                    <span className="admin-summary-icon"><Icon size={17} /></span>
-                                    <strong>{formatMetric(card.value)}</strong>
-                                </button>
-                            );
-                        })}
-                    </section>
-                </div>
 
                 {(error || notice) && (
                     <div className={`admin-message ${error ? 'error' : 'success'}`}>
@@ -682,7 +698,7 @@ export default function AdminModerationScreen({ onBack }) {
                                         <small>{userActionTarget.status === 'BANNED' ? 'Mở khóa đăng nhập' : 'Khóa đăng nhập'}</small>
                                     </span>
                                 </button>
-                                {userActionTarget.role !== 'ENTERPRISE' && (
+                                {userActionTarget.role !== 'ENTERPRISE' && !isViolationMode && (
                                     <button type="button" onClick={() => setUserActionView('role')}>
                                         <Shield size={17} />
                                         <span>
