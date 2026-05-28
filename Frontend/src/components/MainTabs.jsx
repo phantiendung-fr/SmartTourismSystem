@@ -1321,25 +1321,25 @@ const FriendsScreen = ({
             </div>
 
             <div className="friends-screen-content" style={{ flex: 1, overflowY: 'auto' }}>
-                {friendsTab === 'feed' && (
-                    <SocialFeedScreen 
-                        user={userInfo} 
-                        onRequireLogin={onRequireLogin} 
-                        onOpenProfile={() => setActiveTab('profile')} 
-                    />
-                )}
-                {friendsTab === 'matching' && (
-                    <FindCompanionsScreen 
-                        user={userInfo} 
-                        onRequireLogin={onRequireLogin} 
-                    />
-                )}
-                {friendsTab === 'chat' && (
-                    <ChatScreen 
-                        user={userInfo} 
-                        onRequireLogin={onRequireLogin} 
-                    />
-                )}
+                <div style={{ display: friendsTab === 'feed' ? 'block' : 'none', height: '100%' }}>
+                    <SocialFeedScreen 
+                        user={userInfo} 
+                        onRequireLogin={onRequireLogin} 
+                        onOpenProfile={() => setActiveTab('profile')} 
+                    />
+                </div>
+                <div style={{ display: friendsTab === 'matching' ? 'block' : 'none', height: '100%' }}>
+                    <FindCompanionsScreen 
+                        user={userInfo} 
+                        onRequireLogin={onRequireLogin} 
+                    />
+                </div>
+                <div style={{ display: friendsTab === 'chat' ? 'block' : 'none', height: '100%' }}>
+                    <ChatScreen 
+                        user={userInfo} 
+                        onRequireLogin={onRequireLogin} 
+                    />
+                </div>
             </div>
         </div>
     );

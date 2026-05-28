@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Heart, X, MapPin, Compass, AlertTriangle, Check, Sparkles } from 'lucide-react';
 import { API_BASE } from '../config/api';
 import { storageGet } from '../platform/storage';
+import { showAlert } from '../platform/dialog';
 import './FindCompanionsScreen.css';
+import './SocialFeedScreen.css';
 
 export default function FindCompanionsScreen({ user, onRequireLogin }) {
     const [activeTab, setActiveTab] = useState('discover'); // 'discover' or 'pending'
@@ -14,14 +16,20 @@ export default function FindCompanionsScreen({ user, onRequireLogin }) {
     const [actionLoading, setActionLoading] = useState(false);
 
     useEffect(() => {
-        fetchCompanions();
-        if (user) {
-            fetchPendingRequests();
-        }
+        const loadData = async () => {
+            setLoading(true);
+            try {
+                const promises = [fetchCompanionsData()];
+                if (user) promises.push(fetchPendingData());
+                await Promise.all(promises);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadData();
     }, [user]);
 
-    const fetchCompanions = async () => {
-        setLoading(true);
+    const fetchCompanionsData = async () => {
         try {
             const token = await storageGet('access_token');
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -32,12 +40,10 @@ export default function FindCompanionsScreen({ user, onRequireLogin }) {
             }
         } catch (error) {
             console.error('Error fetching companions:', error);
-        } finally {
-            setLoading(false);
         }
     };
 
-    const fetchPendingRequests = async () => {
+    const fetchPendingData = async () => {
         try {
             const token = await storageGet('access_token');
             if (!token) return;
@@ -72,6 +78,12 @@ export default function FindCompanionsScreen({ user, onRequireLogin }) {
                     body: JSON.stringify({ friend_id: id })
                 });
                 if (res.ok) {
+                    const data = await res.json();
+                    if (data.status === 'ACCEPTED') {
+                        showAlert(`Ghép đôi thành công! Bạn và ${currentCompanion?.name || 'đối phương'} đã trở thành bạn bè.`);
+                    } else {
+                        showAlert(`Đã gửi lời mời kết bạn đến ${currentCompanion?.name || 'đối phương'}!`);
+                    }
                     setAcceptedIds(prev => new Set([...prev, id]));
                 }
             } catch (error) {
@@ -103,7 +115,7 @@ export default function FindCompanionsScreen({ user, onRequireLogin }) {
             if (res.ok) {
                 setPendingRequests(prev => prev.filter(r => r.friendship_id !== requestId));
                 // Refresh companions list since friendship state changed
-                fetchCompanions();
+                fetchCompanionsData();
             }
         } catch (error) {
             console.error('Error responding to friend request:', error);
@@ -149,9 +161,11 @@ export default function FindCompanionsScreen({ user, onRequireLogin }) {
             {activeTab === 'discover' ? (
                 <div className="discover-area">
                     {loading ? (
-                        <div className="matching-loading">
-                            <div className="loader-hud"></div>
-                            <p>Đang tìm kiếm bạn đồng hành lý tưởng...</p>
+                        <div className="match-card cartoon-card skeleton-companion-card">
+                            <div className="skeleton-companion-avatar skeleton-pulse" />
+                            <div className="skeleton-line skeleton-pulse" style={{ width: '60%', height: '18px' }} />
+                            <div className="skeleton-line skeleton-pulse" style={{ width: '40%', height: '14px' }} />
+                            <div className="skeleton-line skeleton-pulse" style={{ width: '80%', height: '12px', marginTop: '8px' }} />
                         </div>
                     ) : currentCompanion ? (
                         <div className="match-card cartoon-card">

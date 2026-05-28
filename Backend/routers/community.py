@@ -4,7 +4,8 @@ from database import get_session
 from uuid import UUID, uuid4
 from datetime import datetime, date
 from typing import Optional, List
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, func
+from collections import defaultdict
 from sqlalchemy.exc import IntegrityError
 from fastapi.security import HTTPBearer
 from jose import jwt, JWTError
@@ -98,7 +99,12 @@ def get_posts(
     current_user: Optional[dict] = Depends(get_optional_token),
     db: Session = Depends(get_session)
 ):
-    """Lấy bài viết từ cộng đồng kèm thông tin tác giả và lọc theo quyền riêng tư"""
+    """Lấy bài viết từ cộng đồng kèm thông tin tác giả và lọc theo quyền riêng tư.
+    Trả thêm user_liked / user_saved để frontend không cần gọi API riêng."""
+    me = None
+    if current_user:
+        me = get_user_uuid(current_user)
+
     # Query join SocialPosts, Users, UserProfiles (outer join)
     query_stmt = select(models.SocialPosts, models.Users, models.UserProfiles).join(
         models.Users, models.SocialPosts.user_id == models.Users.user_id
@@ -106,8 +112,7 @@ def get_posts(
         models.UserProfiles, models.Users.user_id == models.UserProfiles.user_id, isouter=True
     )
     
-    if current_user:
-        me = get_user_uuid(current_user)
+    if me:
         # Lấy danh sách ID bạn bè để lọc bài viết FRIENDS
         friendships = db.exec(
             select(models.Friendships).where(
@@ -136,7 +141,26 @@ def get_posts(
         query_stmt = query_stmt.where(models.SocialPosts.privacy_status == "PUBLIC")
 
     results = db.exec(query_stmt.order_by(models.SocialPosts.created_at.desc())).all()
-    
+
+    # Batch-load liked & saved status for the current user (2 queries total)
+    liked_post_ids = set()
+    saved_post_ids = set()
+    if me:
+        post_ids = [r[0].post_id for r in results]
+        if post_ids:
+            liked_post_ids = set(db.exec(
+                select(models.PostLikes.post_id).where(
+                    models.PostLikes.user_id == me,
+                    models.PostLikes.post_id.in_(post_ids)
+                )
+            ).all())
+            saved_post_ids = set(db.exec(
+                select(models.PostSaves.post_id).where(
+                    models.PostSaves.user_id == me,
+                    models.PostSaves.post_id.in_(post_ids)
+                )
+            ).all())
+
     return [
         {
             "post_id": str(post.post_id),
@@ -149,6 +173,8 @@ def get_posts(
             "comments_count": post.comments_count,
             "privacy_status": post.privacy_status,
             "created_at": post.created_at,
+            "user_liked": post.post_id in liked_post_ids,
+            "user_saved": post.post_id in saved_post_ids,
             "profiles": {
                 "full_name": profile.full_name if profile else (user.full_name if user else "Thám hiểm gia"),
                 "avatar_url": profile.avatar_url if profile else None,
@@ -393,38 +419,76 @@ def get_companions(
     current_user: dict = Depends(verify_token),
     db: Session = Depends(get_session)
 ):
-    """Lấy danh sách người dùng để gợi ý ghép đôi (Companion Finder)"""
+    """Lấy danh sách người dùng để gợi ý ghép đôi (Companion Finder).
+    Đã tối ưu: batch query Itineraries 1 lần thay vì N+1."""
     user_id = get_user_uuid(current_user)
     
     # 1. Tìm thông tin của tôi
     me_profile = db.exec(select(models.UserProfiles).where(models.UserProfiles.user_id == user_id)).first()
     if not me_profile:
-        raise HTTPException(status_code=404, detail="Không tìm thấy hồ sơ cá nhân của bạn")
-        
-    me_itineraries = db.exec(select(models.Itineraries).where(models.Itineraries.user_id == user_id)).all()
-    me_destinations = [iti.name for iti in me_itineraries if iti.name]
+        # Nếu chưa có profile (do vừa đăng ký bằng email/pass), tự động tạo một profile trống mặc định để tránh lỗi 404
+        user_record = db.exec(select(models.Users).where(models.Users.user_id == user_id)).first()
+        me_profile = models.UserProfiles(
+            user_id=user_id,
+            full_name=user_record.full_name if user_record else "Thám hiểm gia",
+            date_of_birth=date(1990, 1, 1),
+            gender=models.GenderEnum.OTHER,
+            travel_style=models.TravelStyle.BACKPACKER,
+            base_location="Việt Nam",
+            points_balance=0,
+            total_points=0,
+            kyc_status=models.KycStatus.UNVERIFIED,
+            privacy_status=models.PrivacyStatus.PUBLIC
+        )
+        db.add(me_profile)
+        db.commit()
+        db.refresh(me_profile)
+
+    # 2. Lấy danh sách ID đã có mối quan hệ (bạn bè hoặc đang chờ phản hồi)
+    friendships = db.exec(
+        select(models.Friendships).where(
+            or_(
+                models.Friendships.user_id == user_id,
+                models.Friendships.friend_id == user_id
+            )
+        )
+    ).all()
+    exclude_user_ids = {f.friend_id if f.user_id == user_id else f.user_id for f in friendships}
+
+    # 3. Lấy tất cả user khác có profile mà chưa có mối quan hệ
+    query_stmt = select(models.Users, models.UserProfiles).join(
+        models.UserProfiles, models.Users.user_id == models.UserProfiles.user_id
+    ).where(models.Users.user_id != user_id)
     
+    if exclude_user_ids:
+        query_stmt = query_stmt.where(~models.Users.user_id.in_(list(exclude_user_ids)))
+        
+    others = db.exec(query_stmt).all()
+
+    # 3. Batch load ALL itineraries cho tất cả users (kể cả tôi) — 1 query duy nhất
+    all_user_ids = [user_id] + [u.user_id for u, _ in others]
+    all_itineraries = db.exec(
+        select(models.Itineraries).where(models.Itineraries.user_id.in_(all_user_ids))
+    ).all()
+
+    # Group destinations by user_id trong Python
+    dest_map = defaultdict(list)
+    for iti in all_itineraries:
+        if iti.name:
+            dest_map[iti.user_id].append(iti.name)
+
     me_data = {
         "travel_style": me_profile.travel_style.value if me_profile.travel_style else "",
-        "interests": [], # Thích ứng: tags sở thích có thể liên kết sau
-        "planned_destinations": me_destinations
+        "interests": [],
+        "planned_destinations": dest_map.get(user_id, [])
     }
 
-    # 2. Lấy tất cả user khác có profile
-    others = db.exec(select(models.Users, models.UserProfiles).join(
-        models.UserProfiles, models.Users.user_id == models.UserProfiles.user_id
-    ).where(models.Users.user_id != user_id)).all()
-    
     companions = []
     for user, profile in others:
-        # Lấy lộ trình của người kia
-        u_itineraries = db.exec(select(models.Itineraries).where(models.Itineraries.user_id == user.user_id)).all()
-        u_destinations = [iti.name for iti in u_itineraries if iti.name]
-        
         u_data = {
             "travel_style": profile.travel_style.value if profile.travel_style else "",
             "interests": [],
-            "planned_destinations": u_destinations
+            "planned_destinations": dest_map.get(user.user_id, [])
         }
         
         # Tính toán điểm ghép đôi dựa trên sở thích, lộ trình du lịch
@@ -655,7 +719,8 @@ def get_location_ambassadors(
 
 @router.get("/friends")
 def get_friends(current_user: dict = Depends(verify_token), db: Session = Depends(get_session)):
-    """Lấy danh sách bạn bè đã kết nối (ACCEPTED)"""
+    """Lấy danh sách bạn bè đã kết nối (ACCEPTED).
+    Đã tối ưu: batch query last messages thay vì N+1."""
     user_id = get_user_uuid(current_user)
     
     friendships = db.exec(
@@ -682,18 +747,27 @@ def get_friends(current_user: dict = Depends(verify_token), db: Session = Depend
             models.UserProfiles, models.Users.user_id == models.UserProfiles.user_id, isouter=True
         ).where(models.Users.user_id.in_(friend_ids))
     ).all()
+
+    # Batch-load last messages for ALL friends in 1 query (fix N+1)
+    all_messages = db.exec(
+        select(models.ChatMessages).where(
+            or_(
+                and_(models.ChatMessages.sender_id == user_id, models.ChatMessages.receiver_id.in_(friend_ids)),
+                and_(models.ChatMessages.sender_id.in_(friend_ids), models.ChatMessages.receiver_id == user_id)
+            )
+        ).order_by(models.ChatMessages.created_at.desc())
+    ).all()
+
+    # Group by friend and pick last message per friend
+    last_msg_map = {}
+    for msg in all_messages:
+        friend_id = msg.receiver_id if msg.sender_id == user_id else msg.sender_id
+        if friend_id not in last_msg_map:
+            last_msg_map[friend_id] = msg
     
     friend_list = []
     for u, p in results:
-        # Get latest message between current_user and this friend
-        last_msg = db.exec(
-            select(models.ChatMessages).where(
-                or_(
-                    and_(models.ChatMessages.sender_id == user_id, models.ChatMessages.receiver_id == u.user_id),
-                    and_(models.ChatMessages.sender_id == u.user_id, models.ChatMessages.receiver_id == user_id)
-                )
-            ).order_by(models.ChatMessages.created_at.desc())
-        ).first()
+        last_msg = last_msg_map.get(u.user_id)
         
         last_msg_data = None
         if last_msg:
@@ -744,7 +818,16 @@ def send_friend_request(data: dict, current_user: dict = Depends(verify_token), 
     ).first()
     
     if existing:
-        return {"message": "Đã gửi lời mời hoặc đã là bạn bè"}
+        if existing.status == "PENDING" and existing.friend_id == user_id:
+            # Đối phương đã gửi lời mời trước đó, mình thích lại -> Tự động chấp nhận (Mutual Match)
+            existing.status = "ACCEPTED"
+            db.add(existing)
+            db.commit()
+            return {"message": "Đã ghép đôi thành công!", "status": "ACCEPTED"}
+        elif existing.status == "ACCEPTED":
+            return {"message": "Đã là bạn bè", "status": "ACCEPTED"}
+        else:
+            return {"message": "Đã gửi lời mời kết bạn trước đó", "status": "PENDING"}
         
     new_friendship = models.Friendships(
         friendship_id=uuid4(),
@@ -754,7 +837,7 @@ def send_friend_request(data: dict, current_user: dict = Depends(verify_token), 
     )
     db.add(new_friendship)
     db.commit()
-    return {"message": "Đã gửi lời mời kết bạn"}
+    return {"message": "Đã gửi lời mời kết bạn", "status": "PENDING"}
 
 
 @router.get("/friend-requests/pending")
@@ -827,6 +910,21 @@ def get_messages(
     """Lấy lịch sử cuộc trò chuyện (tin nhắn chat)"""
     user_id = get_user_uuid(current_user)
     
+    # Kiểm tra xem có phải bạn bè không
+    friendship = db.exec(
+        select(models.Friendships).where(
+            and_(
+                or_(
+                    and_(models.Friendships.user_id == user_id, models.Friendships.friend_id == target_user_id),
+                    and_(models.Friendships.user_id == target_user_id, models.Friendships.friend_id == user_id)
+                ),
+                models.Friendships.status == "ACCEPTED"
+            )
+        )
+    ).first()
+    if not friendship:
+        raise HTTPException(status_code=403, detail="Chỉ bạn bè mới có thể xem tin nhắn của nhau")
+        
     messages = db.exec(
         select(models.ChatMessages).where(
             or_(
@@ -866,10 +964,27 @@ def get_messages(
 def send_message(data: dict, current_user: dict = Depends(verify_token), db: Session = Depends(get_session)):
     """Gửi tin nhắn mới"""
     user_id = get_user_uuid(current_user)
+    receiver_id = UUID(data.get("receiver_id"))
+    
+    # Kiểm tra xem có phải bạn bè không
+    friendship = db.exec(
+        select(models.Friendships).where(
+            and_(
+                or_(
+                    and_(models.Friendships.user_id == user_id, models.Friendships.friend_id == receiver_id),
+                    and_(models.Friendships.user_id == receiver_id, models.Friendships.friend_id == user_id)
+                ),
+                models.Friendships.status == "ACCEPTED"
+            )
+        )
+    ).first()
+    if not friendship:
+        raise HTTPException(status_code=403, detail="Chỉ bạn bè mới có thể nhắn tin cho nhau")
+        
     new_msg = models.ChatMessages(
         message_id=uuid4(),
         sender_id=user_id,
-        receiver_id=UUID(data.get("receiver_id")),
+        receiver_id=receiver_id,
         content=data.get("content", ""),
         message_type=data.get("type", "TEXT")
     )

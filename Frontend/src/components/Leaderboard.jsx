@@ -4,6 +4,7 @@ import { storageGet } from '../platform/storage';
 import { Trophy, Crown, AlertTriangle, MapPin, Compass, Star } from 'lucide-react';
 import { getSafeAvatarSrc, createInitialAvatarDataUrl } from '../utils/avatar';
 import './Leaderboard.css';
+import './SocialFeedScreen.css';
 
 const Leaderboard = () => {
     const [category, setCategory] = useState('global');
@@ -160,9 +161,18 @@ const Leaderboard = () => {
             )}
 
             {loading && (
-                <div className="loaderboard-loading">
-                    <div className="spinner"></div>
-                    <p>Đang cập nhật bảng xếp hạng...</p>
+                <div className="leaderboard-list" style={{ opacity: 0.7 }}>
+                    {[1, 2, 3, 4, 5].map(i => (
+                        <div className="skeleton-leaderboard-item" key={i}>
+                            <div className="skeleton-rank skeleton-pulse" />
+                            <div className="skeleton-lb-avatar skeleton-pulse" />
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <div className="skeleton-line skeleton-pulse" style={{ width: '60%', height: '14px' }} />
+                                <div className="skeleton-line skeleton-pulse" style={{ width: '40%', height: '10px' }} />
+                            </div>
+                            <div className="skeleton-line skeleton-pulse" style={{ width: '50px', height: '16px' }} />
+                        </div>
+                    ))}
                 </div>
             )}
 

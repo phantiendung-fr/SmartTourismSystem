@@ -82,10 +82,15 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
             if (res.ok) {
                 const data = await res.json();
                 setPosts(data);
-                
-                // Initialize liked and saved states if logged in
-                if (token && user) {
-                    // Pull saved posts from backend if possible
+
+                // Use inline user_liked / user_saved from API (optimized backend)
+                if (data.length > 0 && 'user_liked' in data[0]) {
+                    const likedIds = new Set(data.filter(p => p.user_liked).map(p => p.post_id));
+                    const savedIds = new Set(data.filter(p => p.user_saved).map(p => p.post_id));
+                    setLikedPosts(likedIds);
+                    setSavedPosts(savedIds);
+                } else if (token && user) {
+                    // Fallback: fetch saved posts separately (backward compat)
                     const savedRes = await fetch(`${API_BASE}/api/social/saved-posts`, { headers });
                     if (savedRes.ok) {
                         const savedData = await savedRes.json();
@@ -143,9 +148,33 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
                     }
                     return p;
                 }));
+            } else {
+                // Rollback if request fails
+                setLikedPosts(likedPosts);
+                setPosts(prev => prev.map(p => {
+                    if (p.post_id === postId) {
+                        return {
+                            ...p,
+                            likes_count: isLiked ? p.likes_count + 1 : Math.max(0, p.likes_count - 1)
+                        };
+                    }
+                    return p;
+                }));
+                showAlert('Thao tác thích bài viết thất bại.');
             }
         } catch (error) {
             console.error('Error liking post:', error);
+            // Rollback if request throws error
+            setLikedPosts(likedPosts);
+            setPosts(prev => prev.map(p => {
+                if (p.post_id === postId) {
+                    return {
+                        ...p,
+                        likes_count: isLiked ? p.likes_count + 1 : Math.max(0, p.likes_count - 1)
+                    };
+                }
+                return p;
+            }));
         }
     };
 
@@ -182,9 +211,15 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
                     finalSaved.delete(postId);
                 }
                 setSavedPosts(finalSaved);
+            } else {
+                // Rollback
+                setSavedPosts(savedPosts);
+                showAlert('Thao tác lưu bài viết thất bại.');
             }
         } catch (error) {
             console.error('Error saving post:', error);
+            // Rollback
+            setSavedPosts(savedPosts);
         }
     };
 
@@ -225,6 +260,28 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
         e.preventDefault();
         if (!postCaption.trim()) return;
 
+        // Optimistic: add temp post to top of feed immediately
+        const tempPostId = `temp-${Date.now()}`;
+        const optimisticPost = {
+            post_id: tempPostId,
+            user_id: currentUserId,
+            caption: postCaption,
+            image_url: imagePreviews.join('|'),
+            location_name: postLocation,
+            privacy_status: privacyStatus,
+            likes_count: 0,
+            comments_count: 0,
+            created_at: new Date().toISOString(),
+            is_pending: true,
+            profiles: currentUserProfile
+        };
+
+        setPosts(prev => [optimisticPost, ...prev]);
+        setPostCaption('');
+        setImagePreviews([]);
+        setPostLocation('');
+        setIsCreateOpen(false);
+
         setIsSubmittingPost(true);
         try {
             const token = await storageGet('access_token');
@@ -235,21 +292,28 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
                     Authorization: `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    caption: postCaption,
-                    image_url: imagePreviews.join('|'), // Pipe-separated list to support base64 commas
-                    location_name: postLocation,
-                    privacy_status: privacyStatus
+                    caption: optimisticPost.caption,
+                    image_url: optimisticPost.image_url,
+                    location_name: optimisticPost.location_name,
+                    privacy_status: optimisticPost.privacy_status
                 })
             });
 
             if (res.ok) {
-                setPostCaption('');
-                setImagePreviews([]);
-                setPostLocation('');
-                setIsCreateOpen(false);
-                fetchPosts();
+                const created = await res.json();
+                // Replace temp post with real one
+                setPosts(prev => prev.map(p =>
+                    p.post_id === tempPostId
+                        ? { ...optimisticPost, ...created, post_id: created.post_id || tempPostId, is_pending: false, profiles: optimisticPost.profiles }
+                        : p
+                ));
+            } else {
+                // Remove optimistic post on failure
+                setPosts(prev => prev.filter(p => p.post_id !== tempPostId));
+                await showAlert('Đăng bài viết thất bại.');
             }
         } catch (error) {
+            setPosts(prev => prev.filter(p => p.post_id !== tempPostId));
             await showAlert('Đăng bài viết thất bại: ' + error.message);
         } finally {
             setIsSubmittingPost(false);
@@ -448,9 +512,30 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
 
             {/* Posts Area */}
             {loading ? (
-                <div className="feed-loading">
-                    <div className="loader-hud"></div>
-                    <p>Đang tải bảng tin thám hiểm...</p>
+                <div className="posts-list">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="post-card cartoon-card skeleton-post">
+                            <div className="post-card-header">
+                                <div className="author-info">
+                                    <div className="skeleton-avatar skeleton-pulse" />
+                                    <div>
+                                        <div className="skeleton-line skeleton-pulse" style={{ width: '120px', height: '12px' }} />
+                                        <div className="skeleton-line skeleton-pulse" style={{ width: '80px', height: '10px', marginTop: '6px' }} />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="post-card-body">
+                                <div className="skeleton-line skeleton-pulse" style={{ width: '100%', height: '14px' }} />
+                                <div className="skeleton-line skeleton-pulse" style={{ width: '75%', height: '14px', marginTop: '8px' }} />
+                                <div className="skeleton-image skeleton-pulse" style={{ marginTop: '12px' }} />
+                            </div>
+                            <div className="post-card-footer">
+                                <div className="skeleton-line skeleton-pulse" style={{ width: '50px', height: '16px' }} />
+                                <div className="skeleton-line skeleton-pulse" style={{ width: '50px', height: '16px' }} />
+                                <div className="skeleton-line skeleton-pulse" style={{ width: '50px', height: '16px' }} />
+                            </div>
+                        </div>
+                    ))}
                 </div>
             ) : posts.length === 0 ? (
                 <div className="feed-empty cartoon-card">
@@ -463,7 +548,7 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
                     {posts.map(post => {
                         const isMe = user && post.user_id === (user.user_id || user.id);
                         return (
-                            <div key={post.post_id} className="post-card cartoon-card">
+                            <div key={post.post_id} className={`post-card cartoon-card ${post.is_pending ? 'pending-post' : ''}`}>
                                 {/* Header */}
                                 <div className="post-card-header">
                                     <div className="author-info">
