@@ -6,7 +6,7 @@ import { ArrowLeft, User, Building2, CheckCircle, Clock, LogIn, X } from 'lucide
 import { showAlert } from '../../platform/dialog';
 import './LoginScreen.css';
 
-const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
+const RegisterScreen = ({ onBack, onSwitchToLogin, onRegisterSuccess }) => {
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
@@ -19,6 +19,8 @@ const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
         contactPhone: '',
     });
     const [registerNotice, setRegisterNotice] = useState(null);
+    const [isPrivacyAccepted, setIsPrivacyAccepted] = useState(false);
+    const [showPolicyModal, setShowPolicyModal] = useState(null); // 'privacy' | 'terms' | null
     const isEnterprise = formData.role === 'ENTERPRISE';
 
     const translateError = (msg) => {
@@ -246,7 +248,21 @@ const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
                         />
                     </div>
                 )}
-                <button className="login-button register-submit-btn" type="submit">
+                <div className="privacy-checkbox-container" style={{ margin: '15px 0', display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '14px', color: '#555', textAlign: 'left' }}>
+                    <input 
+                        type="checkbox" 
+                        id="privacyPolicy"
+                        checked={isPrivacyAccepted}
+                        onChange={(e) => setIsPrivacyAccepted(e.target.checked)}
+                        style={{ cursor: 'pointer', width: '16px', height: '16px', marginTop: '3px', flexShrink: 0 }}
+                    />
+                    <label htmlFor="privacyPolicy" style={{ cursor: 'pointer', lineHeight: '1.5' }}>
+                        <div style={{ marginBottom: '4px' }}>Tôi đồng ý với <a href="#" onClick={(e) => { e.preventDefault(); setShowPolicyModal('privacy'); }} style={{ color: '#4facfe', textDecoration: 'underline' }}>Chính sách quyền riêng tư</a></div>
+                        <div>và <a href="#" onClick={(e) => { e.preventDefault(); setShowPolicyModal('terms'); }} style={{ color: '#4facfe', textDecoration: 'underline' }}>Điều khoản sử dụng</a></div>
+                    </label>
+                </div>
+                
+                <button className="login-button register-submit-btn" type="submit" disabled={!isPrivacyAccepted} style={{ opacity: isPrivacyAccepted ? 1 : 0.5, cursor: isPrivacyAccepted ? 'pointer' : 'not-allowed' }}>
                     {isEnterprise ? 'Đăng ký tài khoản doanh nghiệp' : 'Đăng ký'}
                 </button>
                 
@@ -288,14 +304,53 @@ const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
                         <p>{registerNotice.body}</p>
                         <div className="auth-success-actions">
                             {registerNotice.type === 'user' ? (
-                                <button type="button" className="auth-success-primary" onClick={onSwitchToLogin}>
-                                    <LogIn size={16} /> Chuyển sang đăng nhập
+                                <button type="button" className="auth-success-primary" onClick={onRegisterSuccess}>
+                                    <CheckCircle size={16} /> Xem hướng dẫn sử dụng
                                 </button>
                             ) : (
                                 <button type="button" className="auth-success-primary enterprise" onClick={() => setRegisterNotice(null)}>
                                     Đã hiểu
                                 </button>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showPolicyModal && (
+                <div className="auth-success-overlay" style={{ zIndex: 9999 }} role="dialog">
+                    <div className="auth-success-dialog" style={{ textAlign: 'left', maxWidth: '500px', width: '90%', padding: '25px' }}>
+                        <button
+                            type="button"
+                            className="auth-success-close"
+                            onClick={() => setShowPolicyModal(null)}
+                        >
+                            <X size={18} />
+                        </button>
+                        <h3 style={{ marginTop: 0, color: '#1a2980', fontSize: '20px', paddingRight: '20px' }}>
+                            {showPolicyModal === 'privacy' ? 'Chính sách quyền riêng tư' : 'Điều khoản sử dụng'}
+                        </h3>
+                        <div style={{ maxHeight: '300px', overflowY: 'auto', fontSize: '14px', color: '#555', lineHeight: '1.6', marginTop: '15px', paddingRight: '10px' }}>
+                            {showPolicyModal === 'privacy' ? (
+                                <>
+                                    <p><strong>1. Thu thập thông tin:</strong> Chúng tôi thu thập thông tin cá nhân của bạn như tên, email khi bạn đăng ký tài khoản.</p>
+                                    <p><strong>2. Sử dụng thông tin:</strong> Thông tin của bạn được sử dụng để tối ưu hóa trải nghiệm du lịch, cá nhân hóa lịch trình và gửi thông báo quan trọng.</p>
+                                    <p><strong>3. Bảo mật:</strong> Chúng tôi cam kết bảo mật thông tin của bạn và không chia sẻ cho bên thứ 3 khi chưa có sự đồng ý, ngoại trừ các trường hợp bắt buộc theo pháp luật.</p>
+                                    <p><strong>4. Quyền lợi của bạn:</strong> Bạn có quyền yêu cầu xóa tài khoản và mọi dữ liệu liên quan bất cứ lúc nào thông qua phần hỗ trợ trong ứng dụng.</p>
+                                </>
+                            ) : (
+                                <>
+                                    <p><strong>1. Chấp thuận điều khoản:</strong> Bằng việc sử dụng Smart Tourism, bạn đồng ý với các điều khoản dưới đây.</p>
+                                    <p><strong>2. Hành vi cấm:</strong> Nghiêm cấm mọi hành vi spam, phá hoại hệ thống, đăng tải nội dung không phù hợp hoặc vi phạm pháp luật.</p>
+                                    <p><strong>3. Dữ liệu địa điểm:</strong> Thông tin về các địa điểm du lịch trên ứng dụng mang tính chất tham khảo. Chúng tôi không chịu trách nhiệm nếu có sai lệch nhỏ về giá vé, giờ mở cửa thực tế tại thời điểm bạn đến tham quan.</p>
+                                    <p><strong>4. Tích điểm và Phần thưởng:</strong> Hệ thống có quyền thu hồi điểm thưởng hoặc khóa tài khoản nếu phát hiện hành vi gian lận (ví dụ: sử dụng phần mềm giả mạo vị trí GPS) để hoàn thành nhiệm vụ và nhận điểm.</p>
+                                </>
+                            )}
+                        </div>
+                        <div style={{ marginTop: '20px', textAlign: 'right' }}>
+                            <button type="button" className="auth-success-primary" onClick={() => setShowPolicyModal(null)} style={{ padding: '10px 24px', width: 'auto', display: 'inline-block' }}>
+                                Đóng
+                            </button>
                         </div>
                     </div>
                 </div>
