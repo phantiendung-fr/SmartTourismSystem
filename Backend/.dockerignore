@@ -36,4 +36,5 @@ mock/
 dummy_data/
 database_seeding/
 *.txt
+!requirements.txt
 *.md
