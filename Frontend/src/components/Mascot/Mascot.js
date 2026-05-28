@@ -45,6 +45,9 @@ const Mascot = ({ message }) => {
         const currentMsg = msgs[currentIndex];
         if (!currentMsg) return;
 
+        // Dùng biến local để tránh race condition giữa setState('') và setInterval
+        // React batch setState nên '' có thể flush SAU khi charAt(0) đã được append → mất ký tự đầu
+        let builtText = '';
         setDisplayedMessage('');
         setIsTyping(true);
         setAnimationClass('talking');
@@ -52,7 +55,8 @@ const Mascot = ({ message }) => {
         let i = 0;
         typingInterval = setInterval(() => {
             if (i < currentMsg.length) {
-                setDisplayedMessage(prev => prev + currentMsg.charAt(i));
+                builtText += currentMsg.charAt(i);
+                setDisplayedMessage(builtText);
                 i++;
             } else {
                 clearInterval(typingInterval);
