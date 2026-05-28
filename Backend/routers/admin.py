@@ -771,3 +771,33 @@ def reject_location_submission(
     )
     db.commit()
     return {"message": "Đã từ chối yêu cầu kiểm duyệt địa điểm."}
+
+
+@router.get("/locations")
+def get_all_locations(
+    admin: models.Users = Depends(check_admin_access),
+    db: Session = Depends(get_session)
+):
+    """Lấy danh sách toàn bộ địa điểm đã duyệt (active)"""
+    locs = db.exec(
+        select(models.Locations).order_by(models.Locations.create_at.desc())
+    ).all()
+    
+    return [
+        {
+            "location_id": str(loc.location_id),
+            "location_name": loc.location_name,
+            "address": loc.address or "Chưa có địa chỉ",
+            "latitude": float(loc.latitude),
+            "longitude": float(loc.longitude),
+            "city_id": loc.city_id,
+            "open_time": loc.open_time.isoformat() if loc.open_time else "08:00:00",
+            "close_time": loc.close_time.isoformat() if loc.close_time else "22:00:00",
+            "min_price": float(loc.min_price),
+            "max_price": float(loc.max_price),
+            "currency": getattr(loc.currency, "value", loc.currency),
+            "is_active": loc.is_active,
+            "created_at": loc.create_at,
+        }
+        for loc in locs
+    ]
