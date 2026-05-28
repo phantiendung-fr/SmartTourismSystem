@@ -5,10 +5,12 @@ from uuid import UUID, uuid4
 from datetime import datetime
 import json
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 
 import models
 from core.security import verify_token
+from services.social_post_service import delete_social_post_with_dependencies
 
 router = APIRouter(prefix="/api/admin", tags=["Admin Tools - Quản trị và kiểm duyệt"])
 
@@ -335,12 +337,27 @@ def update_user_status(
 @router.delete("/social/posts/{post_id}")
 def admin_delete_post(post_id: UUID, admin: models.Users = Depends(check_admin_access), db: Session = Depends(get_session)):
     """Admin xóa bài viết vi phạm"""
-    post = db.exec(select(models.SocialPosts).where(models.SocialPosts.post_id == post_id)).first()
-    if not post:
-        raise HTTPException(status_code=404, detail="Không tìm thấy bài viết.")
-    db.delete(post)
-    db.commit()
-    return {"message": "Đã xóa bài viết vi phạm."}
+    try:
+        deleted = delete_social_post_with_dependencies(db, post_id)
+        if deleted is None:
+            raise HTTPException(status_code=404, detail="Không tìm thấy bài viết.")
+
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Không thể xóa bài viết vì còn dữ liệu liên kết chưa được xử lý.",
+        )
+
+    return {
+        "message": "Đã xóa bài viết vi phạm.",
+        "deleted_counts": {
+            "likes": deleted.likes_deleted,
+            "comments": deleted.comments_deleted,
+            "saves": deleted.saves_deleted,
+        },
+    }
 
 
 @router.get("/social/reports")

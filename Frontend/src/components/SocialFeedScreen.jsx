@@ -382,7 +382,7 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
     };
 
     const handleDeletePost = async (postId) => {
-        const confirmed = await showConfirm('Bạn có muốn xóa bài đăng này không?');
+        const confirmed = await showConfirm('Xóa bài đăng này? Lượt thích, bình luận và lượt lưu liên quan cũng sẽ bị xóa. Thao tác này không thể hoàn tác.');
         if (!confirmed) return;
         try {
             const token = await storageGet('access_token');
@@ -393,9 +393,13 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
             if (res.ok) {
                 setPosts(prev => prev.filter(p => p.post_id !== postId));
                 setPostMenuId(null);
+            } else {
+                const data = await res.json().catch(() => ({}));
+                await showAlert(data.detail || 'Không thể xóa bài đăng.');
             }
         } catch (error) {
             console.error('Error deleting post:', error);
+            await showAlert('Không thể xóa bài đăng. Vui lòng thử lại sau.');
         }
     };
 
@@ -696,8 +700,8 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
                                 required
                             />
                             <div className="modal-actions-row">
-                                <button type="button" className="squishy-btn red cancel-btn" onClick={() => setReportPostId(null)}>Hủy</button>
-                                <button type="submit" className="squishy-btn green submit-btn" disabled={isSubmittingReport}>
+                                <button type="button" className="squishy-btn red report-cancel-btn" onClick={() => setReportPostId(null)}>Hủy</button>
+                                <button type="submit" className="squishy-btn green report-submit-btn" disabled={isSubmittingReport}>
                                     {isSubmittingReport ? 'Đang gửi...' : 'Báo Cáo'}
                                 </button>
                             </div>

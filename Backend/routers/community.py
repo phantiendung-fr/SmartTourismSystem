@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 from datetime import datetime, date
 from typing import Optional, List
 from sqlalchemy import or_, and_
+from sqlalchemy.exc import IntegrityError
 from fastapi.security import HTTPBearer
 from jose import jwt, JWTError
 
@@ -12,6 +13,7 @@ import models
 from core.security import verify_token
 from core.config import settings
 from core.algorithms import calculate_hybrid_score
+from services.social_post_service import delete_social_post_with_dependencies
 
 router = APIRouter(prefix="/api/social", tags=["Social & Community - Mạng xã hội & Ghép đôi"])
 
@@ -936,19 +938,28 @@ def get_saved_posts(current_user: dict = Depends(verify_token), db: Session = De
 def delete_post(post_id: UUID, current_user: dict = Depends(verify_token), db: Session = Depends(get_session)):
     """Xóa bài đăng của chính mình"""
     user_id = get_user_uuid(current_user)
-    post = db.exec(
-        select(models.SocialPosts).where(
-            models.SocialPosts.post_id == post_id,
-            models.SocialPosts.user_id == user_id
+
+    try:
+        deleted = delete_social_post_with_dependencies(db, post_id, owner_user_id=user_id)
+        if deleted is None:
+            raise HTTPException(status_code=404, detail="Không tìm thấy bài viết hoặc bạn không có quyền xóa")
+
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Không thể xóa bài viết vì còn dữ liệu liên kết chưa được xử lý.",
         )
-    ).first()
     
-    if not post:
-        raise HTTPException(status_code=404, detail="Không tìm thấy bài viết hoặc bạn không có quyền xóa")
-        
-    db.delete(post)
-    db.commit()
-    return {"message": "Đã xóa bài viết thành công"}
+    return {
+        "message": "Đã xóa bài viết thành công",
+        "deleted_counts": {
+            "likes": deleted.likes_deleted,
+            "comments": deleted.comments_deleted,
+            "saves": deleted.saves_deleted,
+        },
+    }
 
 
 @router.patch("/posts/{post_id}/privacy")

@@ -616,7 +616,7 @@ export default function AdminModerationScreen({ onBack }) {
                                         className="admin-danger-btn"
                                         onClick={() => setConfirmModal({
                                             title: 'Xóa bài viết',
-                                            message: 'Xóa bài viết bị báo cáo khỏi cộng đồng?',
+                                            message: 'Xóa bài viết bị báo cáo khỏi cộng đồng? Lượt thích, bình luận và lượt lưu liên quan cũng sẽ bị xóa.',
                                             action: () => adminService.deletePost(postId),
                                             success: 'Đã xóa bài viết vi phạm.',
                                         })}

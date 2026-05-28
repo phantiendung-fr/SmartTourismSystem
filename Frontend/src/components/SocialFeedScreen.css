@@ -539,8 +539,10 @@
     width: 100%;
 }
 
-.cancel-btn, .submit-btn {
+.report-cancel-btn, .report-submit-btn {
     flex: 1;
+    font-size: 13px;
+    text-transform: none;
 }
 
 .comment-meta-right {
