@@ -702,7 +702,7 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
             {/* Comments Drawer */}
             {activeCommentsPostId && (
                 <div className="modal-overlay">
-                    <div className="drawer-content cartoon-card">
+                    <div className="comments-drawer-content cartoon-card">
                         <div className="modal-header">
                             <h3>Bình Luận</h3>
                             <button className="btn-close" onClick={() => setActiveCommentsPostId(null)}><X size={20} /></button>

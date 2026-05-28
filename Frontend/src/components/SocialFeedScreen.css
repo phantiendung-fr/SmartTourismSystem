@@ -261,7 +261,7 @@
     box-sizing: border-box;
 }
 
-.drawer-content {
+.comments-drawer-content {
     background-color: #ffffff;
     width: min(calc(100% - 24px), 420px);
     max-height: calc(100% - 24px);
@@ -271,13 +271,24 @@
     gap: 16px;
     position: absolute;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, 0);
     bottom: 12px;
     border-bottom-left-radius: 0 !important;
     border-bottom-right-radius: 0 !important;
     padding: 20px;
     box-sizing: border-box;
     overflow: hidden;
+    animation: slideUpComments 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    transition: box-shadow 0.2s ease, transform 0s;
+}
+
+@keyframes slideUpComments {
+    from {
+        transform: translate(-50%, 100%);
+    }
+    to {
+        transform: translate(-50%, 0);
+    }
 }
 
 .modal-header {
