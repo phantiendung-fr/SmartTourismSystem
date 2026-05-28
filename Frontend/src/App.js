@@ -6,6 +6,7 @@ import WelcomeScreen from './screens/WelcomeScreen';
 import RegisterScreen from './screens/Auth/RegisterScreen';
 import LoginScreen from './screens/Auth/LoginScreen';
 import ForgotPasswordScreen from './screens/Auth/ForgotPasswordScreen';
+import TutorialScreen from './screens/TutorialScreen';
 
 import TripInputForm from './components/TripInput/TripInputForm';
 import LocationRegister from './components/LocationRegister/LocationRegister';
@@ -345,6 +346,13 @@ function App() {
                         <RegisterScreen
                             onBack={() => goBackFromHistory('welcome')}
                             onSwitchToLogin={() => navigateTo('login')}
+                            onRegisterSuccess={() => navigateTo('tutorial')}
+                        />
+                    )}
+
+                    {currentScreen === 'tutorial' && (
+                        <TutorialScreen
+                            onFinish={() => navigateTo('main', { resetHistory: true })}
                         />
                     )}
 
