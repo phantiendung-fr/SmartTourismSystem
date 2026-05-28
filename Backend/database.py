@@ -17,8 +17,6 @@ from typing import Generator
 from dotenv import load_dotenv
 # pyrefly: ignore [missing-import]
 from sqlalchemy import event
-# pyrefly: ignore [missing-import]
-from sqlalchemy.pool import NullPool
 from sqlmodel import Session, SQLModel, create_engine
 
 load_dotenv()
@@ -35,7 +33,13 @@ if ("supabase.co" in DATABASE_URL or "supabase.com" in DATABASE_URL) and "sslmod
 engine = create_engine(
     DATABASE_URL,
     echo=os.getenv("DB_ECHO", "false").lower() == "true",
-    poolclass=NullPool,
+    # Use connection pooling to reuse connections instead of opening
+    # a new TCP+SSL connection per request (NullPool was very slow
+    # with remote Supabase due to SSL handshake overhead).
+    pool_size=5,
+    max_overflow=10,
+    pool_recycle=300,
+    pool_pre_ping=True,
     connect_args={
         "connect_timeout": 10,
         "keepalives": 1,
