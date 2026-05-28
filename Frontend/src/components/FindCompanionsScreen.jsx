@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, X, Star, MapPin, Compass, AlertTriangle, MessageSquare, Check, Sparkles } from 'lucide-react';
+import { Heart, X, MapPin, Compass, AlertTriangle, Check, Sparkles } from 'lucide-react';
 import { API_BASE } from '../config/api';
 import { storageGet } from '../platform/storage';
 import './FindCompanionsScreen.css';

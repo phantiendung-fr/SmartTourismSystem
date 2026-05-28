@@ -80,14 +80,15 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
             setMascotMessage(["Chúc mừng bạn đã hoàn thành trọn vẹn hành trình tuyệt vời này!"]);
         } else {
             const introSequence = [
-                " Chào mừng bạn đến với kỷ nguyên du lịch! Hãy cùng tôi khám phá mọi miền trên khắp đất nước Việt Nam.",
-                " Trên bản đồ đảo này, mỗi tòa nhà tượng trưng cho một địa điểm thú vị mà bạn sẽ đi qua.",
-                " Bạn có thể nhấn vào từng công trình để xem chi tiết và thực hiện check-in khi đến nơi.",
-                " Chúc bạn có một chuyến đi thật vui vẻ! Nếu cần trợ giúp, hãy nhấn vào tôi nhé!"
+                "Chào mừng bạn đến với kỷ nguyên du lịch! Hãy cùng tôi khám phá mọi miền trên khắp đất nước Việt Nam.",
+                "Trên bản đồ đảo này, mỗi tòa nhà tượng trưng cho một địa điểm thú vị mà bạn sẽ đi qua.",
+                "Bạn có thể nhấn vào từng công trình để xem chi tiết và thực hiện check-in khi đến nơi.",
+                "Chúc bạn có một chuyến đi thật vui vẻ! Nếu cần trợ giúp, hãy nhấn vào tôi nhé!"
             ];
             // Truyền toàn bộ chuỗi để Mascot phát lần lượt
             setMascotMessage(introSequence);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tripDetail?.itinerary_id, tripDetail?.status]);
 
     const handleBuildingClick = (stop) => {
@@ -502,10 +503,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                                 user={user}
                                 nextStop={selectedStop}
                                 onStopClick={setSelectedStop}
-                                onHiddenTaskClick={(task) => {
-                                setSelectedHiddenTask(task);
-                                setShowChestAnimation(true);
-                            }}
+                                onHiddenTaskClick={handleHiddenTaskClick}
                             />
                         </div>
                         
@@ -635,10 +633,7 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
             <HiddenQuestDebug
                 userLocation={userLocation}
                 onSpawnSuccess={fetchHiddenTasks}
-                onTestClaim={(testTask) => {
-                    setSelectedHiddenTask(testTask);
-                    setShowChestAnimation(true);
-                }}
+                onTestClaim={handleHiddenTaskClick}
             />
 
             {/* GAMIFICATION OVERLAYS */}

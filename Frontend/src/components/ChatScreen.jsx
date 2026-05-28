@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Send, ArrowLeft, Trash2, ShieldAlert, Image as ImageIcon, Smile, Clock } from 'lucide-react';
+import { MessageSquare, Send, ArrowLeft, Trash2, Smile, Clock } from 'lucide-react';
 import { API_BASE } from '../config/api';
 import { storageGet } from '../platform/storage';
 import { showConfirm } from '../platform/dialog';
@@ -11,7 +11,6 @@ export default function ChatScreen({ user, onRequireLogin }) {
     const [messages, setMessages] = useState([]);
     const [messageText, setMessageText] = useState('');
     const [loadingFriends, setLoadingFriends] = useState(true);
-    const [loadingMessages, setLoadingMessages] = useState(false);
     const [sending, setSending] = useState(false);
     const chatEndRef = useRef(null);
     const pollIntervalRef = useRef(null);
@@ -25,6 +24,7 @@ export default function ChatScreen({ user, onRequireLogin }) {
         return () => {
             stopPolling();
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
     useEffect(() => {
@@ -34,6 +34,7 @@ export default function ChatScreen({ user, onRequireLogin }) {
         } else {
             stopPolling();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedFriend]);
 
     useEffect(() => {

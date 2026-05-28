@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "YOUR_SUPER_SECRET_KEY_HERE"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    SUPABASE_URL: str = "https://huyalfizralenyrzkpbv.supabase.co"
 
     # --- External APIs & Logics ---------------------------------------------
     OSRM_BASE_URL: str = "https://router.project-osrm.org"

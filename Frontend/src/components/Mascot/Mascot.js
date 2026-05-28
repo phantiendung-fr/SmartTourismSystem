@@ -10,6 +10,7 @@ const Mascot = ({ message }) => {
     const [displayedMessage, setDisplayedMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [animationClass, setAnimationClass] = useState('idle');
+    const [replayTrigger, setReplayTrigger] = useState(0);
 
     // Vị trí và kéo thả
     const [position, setPosition] = useState(() => {
@@ -22,10 +23,13 @@ const Mascot = ({ message }) => {
     const [isDragging, setIsDragging] = useState(false);
     const dragRef = useRef({ startX: 0, startY: 0, initialX: 0, initialY: 0, dragged: false });
 
-    // Reset chuỗi thoại khi có message mới
-    useEffect(() => {
+    // Reset chuỗi thoại khi có message mới (đồng bộ trong render để tránh lệch index/mất chữ)
+    const lastMsgStrRef = useRef(msgsString);
+    if (lastMsgStrRef.current !== msgsString) {
+        lastMsgStrRef.current = msgsString;
         setCurrentIndex(0);
-    }, [msgsString]);
+        setDisplayedMessage('');
+    }
 
     useEffect(() => {
         if (msgs.length === 0) {
@@ -75,7 +79,8 @@ const Mascot = ({ message }) => {
             clearTimeout(animationTimeout);
             clearTimeout(nextMessageTimeout);
         };
-    }, [msgsString, currentIndex]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [msgsString, currentIndex, replayTrigger]);
 
     // Trình giả lập các animation random (chớp mắt, vẫy tay, liếc) bằng CSS
     // Vì là ảnh tĩnh nên ta mô phỏng bằng cách nghiêng, nhún nhảy.
@@ -162,6 +167,7 @@ const Mascot = ({ message }) => {
         if (dragRef.current.dragged) return; // Prevent click if user was dragging
         if (!isTyping && msgs.length > 0) {
             setCurrentIndex(0); // Phát lại đoạn thoại khi người dùng nhấn vào mascot
+            setReplayTrigger(prev => prev + 1);
         }
     };
 

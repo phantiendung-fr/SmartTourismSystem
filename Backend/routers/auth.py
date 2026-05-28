@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from sqlmodel import select
 from jose import jwt, JWTError
+from email_validator import validate_email, EmailNotValidError
 
 from datetime import datetime, timedelta, timezone 
 from pydantic import BaseModel # Thêm thư viện này để tạo form nhận OTP
@@ -13,7 +14,7 @@ from database import get_session
 import crud.crud_user as crud_user
 import crud.crud_auth as crud_auth 
 import schemas
-from models import EnterpriseProfiles, EnterpriseStatus, UserRole, UserStatus
+from models import EnterpriseProfiles, EnterpriseStatus, UserRole, UserStatus, RegisterType, Users
 import core.security as security
 
 from google.oauth2 import id_token
@@ -56,6 +57,23 @@ def check_rate_limit(key: str, limit: int, window_seconds: int) -> None:
 # 2. CÁC API XỬ LÝ AUTHENTICATION
 # ===========================================================================
 
+@router.get("/check-email")
+def check_email(email: str, db: Session = Depends(get_session)):
+    """Kiểm tra xem email hợp lệ và đã tồn tại trong hệ thống chưa."""
+    # 1. Kiểm tra email thực tế (MX/DNS check)
+    try:
+        validate_email(email, check_deliverability=True)
+    except EmailNotValidError:
+        raise HTTPException(
+            status_code=400, 
+            detail="Email không tồn tại hoặc không thể nhận thư. Vui lòng kiểm tra lại."
+        )
+
+    # 2. Kiểm tra tồn tại trong DB
+    user = crud_auth.get_user_by_email(db, email=email)
+    print(f"[!] Email check for {email} -> Exists: {user is not None}")
+    return {"exists": user is not None}
+
 @router.post("/register")
 def register(user_data: schemas.UserCreate, db: Session = Depends(get_session)):
     # 1. Kiểm tra user tồn tại
@@ -90,8 +108,8 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_session)):
         password=user_data.password,
         register_type=user_data.register_type, 
         role=UserRole.USER,
-        status=UserStatus.ACTIVE
-
+        status=UserStatus.ACTIVE,
+        user_id=user_data.user_id,
     )
 
     if is_enterprise_signup:
@@ -170,6 +188,7 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_session)):
                 "points_balance": profile.points_balance or 0,
                 "avatar_url": profile.avatar_url or "",
             }
+    has_pass = user.register_type in [RegisterType.EMAIL, RegisterType.CREDENTIALS]
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -179,6 +198,7 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_session)):
             "email": user.email,
             "full_name": user.full_name or "User",
             "role": user_role_str,
+            "has_password": has_pass,
             **profile_data
         }
     }
@@ -206,6 +226,7 @@ def google_login(token_data: dict, db: Session = Depends(get_session)):
         
         crud_user.create_user_session(db, user.user_id, device_id, refresh_token)
 
+        has_pass = user.register_type in [RegisterType.EMAIL, RegisterType.CREDENTIALS]
         return {
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -214,7 +235,8 @@ def google_login(token_data: dict, db: Session = Depends(get_session)):
             "user_id": str(user.user_id),
             "email": user.email,
             "full_name": user.full_name or "User",
-            "role": getattr(user.role, 'value', user.role) # Lấy đúng string role
+            "role": getattr(user.role, 'value', user.role), # Lấy đúng string role
+            "has_password": has_pass
         }
     }
     except ValueError:
@@ -240,9 +262,54 @@ def get_my_profile(
     db: Session = Depends(get_session)
 ):
     user_id = current_user.get("sub")
+    if isinstance(user_id, str):
+        try:
+            user_id = UUID(user_id)
+        except ValueError:
+            pass
     
     # 1. Tìm user trong bảng chính
     user = crud_user.get_user_by_id(db, user_id=user_id) 
+    if not user:
+        # Check if this is a Supabase social user token that needs to be synchronized
+        email = current_user.get("email")
+        if email and user_id:
+            try:
+                # Avoid duplicate email in database
+                user = crud_auth.get_user_by_email(db, email=email)
+                if not user:
+                    full_name = current_user.get("user_metadata", {}).get("full_name") or current_user.get("name") or "Google User"
+                    # Create user directly using the same UUID from Supabase
+                    user = Users(
+                        user_id=user_id,
+                        full_name=full_name,
+                        email=email,
+                        passwordhash=security.get_password_hash(secrets.token_urlsafe(32)),
+                        social_id=str(user_id),
+                        register_type=RegisterType.SOCIAL,
+                        role=UserRole.USER,
+                        status=UserStatus.ACTIVE
+                    )
+                    db.add(user)
+                    db.commit()
+                    db.refresh(user)
+
+                    # Create profile corresponding to user
+                    from datetime import date
+                    from models import UserProfiles
+                    profile = UserProfiles(
+                        user_id=user.user_id,
+                        full_name=user.full_name,
+                        date_of_birth=date(1990, 1, 1),
+                        gender="OTHER"
+                    )
+                    db.add(profile)
+                    db.commit()
+                    db.refresh(user)
+            except Exception as e:
+                print(f"[!] Error auto-creating social user: {e}")
+                raise HTTPException(status_code=401, detail="Không thể đồng bộ tài khoản Google với hệ thống")
+
     if not user:
         raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
     if user.status != UserStatus.ACTIVE:
@@ -282,12 +349,14 @@ def get_my_profile(
             }
 
     # 3. Trả về cấu trúc bọc trong key "user" GIỐNG HỆT với API /login
+    has_pass = user.register_type in [RegisterType.EMAIL, RegisterType.CREDENTIALS]
     return {
         "user": {
             "user_id": str(user.user_id),
             "email": user.email,
             "full_name": user.full_name or "Khách hàng",
             "role": user_role_str,
+            "has_password": has_pass,
             **profile_data  # Trải phẳng dữ liệu (bio, location, business_name...) ra đây
         }
     }
@@ -370,3 +439,42 @@ def reset_password(req: ResetPasswordReq, db: Session = Depends(get_session)):
     del otp_storage[req.email]
 
     return {"message": "Đổi mật khẩu thành công! Bạn có thể đăng nhập ngay bây giờ."}
+
+@router.post("/update-password")
+def update_password(
+    data: dict,
+    current_user: dict = Depends(security.verify_token),
+    db: Session = Depends(get_session)
+):
+    user_id = current_user.get("sub")
+    if isinstance(user_id, str):
+        try:
+            user_id = UUID(user_id)
+        except ValueError:
+            pass
+    user = crud_user.get_user_by_id(db, user_id=user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
+
+    has_pass = user.register_type in [RegisterType.EMAIL, RegisterType.CREDENTIALS]
+
+    new_password = data.get("new_password")
+    if not new_password or len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Mật khẩu mới phải có ít nhất 8 ký tự")
+
+    if has_pass:
+        old_password = data.get("old_password")
+        if not old_password:
+            raise HTTPException(status_code=400, detail="Vui lòng cung cấp mật khẩu hiện tại")
+        if not security.verify_password(old_password, user.passwordhash):
+            raise HTTPException(status_code=400, detail="Mật khẩu hiện tại không chính xác")
+
+    # Cập nhật password
+    user.passwordhash = security.get_password_hash(new_password)
+    user.register_type = RegisterType.EMAIL
+    user.update_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return {"message": "Cập nhật mật khẩu thành công!"}

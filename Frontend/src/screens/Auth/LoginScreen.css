@@ -317,3 +317,26 @@
 .reset-submit-btn {
     background-color: #22c55e;
 }
+
+/* Error Dialog variant */
+.auth-success-dialog.error {
+    background: #fff5f5;
+    border-color: #e53e3e;
+    box-shadow: 0 8px 0 #e53e3e;
+    color: #9b2c2c;
+}
+
+.auth-success-dialog.error .auth-success-close {
+    border-color: #e53e3e;
+    color: #e53e3e;
+    box-shadow: 0 2px 0 #e53e3e;
+}
+
+.auth-success-dialog.error .auth-success-icon {
+    border-color: #e53e3e;
+    box-shadow: 0 4px 0 #e53e3e;
+}
+
+.auth-success-dialog.error p {
+    color: #c53030;
+}

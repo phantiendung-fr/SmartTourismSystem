@@ -56,6 +56,7 @@ class UserCreate(BaseModel):
     contact_person: Optional[str] = Field(default=None, max_length=255)
     contact_email: Optional[EmailStr] = Field(default=None, max_length=50)
     contact_phone: Optional[str] = Field(default=None, max_length=10, pattern=r"^\d{10}$")
+    user_id: Optional[UUID] = None
 
 
 

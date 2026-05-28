@@ -76,12 +76,13 @@ def create_user(
     register_type: RegisterType = RegisterType.EMAIL,
     role: UserRole = UserRole.USER,
     status: UserStatus = UserStatus.PENDING,
+    user_id: Optional[UUID] = None,
 ) -> Users:
     """
     Tạo tài khoản mới và lưu vào bảng ``users``.
 
     - Hash plain-text password trước khi lưu.
-    - Tự động sinh ``user_id`` (UUID v4), ``create_at``, ``update_at``.
+    - Tự động sinh ``user_id`` (UUID v4) nếu không truyền vào, ``create_at``, ``update_at``.
 
     Parameters
     ----------
@@ -90,7 +91,7 @@ def create_user(
     """
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     db_user = Users(
-        user_id=uuid4(),
+        user_id=user_id or uuid4(),
         full_name=full_name,
         email=email,
         passwordhash=get_password_hash(password),
@@ -418,14 +419,16 @@ def update_user_kyc_status(
 # Tạo User từ Đăng nhập Google/Facebook 
 # ---------------------------------------------------------------------------
 def create_social_user(db: Session, full_name: str, email: str, social_id: str, register_type: str):
+    import secrets
+    from core.security import get_password_hash
     db_user = Users(
         full_name=full_name,
         email=email,
+        passwordhash=get_password_hash(secrets.token_urlsafe(32)),
         social_id=social_id,
         register_type=register_type,
         role=UserRole.USER,        
         status=UserStatus.ACTIVE   
-
     )
     db.add(db_user)
     db.commit()

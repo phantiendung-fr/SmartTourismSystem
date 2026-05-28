@@ -19,7 +19,7 @@ import TripDetailScreen from './screens/Trip/TripDetailScreen';
 import LocationDetailScreen from './screens/Trip/LocationDetailScreen';
 import AdminModerationScreen from './screens/AdminModerationScreen';
 import { API_BASE } from './config/api';
-import { storageGet, storageRemove } from './platform/storage';
+import { storageGet, storageRemove, storageSet } from './platform/storage';
 import { showConfirm } from './platform/dialog';
 
 import { SocialQuestProvider } from './components/SocialQuest/SocialQuestProvider';
@@ -37,6 +37,18 @@ const EXIT_GUARD_SCREENS = new Set([
     'profile_edit',
     'register_location',
 ]);
+
+const parseHashParams = (hash) => {
+    if (!hash) return {};
+    const params = {};
+    const hashString = hash.startsWith('#') ? hash.substring(1) : hash;
+    const pairs = hashString.split('&');
+    for (let pair of pairs) {
+        const [key, value] = pair.split('=');
+        if (key) params[decodeURIComponent(key)] = decodeURIComponent(value || '');
+    }
+    return params;
+};
 
 function App() {
     const [currentScreen, setCurrentScreen] = useState('splash');
@@ -171,6 +183,57 @@ function App() {
             fetchUserData();
         }
     }, [currentScreen, navigateTo]);
+
+    useEffect(() => {
+        const handleHashChange = async () => {
+            const hash = window.location.hash;
+            if (!hash) return;
+
+            const params = parseHashParams(hash);
+
+            // 1. Nếu là link khôi phục mật khẩu (chứa type=recovery)
+            if (params.type === 'recovery' || hash.includes('type=recovery')) {
+                navigateTo('forgot_password', { resetHistory: true });
+                return;
+            }
+
+            // 2. Nếu là Google/OAuth redirect (chứa access_token và không có type=recovery)
+            if (params.access_token) {
+                const accessToken = params.access_token;
+                const refreshToken = params.refresh_token;
+
+                // Lưu token vào storage
+                await Promise.all([
+                    storageSet('access_token', accessToken),
+                    storageSet('refresh_token', refreshToken),
+                ]);
+
+                // Xóa hash trên URL
+                window.location.hash = '';
+
+                // Gọi API /me để lấy thông tin chi tiết user
+                try {
+                    const res = await fetch(`${API_BASE}/api/auth/me`, {
+                        headers: { Authorization: `Bearer ${accessToken}` },
+                    });
+                    if (res.ok) {
+                        const userData = await res.json();
+                        setIsGuest(false);
+                        setCurrentUser(userData);
+                        navigateTo('main', { resetHistory: true });
+                    } else {
+                        console.error('Lỗi khi lấy thông tin user sau Google OAuth:', res.status);
+                    }
+                } catch (error) {
+                    console.error('Lỗi kết nối khi lấy thông tin user:', error);
+                }
+            }
+        };
+
+        handleHashChange();
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
+    }, [navigateTo, setIsGuest, setCurrentUser]);
 
     useEffect(() => {
         if (!Capacitor.isNativePlatform()) return undefined;

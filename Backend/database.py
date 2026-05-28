@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 # pyrefly: ignore [missing-import]
 from sqlalchemy import event
 # pyrefly: ignore [missing-import]
+from sqlalchemy.pool import NullPool
 from sqlmodel import Session, SQLModel, create_engine
 
 load_dotenv()
@@ -34,14 +35,14 @@ if ("supabase.co" in DATABASE_URL or "supabase.com" in DATABASE_URL) and "sslmod
 engine = create_engine(
     DATABASE_URL,
     echo=os.getenv("DB_ECHO", "false").lower() == "true",
-    pool_size=10,
-    max_overflow=20,
-    pool_pre_ping=True,     # Re-check connections before use
-    pool_recycle=1800,      # Recycle every 30 min (avoid idle timeout)
+    poolclass=NullPool,
     connect_args={
-        # Required by Supabase / cloud PostgreSQL providers
-        "sslmode": "require",
-    } if ("supabase.co" in DATABASE_URL or "supabase.com" in DATABASE_URL) else {},
+        "connect_timeout": 10,
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5
+    }
 )
 
 

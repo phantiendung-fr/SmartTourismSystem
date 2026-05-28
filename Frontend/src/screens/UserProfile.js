@@ -16,6 +16,10 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
     // Biến kiểm soát chế độ Xem hay Sửa
     const [isEditing, setIsEditing] = useState(false);
 
+    const [oldPassword, setOldPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+
     useEffect(() => {
         if (userInfo) {
             setProfileData(isEnterprise ? {
@@ -82,8 +86,49 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
 
     const handleSaveProfile = async (e) => {
         e.preventDefault();
+
+        if (newPassword) {
+            if (newPassword.length < 8) {
+                void showAlert('Mật khẩu mới phải có ít nhất 8 ký tự.');
+                return;
+            }
+            if (newPassword !== confirmNewPassword) {
+                void showAlert('Xác nhận mật khẩu mới không khớp.');
+                return;
+            }
+            if (userInfo?.has_password && !oldPassword) {
+                void showAlert('Vui lòng nhập mật khẩu hiện tại.');
+                return;
+            }
+        }
+
         try {
             const token = await storageGet('access_token');
+            let passwordUpdated = false;
+
+            // 1. Cập nhật mật khẩu trước nếu người dùng có điền mật khẩu mới
+            if (newPassword) {
+                const passResponse = await fetch(`${API_BASE}/api/auth/update-password`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        old_password: oldPassword || undefined,
+                        new_password: newPassword
+                    })
+                });
+
+                if (!passResponse.ok) {
+                    const passError = await passResponse.json();
+                    void showAlert('Lỗi cập nhật mật khẩu: ' + (passError.detail || 'Không xác định'));
+                    return;
+                }
+                passwordUpdated = true;
+            }
+
+            // 2. Cập nhật thông tin profile
             const response = await fetch(`${API_BASE}/api/auth/update-profile`, {
                 method: 'PUT',
                 headers: {
@@ -96,9 +141,15 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
             if (response.ok) {
                 const resData = await response.json();
                 void showAlert('Cập nhật hồ sơ thành công!');
-                setIsEditing(false); // Thành công thì khóa form lại (Chế độ xem)
+                setIsEditing(false); // Thành công thì khóa form lại
+                setOldPassword('');
+                setNewPassword('');
+                setConfirmNewPassword('');
                 if (onUpdateSuccess) {
-                    onUpdateSuccess(resData.user || profileData);
+                    onUpdateSuccess({
+                        ...(resData.user || profileData),
+                        has_password: userInfo?.has_password || passwordUpdated
+                    });
                 }
             } else {
                 const errorData = await response.json();
@@ -259,6 +310,71 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
                         </div>
                         {renderRow("Giới thiệu bản thân (Bio)", profileData.bio, "bio", "textarea")}
                     </>
+                )}
+
+                {/* --- PHẦN BẢO MẬT & MẬT KHẨU --- */}
+                <div className="user-profile-section-divider"></div>
+                <h3 className="user-profile-section-title">
+                    {userInfo?.has_password ? "Thay đổi mật khẩu" : "Thiết lập mật khẩu đăng nhập"}
+                </h3>
+
+                {isEditing ? (
+                    <div className="user-profile-password-fields" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {userInfo?.has_password && (
+                            <div className="user-profile-field">
+                                <label>Mật khẩu hiện tại</label>
+                                <input
+                                    type="password"
+                                    placeholder="Nhập mật khẩu hiện tại"
+                                    value={oldPassword}
+                                    onChange={(e) => setOldPassword(e.target.value)}
+                                />
+                            </div>
+                        )}
+                        <div className="user-profile-field">
+                            <label>{userInfo?.has_password ? "Mật khẩu mới" : "Mật khẩu"}</label>
+                            <input
+                                type="password"
+                                placeholder={userInfo?.has_password ? "Nhập mật khẩu mới" : "Thiết lập mật khẩu"}
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                            />
+                        </div>
+                        <div className="user-profile-field">
+                            <label>{userInfo?.has_password ? "Xác nhận mật khẩu mới" : "Xác nhận mật khẩu"}</label>
+                            <input
+                                type="password"
+                                placeholder={userInfo?.has_password ? "Xác nhận lại mật khẩu mới" : "Xác nhận lại mật khẩu"}
+                                value={confirmNewPassword}
+                                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="user-profile-field">
+                        <label>Mật khẩu</label>
+                        <div className="view-value" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', boxSizing: 'border-box' }}>
+                            <span>{userInfo?.has_password ? "•••••••• (Đã thiết lập)" : "Chưa thiết lập (Đăng nhập qua Google)"}</span>
+                            <button
+                                type="button"
+                                onClick={() => setIsEditing(true)}
+                                style={{
+                                    background: '#1e90ff',
+                                    color: '#ffffff',
+                                    border: '1.5px solid #2c3e50',
+                                    borderRadius: '8px',
+                                    padding: '4px 10px',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 2px 0 #2c3e50',
+                                    marginLeft: '10px'
+                                }}
+                            >
+                                {userInfo?.has_password ? "Đổi mật khẩu" : "Thêm mật khẩu"}
+                            </button>
+                        </div>
+                    </div>
                 )}
 
                 {/* Các nút bấm chỉ hiện khi ở chế độ Edit */}

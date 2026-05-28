@@ -1,46 +1,155 @@
 import React, { useState } from 'react';
-import { authService } from '../../services/authService';
+import { supabase } from '../../lib/supabase';
+import { API_BASE } from '../../config/api';
+import axios from 'axios';
 import { ArrowLeft, User, Building2, CheckCircle, Clock, LogIn, X } from 'lucide-react';
+import { showAlert } from '../../platform/dialog';
 import './LoginScreen.css';
 
 const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
-    // 1. Thêm trường 'role' vào formData, mặc định là 'USER' (Cá nhân)
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
         password: '',
+        confirmPassword: '',
         role: 'USER',
         businessName: '',
         contactPerson: '',
         contactEmail: '',
         contactPhone: '',
     });
-    const [message, setMessage] = useState('');
-    const [isError, setIsError] = useState(false);
     const [registerNotice, setRegisterNotice] = useState(null);
     const isEnterprise = formData.role === 'ENTERPRISE';
 
+    const translateError = (msg) => {
+        const m = msg.toLowerCase();
+        if (m.includes('invalid login credentials')) return 'Email hoặc mật khẩu không chính xác.';
+        if (m.includes('user already registered') || m.includes('already been registered') || m.includes('đã được đăng ký')) return 'Email này đã được đăng ký bởi người khác.';
+        if (m.includes('password should be at least 6 characters') || m.includes('at least 8 characters') || m.includes('tối thiểu 8 ký tự')) return 'Mật khẩu phải có ít nhất 8 ký tự.';
+        if (m.includes('email not confirmed')) return 'Vui lòng xác thực email của bạn trước khi đăng nhập.';
+        if (m.includes('signup disabled')) return 'Tính năng đăng ký hiện đang tạm đóng.';
+        if (m.includes('too many requests') || m.includes('rate limit')) return 'Yêu cầu quá nhanh, vui lòng thử lại sau ít phút.';
+        if (m.includes('for security purposes, you can only request this once every')) return 'Vui lòng đợi một lát trước khi yêu cầu lại email mới.';
+        if (m.includes('network error') || m.includes('failed to fetch') || m.includes('err_connection_refused')) return 'Không thể kết nối đến máy chủ Backend (Port 8000). Vui lòng kiểm tra lại.';
+        if (m.includes('user not found')) return 'Không tìm thấy người dùng với email này.';
+        if (m.includes('invalid email') || m.includes('không tồn tại hoặc không thể nhận thư')) return 'Địa chỉ email không tồn tại hoặc không hợp lệ.';
+        return msg;
+    };
+
+    const handleSocialRegister = async (provider) => {
+        try {
+            const { error: oAuthError } = await supabase.auth.signInWithOAuth({
+                provider,
+                options: { redirectTo: window.location.origin }
+            });
+            if (oAuthError) throw oAuthError;
+        } catch (err) {
+            const errMsg = translateError(err.message || 'Lỗi đăng ký Google/Facebook');
+            void showAlert(errMsg, { title: 'Lỗi đăng ký' });
+        }
+    };
+
     const handleRegister = async (e) => {
         e.preventDefault();
-        setMessage('');
         setRegisterNotice(null);
+
+        const emailTrimmed = formData.email.trim();
+        const fullNameTrimmed = formData.fullName.trim();
+        const passwordTrimmed = formData.password.trim();
+
+        // 1. Validations
+        if (!fullNameTrimmed) {
+            void showAlert("Vui lòng nhập họ và tên.", { title: 'Thông báo' });
+            return;
+        }
+        if (!emailTrimmed) {
+            void showAlert("Vui lòng nhập email.", { title: 'Thông báo' });
+            return;
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(emailTrimmed)) {
+            void showAlert("Định dạng email không hợp lệ.", { title: 'Thông báo' });
+            return;
+        }
+        if (!passwordTrimmed) {
+            void showAlert("Vui lòng nhập mật khẩu.", { title: 'Thông báo' });
+            return;
+        }
+        if (passwordTrimmed.length < 8) {
+            void showAlert("Mật khẩu phải có ít nhất 8 ký tự.", { title: 'Thông báo' });
+            return;
+        }
+        const confirmPasswordTrimmed = (formData.confirmPassword || '').trim();
+        if (!confirmPasswordTrimmed) {
+            void showAlert("Vui lòng xác nhận mật khẩu.", { title: 'Thông báo' });
+            return;
+        }
+        if (passwordTrimmed !== confirmPasswordTrimmed) {
+            void showAlert("Mật khẩu xác nhận không khớp.", { title: 'Thông báo' });
+            return;
+        }
+
         try {
+            // 2. Kiểm tra email đã tồn tại trong Backend chưa
+            try {
+                const checkRes = await axios.get(`${API_BASE}/api/auth/check-email?email=${emailTrimmed}`);
+                if (checkRes.data.exists) {
+                    throw new Error('Email này đã được đăng ký bởi người khác.');
+                }
+            } catch (err) {
+                if (err.response?.data?.detail) {
+                    throw new Error(err.response.data.detail);
+                } else if (err.message.includes('đăng ký bởi người khác')) {
+                    throw err;
+                } else {
+                    throw new Error("Không thể kết nối đến máy chủ Backend (Port 8000). Vui lòng kiểm tra lại.");
+                }
+            }
+
+            // 3. Tiến hành đăng ký bằng Supabase Auth
+            const { data, error: signupError } = await supabase.auth.signUp({
+                email: emailTrimmed,
+                password: passwordTrimmed,
+                options: {
+                    emailRedirectTo: window.location.origin,
+                    data: {
+                        full_name: fullNameTrimmed,
+                        role: formData.role
+                    }
+                }
+            });
+
+            if (signupError) throw signupError;
+            if (!data.user) throw new Error("Đăng ký Supabase thất bại");
+
+            // 4. Đồng bộ dữ liệu sang Backend thông qua API /register
             const enterpriseProfile = isEnterprise ? {
                 business_name: formData.businessName.trim(),
-                contact_person: (formData.contactPerson || formData.fullName).trim(),
-                contact_email: (formData.contactEmail || formData.email).trim(),
+                contact_person: (formData.contactPerson || fullNameTrimmed).trim(),
+                contact_email: (formData.contactEmail || emailTrimmed).trim(),
                 contact_phone: formData.contactPhone.trim(),
             } : null;
 
-            // 2. Truyền thêm formData.role vào hàm gọi API
-            await authService.register(
-                formData.fullName,
-                formData.email,
-                formData.password,
-                formData.role,
-                enterpriseProfile
-            );
-            setIsError(false);
+            const backendPayload = {
+                email: emailTrimmed,
+                password: passwordTrimmed,
+                full_name: fullNameTrimmed,
+                role: formData.role,
+                user_id: data.user.id,
+                ...(enterpriseProfile || {})
+            };
+
+            const response = await fetch(`${API_BASE}/api/auth/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(backendPayload)
+            });
+
+            const responseData = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(responseData.detail || "Không thể đồng bộ thông tin đăng ký với máy chủ Backend.");
+            }
+
             setRegisterNotice(isEnterprise ? {
                 type: 'enterprise',
                 title: 'Đã gửi yêu cầu phê duyệt',
@@ -48,11 +157,11 @@ const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
             } : {
                 type: 'user',
                 title: 'Đăng ký thành công',
-                body: 'Tài khoản cá nhân của bạn đã sẵn sàng. Bạn có thể đăng nhập để bắt đầu hành trình.',
+                body: 'Tài khoản cá nhân của bạn đã sẵn sàng. Vui lòng kiểm tra email để kích hoạt tài khoản.',
             });
         } catch (error) {
-            setIsError(true);
-            setMessage("Lỗi: " + error.message);
+            const errMsg = translateError(error.message || 'Đăng ký thất bại');
+            void showAlert(errMsg, { title: 'Lỗi đăng ký' });
         }
     };
 
@@ -69,7 +178,7 @@ const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
 
             <h2 className="login-title">Đăng ký tài khoản</h2>
 
-            {/* 3. NÚT CHỌN LOẠI TÀI KHOẢN */}
+            {/* NÚT CHỌN LOẠI TÀI KHOẢN */}
             <div className="role-toggle-row">
                 <button 
                     type="button"
@@ -95,7 +204,11 @@ const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
                 <input className="login-input" placeholder="Email" type="email" required
                     onChange={e => setFormData({...formData, email: e.target.value})} />
                 <input className="login-input" placeholder="Mật khẩu" type="password" required
+                    value={formData.password}
                     onChange={e => setFormData({...formData, password: e.target.value})} />
+                <input className="login-input" placeholder="Xác nhận mật khẩu" type="password" required
+                    value={formData.confirmPassword}
+                    onChange={e => setFormData({...formData, confirmPassword: e.target.value})} />
                 {isEnterprise && (
                     <div className="enterprise-profile-fields">
                         <h3>Hồ sơ doanh nghiệp</h3>
@@ -136,9 +249,26 @@ const RegisterScreen = ({ onBack, onSwitchToLogin }) => {
                 <button className="login-button register-submit-btn" type="submit">
                     {isEnterprise ? 'Đăng ký tài khoản doanh nghiệp' : 'Đăng ký'}
                 </button>
+                
+                {!isEnterprise && (
+                    <div className="auth-google-row" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
+                        <button
+                            type="button"
+                            onClick={() => handleSocialRegister('google')}
+                            className="login-button"
+                            style={{ background: '#ffffff', color: '#2c3e50', border: '3px solid #2c3e50', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                        >
+                            <svg viewBox="0 0 24 24" className="w-4 h-4" style={{ width: '18px', height: '18px' }} fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
+                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                            </svg>
+                            Đồng hành với Google
+                        </button>
+                    </div>
+                )}
             </form>
-            
-            {message && <p className={`auth-register-message ${isError ? 'error' : 'success'}`}>{message}</p>}
 
             {registerNotice && (
                 <div className="auth-success-overlay" role="dialog" aria-modal="true" aria-labelledby="register-success-title">

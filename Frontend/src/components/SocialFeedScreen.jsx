@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Heart, MessageCircle, Bookmark, Send, MapPin, Flag, Image as ImageIcon, X, AlertTriangle, Plus, Smile, MoreHorizontal, Check, ArrowLeft, Trash2, ShieldAlert, Globe, Lock, Users, Locate } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Heart, MessageCircle, Bookmark, Send, MapPin, Flag, Image as ImageIcon, X, AlertTriangle, Plus, MoreHorizontal, Trash2, Locate } from 'lucide-react';
 import { API_BASE } from '../config/api';
 import { storageGet } from '../platform/storage';
 import { getCurrentPosition } from '../platform/location';
@@ -35,6 +35,7 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
 
     useEffect(() => {
         fetchPosts();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchPosts = async () => {

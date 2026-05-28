@@ -158,6 +158,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
             fetchRewards();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab]);
 
     // States for Hidden Quests
@@ -266,6 +267,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
             clearInterval(pingInterval);
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab, isGuest]);
 
     // Lấy vị trí khi chuyển sang tab Location
@@ -806,6 +808,7 @@ const LocationScreen = ({
         }, 500);
 
         return () => clearTimeout(delayDebounceFn);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchQuery]);
 
     useEffect(() => {
