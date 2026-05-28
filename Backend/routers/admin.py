@@ -106,13 +106,44 @@ def _create_location_from_submission(
     sub: models.LocationSubmissions,
     data: dict,
 ) -> models.Locations:
+    import random
+    from decimal import Decimal
+
     now = datetime.utcnow()
+    
+    # Kiểm tra xem city_id có tồn tại không để tránh ForeignKeyViolation
+    city_id = int(data.get("city_id", 1))
+    city_exists = db.exec(select(models.Cities).where(models.Cities.city_id == city_id)).first()
+    if not city_exists:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Thành phố có ID {city_id} không tồn tại. Không thể phê duyệt địa điểm này."
+        )
+    
+    # Lấy tọa độ từ yêu cầu đề xuất
+    lat = Decimal(str(data.get("latitude", 0)))
+    lon = Decimal(str(data.get("longitude", 0)))
+    
+    # Tránh trùng lặp tọa độ tuyệt đối bằng cách xê dịch nhẹ (fuzzing) nếu trùng
+    while True:
+        existing = db.exec(
+            select(models.Locations).where(
+                models.Locations.latitude == lat,
+                models.Locations.longitude == lon
+            )
+        ).first()
+        if not existing:
+            break
+        # Xê dịch khoảng 10-20m (0.0001 - 0.0002 độ)
+        lat += Decimal(str((random.random() - 0.5) * 0.0002))
+        lon += Decimal(str((random.random() - 0.5) * 0.0002))
+
     location = models.Locations(
         location_id=uuid4(),
         location_name=data.get("location_name", "").strip(),
         address=data.get("address"),
-        latitude=data.get("latitude", 0),
-        longitude=data.get("longitude", 0),
+        latitude=lat,
+        longitude=lon,
         city_id=int(data.get("city_id", 1)),
         open_time=_parse_time_value(data.get("open_time"), "08:00:00"),
         close_time=_parse_time_value(data.get("close_time"), "22:00:00"),
@@ -636,10 +667,39 @@ def approve_location_submission(
         elif sub.type == "UPDATE" and sub.location_id:
             loc = db.exec(select(models.Locations).where(models.Locations.location_id == sub.location_id)).first()
             if loc:
+                import random
+                from decimal import Decimal
+
+                # Kiểm tra xem city_id có tồn tại không để tránh ForeignKeyViolation
+                city_id = int(data.get("city_id", loc.city_id))
+                city_exists = db.exec(select(models.Cities).where(models.Cities.city_id == city_id)).first()
+                if not city_exists:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Thành phố có ID {city_id} không tồn tại. Không thể phê duyệt cập nhật địa điểm này."
+                    )
+
+                lat = Decimal(str(data.get("latitude", loc.latitude)))
+                lon = Decimal(str(data.get("longitude", loc.longitude)))
+                
+                # Tránh trùng lặp tọa độ tuyệt đối bằng cách xê dịch nhẹ (fuzzing) nếu trùng
+                while True:
+                    existing = db.exec(
+                        select(models.Locations).where(
+                            models.Locations.latitude == lat,
+                            models.Locations.longitude == lon,
+                            models.Locations.location_id != loc.location_id
+                        )
+                    ).first()
+                    if not existing:
+                        break
+                    lat += Decimal(str((random.random() - 0.5) * 0.0002))
+                    lon += Decimal(str((random.random() - 0.5) * 0.0002))
+
                 loc.location_name = data.get("location_name", loc.location_name)
                 loc.address = data.get("address", loc.address)
-                loc.latitude = data.get("latitude", loc.latitude)
-                loc.longitude = data.get("longitude", loc.longitude)
+                loc.latitude = lat
+                loc.longitude = lon
                 loc.city_id = data.get("city_id", loc.city_id)
                 if data.get("open_time"):
                     loc.open_time = _parse_time_value(data.get("open_time"), loc.open_time.strftime("%H:%M:%S"))
@@ -711,3 +771,33 @@ def reject_location_submission(
     )
     db.commit()
     return {"message": "Đã từ chối yêu cầu kiểm duyệt địa điểm."}
+
+
+@router.get("/locations")
+def get_all_locations(
+    admin: models.Users = Depends(check_admin_access),
+    db: Session = Depends(get_session)
+):
+    """Lấy danh sách toàn bộ địa điểm đã duyệt (active)"""
+    locs = db.exec(
+        select(models.Locations).order_by(models.Locations.create_at.desc())
+    ).all()
+    
+    return [
+        {
+            "location_id": str(loc.location_id),
+            "location_name": loc.location_name,
+            "address": loc.address or "Chưa có địa chỉ",
+            "latitude": float(loc.latitude),
+            "longitude": float(loc.longitude),
+            "city_id": loc.city_id,
+            "open_time": loc.open_time.isoformat() if loc.open_time else "08:00:00",
+            "close_time": loc.close_time.isoformat() if loc.close_time else "22:00:00",
+            "min_price": float(loc.min_price),
+            "max_price": float(loc.max_price),
+            "currency": getattr(loc.currency, "value", loc.currency),
+            "is_active": loc.is_active,
+            "created_at": loc.create_at,
+        }
+        for loc in locs
+    ]
