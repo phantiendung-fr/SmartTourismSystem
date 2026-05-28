@@ -184,39 +184,17 @@ async def create_enterprise_event(
             "max_scans": qr_entry.max_scans,
         }
 
-    # Phát thông báo WebSocket thời gian thực tới các người chơi ở gần trong vòng 5km
+    # Phat thong bao realtime toi tat ca player dang online.
+    # Frontend se refetch /campaigns/active de chi hien thi campaign hop le voi user.
     try:
-        from routers.social_quest import manager, player_locations
-        from core.spatial_logic import calculate_haversine_distance
-
-        evt_lat = float(new_event.latitude)
-        evt_lng = float(new_event.longitude)
+        from routers.social_quest import manager
+        campaign_message = {
+            "event": "new_campaign",
+            "data": _serialize_event(db, new_event),
+        }
 
         for user_id_str in list(manager.active_connections.keys()):
-            if user_id_str in player_locations:
-                loc = player_locations[user_id_str]
-                u_lat = float(loc.get("lat", 0))
-                u_lng = float(loc.get("lng", 0))
-
-                dist = calculate_haversine_distance(u_lat, u_lng, evt_lat, evt_lng)
-                if dist <= 5000.0:  # Bán kính gửi tin nhắn là 5km
-                    await manager.send_personal_message({
-                        "event": "new_campaign",
-                        "data": {
-                            "event_id": str(new_event.event_id),
-                            "title": new_event.title,
-                            "description": new_event.description,
-                            "quest_type": new_event.quest_type.value,
-                            "latitude": float(new_event.latitude),
-                            "longitude": float(new_event.longitude),
-                            "radius_meters": new_event.radius_meters,
-                            "reward_exp": new_event.reward_exp,
-                            "reward_coin": new_event.reward_coin,
-                            "rarity": new_event.rarity.value,
-                            "start_time": new_event.start_time.isoformat(),
-                            "end_time": new_event.end_time.isoformat()
-                        }
-                    }, user_id_str)
+            await manager.send_personal_message(campaign_message, user_id_str)
     except Exception as ws_err:
         print(f"[Realtime Campaign] Lỗi khi phát WebSocket: {ws_err}")
 

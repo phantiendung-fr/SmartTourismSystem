@@ -104,7 +104,13 @@ export const SocialQuestProvider = ({ children, user }) => {
                     void showAlert(`Nhiệm vụ bị hủy: ${reason}`);
                     resetQuest();
                 } 
-                else if (eventName === 'error') {
+                else if (eventName === 'new_campaign') {
+
+                    window.dispatchEvent(new CustomEvent('new_campaign', { detail: data }));
+
+                }
+
+                else if (eventName === 'error') {
                     setQuestMessage(message);
                 }
             } catch (err) {
