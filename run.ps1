@@ -58,11 +58,11 @@ Stop-ProcessOnPort 8000
 # 3. Parallel process execution
 if (Get-Command wt -ErrorAction SilentlyContinue) {
     Write-Host "SUCCESS: Windows Terminal detected. Launching split panes..."
-    wt -w 0 nt --title "Backend" -d "$PSScriptRoot\Backend" powershell -NoExit -Command "python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload" `; split-pane -V --title "Frontend" -d "$PSScriptRoot\Frontend" powershell -NoExit -Command "npm start"
+    wt -w 0 nt --title "Backend" -d "$PSScriptRoot\Backend" powershell -NoExit -Command "python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload" `; split-pane -V --title "Frontend" -d "$PSScriptRoot\Frontend" powershell -NoExit -Command "`$env:BROWSER='none'; npm start"
 } else {
     Write-Host "WARNING: Windows Terminal not found. Launching in separate windows..."
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot\Backend'; python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot\Frontend'; npm start"
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot\Frontend'; `$env:BROWSER='none'; npm start"
 }
 
 # 4. Wait for both servers to be online
