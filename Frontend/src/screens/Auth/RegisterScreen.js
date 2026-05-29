@@ -34,7 +34,7 @@ const RegisterScreen = ({ onBack, onSwitchToLogin, onRegisterSuccess }) => {
         if (m.includes('for security purposes, you can only request this once every')) return 'Vui lòng đợi một lát trước khi yêu cầu lại email mới.';
         if (m.includes('network error') || m.includes('failed to fetch') || m.includes('err_connection_refused')) return 'Không thể kết nối đến máy chủ Backend (Port 8000). Vui lòng kiểm tra lại.';
         if (m.includes('user not found')) return 'Không tìm thấy người dùng với email này.';
-        if (m.includes('invalid email') || m.includes('không tồn tại hoặc không thể nhận thư')) return 'Địa chỉ email không tồn tại hoặc không hợp lệ.';
+        if ((m.includes('invalid') && m.includes('email')) || m.includes('không tồn tại hoặc không thể nhận thư')) return 'Địa chỉ email không tồn tại hoặc định dạng không hợp lệ.';
         return msg;
     };
 
