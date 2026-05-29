@@ -1,4 +1,5 @@
 import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 
 class SoundManager {
     constructor() {
@@ -43,16 +44,18 @@ class SoundManager {
         });
 
         // Lắng nghe sự kiện Capacitor App khi chuyển background/foreground trên mobile
-        try {
-            App.addListener('appStateChange', ({ isActive }) => {
-                if (isActive) {
-                    this.handleAppForeground();
-                } else {
-                    this.handleAppBackground();
-                }
-            });
-        } catch (e) {
-            console.warn('Capacitor App plugin not fully loaded', e);
+        if (Capacitor.isNativePlatform()) {
+            try {
+                App.addListener('appStateChange', ({ isActive }) => {
+                    if (isActive) {
+                        this.handleAppForeground();
+                    } else {
+                        this.handleAppBackground();
+                    }
+                });
+            } catch (e) {
+                console.warn('Capacitor App plugin not fully loaded', e);
+            }
         }
     }
 
