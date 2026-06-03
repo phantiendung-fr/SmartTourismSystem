@@ -77,4 +77,15 @@ export const enterpriseService = {
         if (!response.ok) throw new Error(data.detail || 'Lỗi tạo voucher');
         return data;
     },
+
+    deleteEnterpriseVoucher: async (voucherId) => {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_BASE}/api/vouchers/${voucherId}`, {
+            method: 'DELETE',
+            headers
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.detail || 'Lỗi xóa voucher');
+        return data;
+    },
 };

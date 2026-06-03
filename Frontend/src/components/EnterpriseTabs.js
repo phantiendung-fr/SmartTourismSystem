@@ -280,6 +280,24 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister }) => {
         }
     };
 
+
+    const handleDeleteVoucher = async (voucherId) => {
+        if (!window.confirm("Bạn có chắc chắn muốn xóa voucher này không? Những người dùng đã đổi vẫn có thể sử dụng.")) return;
+        setActionLoading(true);
+        setError('');
+        setMessage('');
+        try {
+            await enterpriseService.deleteEnterpriseVoucher(voucherId);
+            setMessage('Đã xóa voucher thành công.');
+            await loadVouchers();
+        } catch (err) {
+            setError(err.message || 'Không thể xóa voucher.');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+
     const handleProfileSave = async (event) => {
         event.preventDefault();
         setActionLoading(true);
@@ -654,6 +672,18 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister }) => {
                                     <span style={{fontSize: '11px'}}>Kho: {voucher.remaining_quantity}/{voucher.quantity}</span>
                                 </div>
                             </div>
+
+                            {voucher.status === 'ACTIVE' && (
+                                <button 
+                                    type="button" 
+                                    className="enterprise-danger-btn"
+                                    style={{ padding: '6px', minHeight: 'auto', flexShrink: 0 }}
+                                    disabled={actionLoading} 
+                                    onClick={() => handleDeleteVoucher(voucher.voucher_id)}
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            )}
                         </article>
                     ))}
                 </div>

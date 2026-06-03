@@ -92,16 +92,26 @@ const VoucherWallet = () => {
                                         Mã: <b style={{color: '#e67e22'}}>{item.voucher.code}</b> | HSD: <b>{new Date(item.voucher.end_date).toLocaleDateString('vi-VN')}</b>
                                     </div>
                                     
-                                    {/* Nút bấm giữ nguyên */}
-                                    <button 
-                                        className="squishy-btn yellow voucher-btn"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setSelectedMyVoucher(item);
-                                        }}
-                                    >
-                                        Sử dụng
-                                    </button>
+                                    {/* So sánh chuỗi ngày YYYY-MM-DD để xác định đã tới hạn chưa */}
+                                    {new Date().toISOString().split('T')[0] < item.voucher.start_date ? (
+                                        <button 
+                                            className="squishy-btn bg-slate-400 voucher-btn"
+                                            style={{ cursor: 'not-allowed' }}
+                                            disabled
+                                        >
+                                            Chưa tới hạn
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            className="squishy-btn yellow voucher-btn"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedMyVoucher(item);
+                                            }}
+                                        >
+                                            Sử dụng
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}

@@ -129,3 +129,14 @@ def use_voucher_endpoint(
 ):
     """Sử dụng voucher trong ví"""
     return crud_voucher.use_voucher(db, user_id, user_voucher_id)
+
+
+@router.delete("/{voucher_id}")
+def delete_voucher_endpoint(
+    voucher_id: UUID,
+    db: Session = Depends(get_session),
+    current_user: dict = Depends(verify_token)
+):
+    """Xóa (vô hiệu hóa) voucher của doanh nghiệp"""
+    user_id = UUID(str(current_user.get("sub")))
+    return crud_voucher.delete_voucher(db, voucher_id, user_id)

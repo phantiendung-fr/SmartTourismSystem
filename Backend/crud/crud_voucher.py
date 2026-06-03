@@ -187,6 +187,13 @@ def use_voucher(db: Session, user_id: UUID, user_voucher_id: UUID):
     if not user_voucher:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy voucher trong ví.")
         
+    voucher = db.get(Vouchers, user_voucher.voucher_id)
+    if datetime.utcnow().date() < voucher.start_date:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"Voucher chỉ được sử dụng từ ngày {voucher.start_date.strftime('%d/%m/%Y')}."
+        )
+    
     if user_voucher.user_id != user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Không có quyền truy cập.")
         
@@ -216,3 +223,23 @@ def get_vouchers_by_enterprise(db: Session, enterprise_id: UUID):
     """Lấy danh sách voucher do một doanh nghiệp cụ thể tạo"""
     statement = select(Vouchers).where(Vouchers.business_id == enterprise_id).order_by(Vouchers.created_at.desc())
     return db.exec(statement).all()
+
+
+def delete_voucher(db: Session, voucher_id: UUID, user_id: UUID):
+    """Doanh nghiệp vô hiệu hóa voucher (Soft Delete)"""
+    from models import EnterpriseProfiles
+    from sqlmodel import select
+    
+    ent = db.exec(select(EnterpriseProfiles).where(EnterpriseProfiles.user_id == user_id)).first()
+    if not ent:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Không có quyền truy cập.")
+        
+    voucher = db.get(Vouchers, voucher_id)
+    if not voucher or voucher.business_id != ent.enterprise_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không tìm thấy voucher.")
+        
+    # Chuyển trạng thái thành DISABLED để ẩn đi, nhưng không làm lỗi data những người đã nhận
+    voucher.status = VoucherStatusEnum.DISABLED
+    db.add(voucher)
+    db.commit()
+    return {"message": "Đã xóa voucher thành công."}
