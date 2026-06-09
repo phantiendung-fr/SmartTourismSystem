@@ -202,7 +202,7 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
 
     try {
       if (task.task_type === 'PHOTO') {
-        if (!imageFile || (!latitude && !task.target_latitude) || !progressId) {
+        if (!imageFile || latitude === null || longitude === null || !progressId) {
           throw new Error('Vui lòng chụp ảnh và đợi GPS ổn định trước khi gửi.');
         }
         const token = await storageGet('access_token');
@@ -210,8 +210,8 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
 
         const formData = new FormData();
         formData.append('progress_id', progressId);
-        formData.append('latitude', (latitude || task.target_latitude).toString());
-        formData.append('longitude', (longitude || task.target_longitude).toString());
+        formData.append('latitude', latitude.toString());
+        formData.append('longitude', longitude.toString());
         formData.append('photo', imageFile);
 
         const response = await fetch(`${API_BASE}/api/gamification/submissions/submit-photo`, {
@@ -289,9 +289,7 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
     }
   };
 
-  // TẠM THỜI MỞ KHOÁ CAMERA (TEST MODE)
-  // const isWithinRadius = distance !== null && distance <= task.radius_meters;
-  const isWithinRadius = true;
+  const isWithinRadius = distance !== null && distance <= task.radius_meters;
 
   return (
     <div className="task-detail-screen-gami">
