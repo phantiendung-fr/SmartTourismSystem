@@ -106,26 +106,65 @@ function App() {
                 }
                 
                 if (permStatus.display === 'granted') {
+                    // Tạo Notification Channel (Yêu cầu cho Android 8.0+)
+                    await LocalNotifications.createChannel({
+                        id: 'daily_tasks',
+                        name: 'Nhiệm vụ hằng ngày',
+                        description: 'Thông báo khi nhiệm vụ được làm mới',
+                        importance: 5, // 5 = High
+                        visibility: 1, // 1 = Public
+                    });
+
                     // Huỷ bỏ lịch cũ để tránh trùng lặp
                     const pending = await LocalNotifications.getPending();
                     if (pending.notifications.find(n => n.id === 1)) {
                         await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
                     }
                     
-                    // Lên lịch mới lúc 0h00
+                    const notificationObj = {
+                        id: 1,
+                        title: "Nhiệm vụ hằng ngày đã được làm mới!",
+                        body: "Vào ứng dụng ngay để hoàn thành nhiệm vụ và nhận điểm thưởng nhé.",
+                        channelId: 'daily_tasks',
+                        schedule: { 
+                            on: { hour: 0, minute: 0 },
+                            allowWhileIdle: true,
+                            repeats: true
+                        },
+                    };
+
+                    try {
+                        // Thử lên lịch với allowWhileIdle (cần quyền SCHEDULE_EXACT_ALARM trên Android 14+)
+                        await LocalNotifications.schedule({ notifications: [notificationObj] });
+                    } catch (scheduleError) {
+                        console.warn('Không thể lên lịch với allowWhileIdle, thử lại không có allowWhileIdle:', scheduleError);
+                        // Fallback: Lên lịch không có allowWhileIdle nếu quyền bị từ chối
+                        notificationObj.schedule.allowWhileIdle = false;
+                        await LocalNotifications.schedule({ notifications: [notificationObj] });
+                    }
+
+                    // --- TEST NOTIFICATION ---
+                    // Đặt một thông báo test sau 10 giây để kiểm tra ngay lập tức
+                    const testPending = await LocalNotifications.getPending();
+                    if (testPending.notifications.find(n => n.id === 999)) {
+                        await LocalNotifications.cancel({ notifications: [{ id: 999 }] });
+                    }
+                    
                     await LocalNotifications.schedule({
                         notifications: [
                             {
-                                id: 1,
-                                title: "Nhiệm vụ hằng ngày đã được làm mới!",
-                                body: "Vào ứng dụng ngay để hoàn thành nhiệm vụ và nhận điểm thưởng nhé.",
+                                id: 999,
+                                title: "Thông báo Test!",
+                                body: "Hệ thống thông báo đang hoạt động tốt trên thiết bị của bạn.",
+                                channelId: 'daily_tasks',
                                 schedule: { 
-                                    on: { hour: 0, minute: 0 },
-                                    allowWhileIdle: true
-                                },
+                                    at: new Date(Date.now() + 1000 * 10), // 10 giây kể từ bây giờ
+                                    allowWhileIdle: true 
+                                }
                             }
                         ]
                     });
+                    // --- KẾT THÚC TEST ---
                 }
             } catch (error) {
                 console.warn('Lỗi khi thiết lập thông báo:', error);
