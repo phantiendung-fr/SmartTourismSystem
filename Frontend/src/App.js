@@ -97,6 +97,9 @@ function App() {
 
     // Thiết lập thông báo hằng ngày lúc 0h
     useEffect(() => {
+        // Chỉ thiết lập và xin quyền thông báo khi người dùng đã vào màn hình chính (đã đăng nhập hoặc khách)
+        if (currentScreen !== 'main') return;
+
         const setupDailyNotifications = async () => {
             if (!Capacitor.isNativePlatform()) return;
             try {
@@ -142,36 +145,13 @@ function App() {
                         notificationObj.schedule.allowWhileIdle = false;
                         await LocalNotifications.schedule({ notifications: [notificationObj] });
                     }
-
-                    // --- TEST NOTIFICATION ---
-                    // Đặt một thông báo test sau 10 giây để kiểm tra ngay lập tức
-                    const testPending = await LocalNotifications.getPending();
-                    if (testPending.notifications.find(n => n.id === 999)) {
-                        await LocalNotifications.cancel({ notifications: [{ id: 999 }] });
-                    }
-
-                    await LocalNotifications.schedule({
-                        notifications: [
-                            {
-                                id: 999,
-                                title: "Thông báo Test!",
-                                body: "Hệ thống thông báo đang hoạt động tốt trên thiết bị của bạn.",
-                                channelId: 'daily_tasks',
-                                schedule: {
-                                    at: new Date(Date.now() + 1000 * 10), // 10 giây kể từ bây giờ
-                                    allowWhileIdle: true
-                                }
-                            }
-                        ]
-                    });
-                    // --- KẾT THÚC TEST ---
                 }
             } catch (error) {
                 console.warn('Lỗi khi thiết lập thông báo:', error);
             }
         };
         setupDailyNotifications();
-    }, []);
+    }, [currentScreen]);
 
     useEffect(() => {
         const handleGlobalClick = (e) => {
