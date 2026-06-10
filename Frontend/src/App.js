@@ -104,7 +104,7 @@ function App() {
                 if (permStatus.display !== 'granted') {
                     permStatus = await LocalNotifications.requestPermissions();
                 }
-                
+
                 if (permStatus.display === 'granted') {
                     // Tạo Notification Channel (Yêu cầu cho Android 8.0+)
                     await LocalNotifications.createChannel({
@@ -120,13 +120,13 @@ function App() {
                     if (pending.notifications.find(n => n.id === 1)) {
                         await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
                     }
-                    
+
                     const notificationObj = {
                         id: 1,
                         title: "Nhiệm vụ hằng ngày đã được làm mới!",
                         body: "Vào ứng dụng ngay để hoàn thành nhiệm vụ và nhận điểm thưởng nhé.",
                         channelId: 'daily_tasks',
-                        schedule: { 
+                        schedule: {
                             on: { hour: 0, minute: 0 },
                             allowWhileIdle: true,
                             repeats: true
@@ -149,7 +149,7 @@ function App() {
                     if (testPending.notifications.find(n => n.id === 999)) {
                         await LocalNotifications.cancel({ notifications: [{ id: 999 }] });
                     }
-                    
+
                     await LocalNotifications.schedule({
                         notifications: [
                             {
@@ -157,9 +157,9 @@ function App() {
                                 title: "Thông báo Test!",
                                 body: "Hệ thống thông báo đang hoạt động tốt trên thiết bị của bạn.",
                                 channelId: 'daily_tasks',
-                                schedule: { 
+                                schedule: {
                                     at: new Date(Date.now() + 1000 * 10), // 10 giây kể từ bây giờ
-                                    allowWhileIdle: true 
+                                    allowWhileIdle: true
                                 }
                             }
                         ]
@@ -192,7 +192,7 @@ function App() {
                 playSound('click.mp3');
             }
         };
-        
+
         document.addEventListener('click', handleGlobalClick);
         return () => document.removeEventListener('click', handleGlobalClick);
     }, []);
