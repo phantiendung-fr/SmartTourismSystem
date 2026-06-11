@@ -1,4 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+import json
+import secrets
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -14,6 +16,10 @@ from models import (
     EnterpriseStatus,
     LocationSubmissions,
     Locations,
+    LocationsImage,
+    PhotoTasks,
+    QATasks,
+    QRTasks,
     UserRole,
     Users,
     VerificationAction,
@@ -21,6 +27,7 @@ from models import (
 )
 
 router = APIRouter(prefix="/enterprise", tags=["Enterprise Accounts"])
+QR_AUTO_RENEW_DAYS = 365
 
 
 def _user_id_from_payload(payload: dict) -> UUID:
@@ -75,6 +82,35 @@ def _apply_enterprise_verification(
     db.commit()
     db.refresh(profile)
     return profile
+
+
+def _ensure_current_location_qr(db: Session, location_id: UUID) -> QRTasks:
+    now = datetime.utcnow()
+    qr_task = db.exec(
+        select(QRTasks)
+        .where(QRTasks.location_id == location_id, QRTasks.is_one_time == False)
+        .order_by(QRTasks.created_at.desc())
+    ).first()
+
+    if qr_task is None:
+        qr_task = QRTasks(
+            location_id=location_id,
+            qr_token=f"LOC-{location_id.hex[:8].upper()}-{secrets.token_hex(4).upper()}",
+            reward_exp=50,
+            reward_coin=25,
+            is_one_time=False,
+            expired_at=now + timedelta(days=QR_AUTO_RENEW_DAYS),
+        )
+        db.add(qr_task)
+        db.flush()
+        return qr_task
+
+    if qr_task.expired_at <= now:
+        qr_task.expired_at = now + timedelta(days=QR_AUTO_RENEW_DAYS)
+        db.add(qr_task)
+        db.flush()
+
+    return qr_task
 
 
 @router.post("/register-profile", response_model=schemas.EnterpriseProfileResponse)
@@ -136,18 +172,24 @@ def get_my_location_submissions(
         .where(LocationSubmissions.enterprise_id == enterprise_id)
         .order_by(LocationSubmissions.created_at.desc())
     ).all()
-    return [
-        {
+    result = []
+    for sub in submissions:
+        try:
+            pending_data = json.loads(sub.data_json or "{}")
+        except json.JSONDecodeError:
+            pending_data = {}
+        result.append({
             "submission_id": str(sub.submission_id),
             "location_id": str(sub.location_id) if sub.location_id else None,
             "type": sub.type,
             "status": sub.status,
+            "location_name": pending_data.get("location_name"),
+            "address": pending_data.get("address"),
             "created_at": sub.created_at,
             "reviewed_at": sub.reviewed_at,
             "reject_reason": sub.reject_reason,
-        }
-        for sub in submissions
-    ]
+        })
+    return result
 
 
 @router.get("/locations")
@@ -162,8 +204,13 @@ def get_my_enterprise_locations(
         .where(BusinessLocation.business_id == enterprise_id)
         .order_by(Locations.create_at.desc())
     ).all()
-    return [
-        {
+    result = []
+    for loc in rows:
+        qr_task = _ensure_current_location_qr(db, loc.location_id)
+        qa_count = len(db.exec(select(QATasks).where(QATasks.location_id == loc.location_id)).all())
+        photo_count = len(db.exec(select(PhotoTasks).where(PhotoTasks.location_id == loc.location_id)).all())
+        image_count = len(db.exec(select(LocationsImage).where(LocationsImage.location_id == loc.location_id)).all())
+        result.append({
             "location_id": str(loc.location_id),
             "location_name": loc.location_name,
             "address": loc.address,
@@ -176,9 +223,14 @@ def get_my_enterprise_locations(
             "max_price": float(loc.max_price),
             "currency": getattr(loc.currency, "value", loc.currency),
             "is_active": loc.is_active,
-        }
-        for loc in rows
-    ]
+            "qr_token": qr_task.qr_token if qr_task else None,
+            "qr_expired_at": qr_task.expired_at if qr_task else None,
+            "qa_task_count": qa_count,
+            "photo_task_count": photo_count,
+            "image_count": image_count,
+        })
+    db.commit()
+    return result
 
 
 @router.put("/{enterprise_id}/verify", response_model=schemas.EnterpriseProfileResponse)

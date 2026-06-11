@@ -1,6 +1,6 @@
 import math
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
@@ -14,6 +14,8 @@ from models import (
 )
 from schemas import QASubmissionRequest, QRScanRequest, TaskCompletionResponse
 from routers.gamification import auto_complete_daily_quest
+
+QR_AUTO_RENEW_DAYS = 365
 
 def calculate_haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Tính khoảng cách giữa 2 tọa độ GPS bằng công thức Haversine (Đơn vị: mét)"""
@@ -102,8 +104,12 @@ class CRUDTask:
         if not qr_task:
             raise HTTPException(status_code=404, detail="Mã QR không hợp lệ hoặc không thuộc hệ thống.")
         
-        if qr_task.expired_at < datetime.utcnow():
-            raise HTTPException(status_code=400, detail="Mã QR này đã hết hạn sử dụng.")
+        now = datetime.utcnow()
+        if qr_task.expired_at < now:
+            if qr_task.is_one_time:
+                raise HTTPException(status_code=400, detail="Mã QR này đã hết hạn sử dụng.")
+            qr_task.expired_at = now + timedelta(days=QR_AUTO_RENEW_DAYS)
+            db.add(qr_task)
 
         # 1.1 Anti-cheat: Kiểm tra xem hôm nay user đã làm task này chưa
         today = datetime.utcnow().date()

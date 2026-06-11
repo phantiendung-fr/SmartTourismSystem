@@ -6,6 +6,7 @@ import {
     Clock3,
     Copy,
     HelpCircle,
+    Image,
     LayoutDashboard,
     LogOut,
     MapPin,
@@ -92,6 +93,10 @@ const getQrImageUrl = (value) => (
 
 const formatEventDateTime = (value) => new Date(value).toLocaleString('vi-VN');
 
+const formatOptionalDateTime = (value) => (
+    value ? new Date(value).toLocaleString('vi-VN') : 'Chưa có'
+);
+
 const formatCoordinate = (value) => {
     const numberValue = Number(value);
     return Number.isFinite(numberValue) ? numberValue.toFixed(6) : '-';
@@ -101,16 +106,18 @@ const formatLocationCoordinates = (location) => (
     `${formatCoordinate(location?.latitude)}, ${formatCoordinate(location?.longitude)}`
 );
 
-const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister }) => {
-    const [activeTab, setActiveTab] = useState('dashboard');
+const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister, initialTab = 'dashboard', initialNotice = '', onNoticeConsumed }) => {
+    const [activeTab, setActiveTab] = useState(initialTab || 'dashboard');
     const contentRef = useRef(null);
+    const lastInitialTabRef = useRef(initialTab);
+    const preserveInitialNoticeRef = useRef(Boolean(initialNotice));
     const [events, setEvents] = useState([]);
     const [locations, setLocations] = useState([]);
     const [submissions, setSubmissions] = useState([]);
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
-    const [message, setMessage] = useState('');
+    const [message, setMessage] = useState(initialNotice || '');
     const [error, setError] = useState('');
     const [showCampaignForm, setShowCampaignForm] = useState(false);
     const [campaignForm, setCampaignForm] = useState(defaultCampaignForm);
@@ -123,6 +130,21 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister }) => {
     const [vouchers, setVouchers] = useState([]);
     const [showVoucherForm, setShowVoucherForm] = useState(false);
     const [voucherForm, setVoucherForm] = useState(defaultVoucherForm());
+
+    useEffect(() => {
+        if (initialTab && initialTab !== lastInitialTabRef.current) {
+            lastInitialTabRef.current = initialTab;
+            setActiveTab(initialTab);
+        }
+    }, [initialTab]);
+
+    useEffect(() => {
+        if (!initialNotice) return;
+        preserveInitialNoticeRef.current = true;
+        setMessage(initialNotice);
+        setError('');
+        onNoticeConsumed?.();
+    }, [initialNotice, onNoticeConsumed]);
 
     const loadProfile = useCallback(async () => {
         const data = await enterpriseService.getEnterpriseProfile();
@@ -158,7 +180,11 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister }) => {
         const loadTab = async () => {
             setLoading(true);
             setError('');
-            setMessage('');
+            if (preserveInitialNoticeRef.current) {
+                preserveInitialNoticeRef.current = false;
+            } else {
+                setMessage('');
+            }
             try {
         if (activeTab === 'campaigns') {
             await Promise.all([loadEvents(), loadLocations()]);
@@ -545,7 +571,37 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister }) => {
                                     <div className="enterprise-location-meta">
                                         <span><MapPin size={14} /> GPS {formatLocationCoordinates(location)}</span>
                                         <span>{location.min_price} - {location.max_price} {location.currency}</span>
+                                        <span><Camera size={14} /> {location.photo_task_count || 0} nhiệm vụ ảnh</span>
+                                        <span><HelpCircle size={14} /> {location.qa_task_count || 0} câu hỏi</span>
+                                        <span><Image size={14} /> {location.image_count || 0} ảnh</span>
                                     </div>
+                                    {location.qr_token && (
+                                        <div className="enterprise-qr-row enterprise-location-qr">
+                                            <div className="enterprise-qr-preview" aria-label={`QR cho ${location.location_name}`}>
+                                                <img
+                                                    src={getQrImageUrl(location.qr_token)}
+                                                    alt={`QR cho ${location.location_name}`}
+                                                    onError={(e) => {
+                                                        e.currentTarget.style.display = 'none';
+                                                        e.currentTarget.nextElementSibling?.classList.add('visible');
+                                                    }}
+                                                />
+                                                <span className="enterprise-qr-fallback"><QrCode size={34} /></span>
+                                            </div>
+                                            <div className="enterprise-qr-info">
+                                                <strong>QR hiện tại</strong>
+                                                <span>{location.qr_token}</span>
+                                                <small>Hiệu lực đến {formatOptionalDateTime(location.qr_expired_at)}</small>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                title="Copy mã QR"
+                                                onClick={() => navigator.clipboard?.writeText(location.qr_token)}
+                                            >
+                                                <Copy size={16} />
+                                            </button>
+                                        </div>
+                                    )}
                                 </article>
                             ))}
                         </div>
@@ -559,8 +615,8 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister }) => {
                             {submissions.map((submission) => (
                                 <article className="enterprise-submission-card" key={submission.submission_id}>
                                     <div>
-                                        <strong>{submission.type}</strong>
-                                        <span>{new Date(submission.created_at).toLocaleString('vi-VN')}</span>
+                                        <strong>{submission.location_name || 'Địa điểm đang chờ duyệt'}</strong>
+                                        <span>{submission.address || submission.type} · {new Date(submission.created_at).toLocaleString('vi-VN')}</span>
                                     </div>
                                     <span className={`enterprise-badge ${submission.status?.toLowerCase()}`}>
                                         {submission.status}

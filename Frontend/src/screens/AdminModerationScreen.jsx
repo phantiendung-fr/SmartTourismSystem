@@ -483,6 +483,12 @@ export default function AdminModerationScreen({ onBack }) {
                         <Field label="Doanh nghiệp" value={submissionDetail.enterprise?.business_name} />
                         <Field label="Giờ hoạt động" value={`${pending.open_time || '-'} - ${pending.close_time || '-'}`} />
                         <Field label="Khoảng giá" value={`${pending.min_price || 0} - ${pending.max_price || 0} ${pending.currency || 'VND'}`} />
+                        <Field label="Category IDs" value={(pending.category_ids || []).join(', ') || 'Chưa có'} />
+                        <Field label="Tag IDs" value={(pending.tag_ids || []).join(', ') || 'Chưa có'} />
+                        <Field label="Ảnh địa điểm" value={`${(pending.images || []).length} ảnh`} />
+                        <Field label="Nhiệm vụ ảnh" value={pending.photo_task?.title} />
+                        <Field label="Câu hỏi QA" value={pending.qa_task?.question} />
+                        <Field label="QR server cấp" value={pending.qr_task?.qr_token || 'Sẽ cấp khi duyệt'} />
                         <Field label="Ngày gửi" value={formatDate(submissionDetail.created_at)} />
                     </div>
 

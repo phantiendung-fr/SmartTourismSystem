@@ -60,6 +60,8 @@ function App() {
     const [currentItineraryId, setCurrentItineraryId] = useState(null);
     const [currentLocationDetail, setCurrentLocationDetail] = useState(null);
     const [planCache, setPlanCache] = useState(null);
+    const [enterpriseInitialTab, setEnterpriseInitialTab] = useState('dashboard');
+    const [enterpriseNotice, setEnterpriseNotice] = useState('');
     const userRole = currentUser?.user?.role || currentUser?.role;
     const isAdminMode = currentScreen === 'admin_moderation';
     const isWorkMode = isAdminMode || (currentScreen === 'main' && userRole === 'ENTERPRISE');
@@ -365,6 +367,12 @@ function App() {
         navigateTo('welcome', { resetHistory: true });
     };
 
+    const handleLocationSubmitted = useCallback((response) => {
+        setEnterpriseInitialTab('locations');
+        setEnterpriseNotice(response?.message || 'Đã gửi yêu cầu đăng ký địa điểm. Yêu cầu đang chờ admin duyệt.');
+        navigateTo('main', { resetHistory: true });
+    }, [navigateTo]);
+
     return (
         <SocialQuestProvider user={currentUser?.user || currentUser}>
             <div className="app-outer">
@@ -433,6 +441,9 @@ function App() {
                                     onLogout={handleLogout}
                                     onOpenLocationRegister={() => navigateTo('register_location')}
                                     onOpenProfileEdit={() => navigateTo('profile_edit')}
+                                    initialTab={enterpriseInitialTab}
+                                    initialNotice={enterpriseNotice}
+                                    onNoticeConsumed={() => setEnterpriseNotice('')}
                                 />
                             ) : (
                                 <MainTabs
@@ -556,7 +567,10 @@ function App() {
                     )}
 
                     {currentScreen === 'register_location' && (
-                        <LocationRegister onBack={() => goBackFromHistory('main')} />
+                        <LocationRegister
+                            onBack={() => goBackFromHistory('main')}
+                            onSubmitted={handleLocationSubmitted}
+                        />
                     )}
                 </div>
             </div>

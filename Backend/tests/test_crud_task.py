@@ -159,7 +159,8 @@ def test_scan_qr_task(db_session: Session, task_db_setup):
     qr_expired = QRTasks(
         location_id=loc_id,
         qr_token="expired_token",
-        expired_at=datetime.utcnow() - timedelta(minutes=5)
+        expired_at=datetime.utcnow() - timedelta(minutes=5),
+        is_one_time=True,
     )
     db_session.add(qr_expired)
     db_session.commit()

@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { createPlanningSession, getRecommendations } from '../../services/planService';
+import React, { useState, useEffect, useMemo } from 'react';
+import { createPlanningSession, getCityLocations, getRecommendations } from '../../services/planService';
 import { createTrip } from '../../services/tripService';
 import { API_BASE } from '../../config/api';
 import { showAlert } from '../../platform/dialog';
 import { storageGet } from '../../platform/storage';
-import { ArrowLeft, ArrowRight, CheckCircle, Circle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, Circle, AlertCircle, Search } from 'lucide-react';
 import './PlanRecommendScreen.css';
 
 const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocationDetail, onSessionExpired, planCache, onCacheUpdate }) => {
@@ -12,7 +12,9 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
     const [error, setError] = useState(null);
     const [sessionData, setSessionData] = useState(null);
     const [recommendations, setRecommendations] = useState([]);
+    const [cityLocations, setCityLocations] = useState([]);
     const [selectedLocations, setSelectedLocations] = useState([]);
+    const [manualSearch, setManualSearch] = useState('');
     const [accommodationNights, setAccommodationNights] = useState({});
     const [creatingTrip, setCreatingTrip] = useState(false);
 
@@ -33,10 +35,12 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
         if (
             planCache &&
             JSON.stringify(planCache.planPayload) === JSON.stringify(planPayload) &&
-            planCache.recommendations?.length > 0
+            planCache.recommendations?.length > 0 &&
+            Array.isArray(planCache.cityLocations)
         ) {
             setSessionData(planCache.sessionData);
             setRecommendations(planCache.recommendations);
+            setCityLocations(planCache.cityLocations || []);
             setSelectedLocations(planCache.selectedLocations);
             setLoading(false);
             return;
@@ -76,12 +80,24 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
                     preferred_tags: preferredTags,
                     max_results: Math.max(15, days * 5),
                 };
-                const suggestRes = await getRecommendations(suggestPayload, token);
+                const [suggestResult, cityLocationResult] = await Promise.allSettled([
+                    getRecommendations(suggestPayload, token),
+                    getCityLocations(planPayload.city_id, token),
+                ]);
 
-                const locs = suggestRes.locations || [];
+                const locs = suggestResult.status === 'fulfilled' ? (suggestResult.value.locations || []) : [];
+                if (suggestResult.status === 'rejected') {
+                    console.warn('Không thể tải gợi ý, vẫn hiển thị danh sách địa điểm thủ công.', suggestResult.reason);
+                }
+
+                if (cityLocationResult.status === 'rejected') {
+                    throw cityLocationResult.reason;
+                }
+                const cityLocs = cityLocationResult.value.locations || [];
                 const top5 = locs.slice(0, 5).map((loc) => loc.location_id);
 
                 setRecommendations(locs);
+                setCityLocations(cityLocs);
                 setSelectedLocations(top5);
 
                 // Lưu cache để lần sau không cần gọi lại
@@ -90,6 +106,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
                         planPayload,
                         sessionData: sessionRes,
                         recommendations: locs,
+                        cityLocations: cityLocs,
                         selectedLocations: top5,
                     });
                 }
@@ -117,6 +134,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
                     planPayload,
                     sessionData,
                     recommendations,
+                    cityLocations,
                     selectedLocations: next,
                 });
             }
@@ -185,6 +203,33 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
         }
     };
 
+    const locationCatalog = useMemo(() => {
+        const map = new Map();
+        [...recommendations, ...cityLocations].forEach((loc) => {
+            if (loc?.location_id) map.set(loc.location_id, loc);
+        });
+        return map;
+    }, [recommendations, cityLocations]);
+
+    const recommendationIds = useMemo(
+        () => new Set(recommendations.map((loc) => loc.location_id)),
+        [recommendations]
+    );
+
+    const filteredCityLocations = useMemo(() => {
+        const keyword = manualSearch.trim().toLowerCase();
+        if (!keyword) return cityLocations;
+        return cityLocations.filter((loc) => {
+            const text = [
+                loc.location_name,
+                (loc.tags || []).join(' '),
+                loc.min_price,
+                loc.max_price,
+            ].join(' ').toLowerCase();
+            return text.includes(keyword);
+        });
+    }, [cityLocations, manualSearch]);
+
     if (loading) {
         return (
             <div className="recommend-screen">
@@ -236,9 +281,68 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
         );
     }
 
+    const renderLocationCard = (loc, { manual = false } = {}) => {
+        const isSelected = selectedLocations.includes(loc.location_id);
+        const isAcc = isAccommodation(loc.tags);
+        const showNightsInput = isAcc && isSelected && planPayload.accommodation_type !== 'RELATIVE';
+        const alreadyRecommended = manual && recommendationIds.has(loc.location_id);
+
+        return (
+            <div
+                key={`${manual ? 'manual' : 'recommend'}-${loc.location_id}`}
+                className={`location-card ${manual ? 'manual-location-card' : ''} ${isSelected ? 'selected' : ''}`}
+                onClick={() => toggleSelection(loc.location_id, loc.tags)}
+            >
+                <div className="loc-info">
+                    <div className="loc-title-row">
+                        <h4>{loc.location_name}</h4>
+                        {alreadyRecommended && <span className="manual-source-badge">Gợi ý</span>}
+                    </div>
+                    <p className="loc-tags">{(loc.tags || []).join(', ')}</p>
+                    <p className="loc-price">{new Intl.NumberFormat('vi-VN').format(loc.min_price)}đ - {new Intl.NumberFormat('vi-VN').format(loc.max_price)}đ {isAcc && ' / đêm'}</p>
+                    {loc.score && <div className="loc-score">Điểm phù hợp: {Number(loc.score).toFixed(1)}</div>}
+
+                    {showNightsInput && (
+                        <div className="loc-nights-control" style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px' }} onClick={e => e.stopPropagation()}>
+                            <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#2d3436' }}>Số đêm:</span>
+                            <button
+                                onClick={(e) => updateNights(loc.location_id, -1, e)}
+                                style={{ width: '24px', height: '24px', borderRadius: '50%', border: '1px solid #ccc', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >-</button>
+                            <span style={{ fontWeight: 'bold' }}>{accommodationNights[loc.location_id] || 0}</span>
+                            <button
+                                onClick={(e) => updateNights(loc.location_id, 1, e)}
+                                style={{ width: '24px', height: '24px', borderRadius: '50%', border: '1px solid #ccc', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >+</button>
+                        </div>
+                    )}
+
+                    <div
+                        className="loc-view-detail"
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '10px' }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenLocationDetail(loc);
+                        }}
+                    >
+                        Xem chi tiết <ArrowRight size={14} />
+                    </div>
+                </div>
+                <div className="loc-checkbox" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {isSelected ? (
+                        <CheckCircle size={20} style={{ color: '#2ed573' }} />
+                    ) : (
+                        <Circle size={20} style={{ color: '#a4b0be' }} />
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     const TRANSIT_COST_ESTIMATE = 20000;
-    const totalBudgetUsed = recommendations
-        .filter((loc) => selectedLocations.includes(loc.location_id))
+    const totalBudgetUsed = selectedLocations
+        .map((locationId) => locationCatalog.get(locationId))
+        .filter(Boolean)
         .reduce((sum, loc) => {
             const isAcc = isAccommodation(loc.tags);
             let locCost = parseFloat(loc.min_price || 0);
@@ -267,59 +371,33 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
             </p>
 
             <div className="locations-list">
-                {recommendations.map((loc) => {
-                    const isSelected = selectedLocations.includes(loc.location_id);
-                    const isAcc = isAccommodation(loc.tags);
-                    const showNightsInput = isAcc && isSelected && planPayload.accommodation_type !== 'RELATIVE';
-                    
-                    return (
-                    <div
-                        key={loc.location_id}
-                        className={`location-card ${isSelected ? 'selected' : ''}`}
-                        onClick={() => toggleSelection(loc.location_id, loc.tags)}
-                    >
-                        <div className="loc-info">
-                            <h4>{loc.location_name}</h4>
-                            <p className="loc-tags">{(loc.tags || []).join(', ')}</p>
-                            <p className="loc-price">{new Intl.NumberFormat('vi-VN').format(loc.min_price)}đ - {new Intl.NumberFormat('vi-VN').format(loc.max_price)}đ {isAcc && ' / đêm'}</p>
-                            {loc.score && <div className="loc-score">Điểm phù hợp: {Number(loc.score).toFixed(1)}</div>}
-                            
-                            {showNightsInput && (
-                                <div className="loc-nights-control" style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px' }} onClick={e => e.stopPropagation()}>
-                                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#2d3436' }}>Số đêm:</span>
-                                    <button 
-                                        onClick={(e) => updateNights(loc.location_id, -1, e)}
-                                        style={{ width: '24px', height: '24px', borderRadius: '50%', border: '1px solid #ccc', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                    >-</button>
-                                    <span style={{ fontWeight: 'bold' }}>{accommodationNights[loc.location_id] || 0}</span>
-                                    <button 
-                                        onClick={(e) => updateNights(loc.location_id, 1, e)}
-                                        style={{ width: '24px', height: '24px', borderRadius: '50%', border: '1px solid #ccc', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                    >+</button>
-                                </div>
-                            )}
-
-                            <div
-                                className="loc-view-detail"
-                                style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '10px' }}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onOpenLocationDetail(loc);
-                                }}
-                            >
-                                Xem chi tiết <ArrowRight size={14} />
-                            </div>
-                        </div>
-                        <div className="loc-checkbox" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {isSelected ? (
-                                <CheckCircle size={20} style={{ color: '#2ed573' }} />
-                            ) : (
-                                <Circle size={20} style={{ color: '#a4b0be' }} />
-                            )}
-                        </div>
-                    </div>
-                )})}
+                {recommendations.map((loc) => renderLocationCard(loc))}
             </div>
+
+            <section className="manual-location-section">
+                <div className="manual-section-header">
+                    <div>
+                        <h3>Tất cả địa điểm trong thành phố</h3>
+                        <span>{filteredCityLocations.length} / {cityLocations.length} địa điểm</span>
+                    </div>
+                </div>
+                <label className="manual-search-box">
+                    <Search size={16} />
+                    <input
+                        type="search"
+                        value={manualSearch}
+                        onChange={(event) => setManualSearch(event.target.value)}
+                        placeholder="Tìm theo tên, tag hoặc giá"
+                    />
+                </label>
+                <div className="manual-locations-list">
+                    {filteredCityLocations.length === 0 ? (
+                        <div className="manual-empty">Không tìm thấy địa điểm phù hợp.</div>
+                    ) : (
+                        filteredCityLocations.map((loc) => renderLocationCard(loc, { manual: true }))
+                    )}
+                </div>
+            </section>
 
             <div className="recommend-footer">
                 <div className="budget-tracker">

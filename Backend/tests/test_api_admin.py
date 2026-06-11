@@ -9,7 +9,8 @@ import json
 from models import (
     Users, UserProfiles, UserRole, UserStatus, RegisterType,
     Cities, Locations, EnterpriseProfiles, EnterpriseStatus,
-    LocationSubmissions, VerificationLogs, VerificationAction
+    LocationSubmissions, VerificationLogs, VerificationAction,
+    Categories, Tags, LocationTags, LocationsImage, PhotoTasks, QATasks, QRTasks
 )
 from core.security import create_access_token
 
@@ -83,18 +84,53 @@ def admin_setup_fixture(db_session: Session):
     db_session.add(city)
     db_session.commit()
 
+    category = Categories(category_name="Quán cà phê")
+    culture_tag = Tags(tag_name="Văn hóa")
+    food_tag = Tags(tag_name="Ẩm thực")
+    db_session.add(category)
+    db_session.add(culture_tag)
+    db_session.add(food_tag)
+    db_session.commit()
+
     # 5. Tạo yêu cầu Đề xuất địa điểm kinh doanh PENDING
     sub_payload = {
         "location_name": "Cà Phê Đường Tàu",
         "address": "Phùng Hưng, Hoàn Kiếm, Hà Nội",
+        "latitude": 21.032,
+        "longitude": 105.846,
         "city_id": 1,
         "open_time": "08:00:00",
         "close_time": "22:00:00",
         "min_price": "25000",
         "max_price": "50000",
         "currency": "VND",
-        "category_ids": [],
-        "tag_ids": []
+        "category_ids": [category.category_id],
+        "tag_ids": [culture_tag.tag_id, food_tag.tag_id],
+        "images": ["https://example.com/train-street-cafe.jpg"],
+        "photo_task": {
+            "title": "Chụp ảnh góc đường tàu",
+            "description": "Chụp ảnh tại khu vực quán để xác thực lượt ghé thăm.",
+            "reference_image_url": "https://example.com/train-street-reference.jpg",
+            "reward_exp": 120,
+            "radius_meters": 90,
+        },
+        "qa_task": {
+            "question": "Cà Phê Đường Tàu nổi tiếng với trải nghiệm nào?",
+            "option_a": "Ngắm tàu đi qua phố",
+            "option_b": "Lặn biển",
+            "option_c": "Trượt tuyết",
+            "option_d": "Leo núi",
+            "correct_answer": "A",
+            "difficulty": "easy",
+            "reward_exp": 40,
+            "reward_coin": 20,
+        },
+        "qr_task": {
+            "reward_exp": 60,
+            "reward_coin": 30,
+            "valid_days": 365,
+            "server_generated": True,
+        },
     }
     sub_id = uuid4()
     submission = LocationSubmissions(
@@ -113,7 +149,8 @@ def admin_setup_fixture(db_session: Session):
         "enterprise_id": ent_profile.enterprise_id,
         "enterprise_user_id": ent_uid,
         "submission_id": sub_id,
-        "profile": profile
+        "profile": profile,
+        "tag_name": culture_tag.tag_name,
     }
 
 def test_admin_check_unauthorized_access(client: TestClient, admin_setup):
@@ -233,3 +270,31 @@ def test_admin_approve_location_submission_flow(client: TestClient, db_session: 
     loc = db_session.get(Locations, sub_db.location_id)
     assert loc is not None
     assert loc.location_name == "Cà Phê Đường Tàu"
+
+    assert db_session.query(LocationsImage).filter(LocationsImage.location_id == loc.location_id).count() == 1
+    assert db_session.query(LocationTags).filter(LocationTags.location_id == loc.location_id).count() == 2
+    assert db_session.query(PhotoTasks).filter(PhotoTasks.location_id == loc.location_id).count() == 1
+    assert db_session.query(QATasks).filter(QATasks.location_id == loc.location_id).count() == 1
+    qr_task = db_session.query(QRTasks).filter(QRTasks.location_id == loc.location_id).first()
+    assert qr_task is not None
+    assert qr_task.qr_token.startswith("LOC-")
+
+    recommend_response = client.post("/api/suggestions/recommend", json={
+        "city_id": 1,
+        "budget": 100000,
+        "preferred_tags": [admin_setup["tag_name"]],
+        "max_results": 10,
+    })
+    assert recommend_response.status_code == 200
+    recommended_ids = {item["location_id"] for item in recommend_response.json()["locations"]}
+    assert str(loc.location_id) in recommended_ids
+
+    user_token = create_access_token(data={"sub": str(admin_setup["target_user_id"]), "role": "USER"})
+    task_response = client.get(
+        f"/api/gamification/locations/{loc.location_id}/tasks",
+        params={"itinerary_id": str(uuid4()), "user_id": str(admin_setup["target_user_id"])},
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+    assert task_response.status_code == 200
+    task_types = {task["task_type"] for task in task_response.json()}
+    assert {"PHOTO", "QA", "QR"}.issubset(task_types)
