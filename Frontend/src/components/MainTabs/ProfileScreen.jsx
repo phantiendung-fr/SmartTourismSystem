@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
     Coins, Trophy, CheckCircle2, AlertTriangle, Star, Settings, 
-    ShieldAlert, Clock, HelpCircle, MessageCircle, LogOut, Sparkles 
+    ShieldAlert, Clock, HelpCircle, MessageCircle, LogOut, Sparkles, X 
 } from 'lucide-react';
 import { getSafeAvatarSrc, createInitialAvatarDataUrl } from '../../utils/avatar';
 import { 
@@ -11,7 +11,11 @@ import {
 } from '../../utils/soundUtils';
 import { isMascotEnabled, setMascotEnabled } from '../../config/uiFlags';
 import { storageGet, storageSet } from '../../platform/storage';
+import { API_BASE } from '../../config/api';
+import { showAlert } from '../../platform/dialog';
 import VouchersList from '../Voucher/VouchersList';
+import VoucherWallet from '../Voucher/VoucherWallet';
+import { Ticket } from 'lucide-react';
 import './ProfileScreen.css';
 
 const ProfileScreen = ({
@@ -45,6 +49,13 @@ const ProfileScreen = ({
     const [bgmVol, setBgmVol] = useState(getBgmVolume());
     const [mascotOn, setMascotOn] = useState(isMascotEnabled());
     const [darkMode, setDarkMode] = useState(false);
+    
+    // Feedback states
+    const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+    const [feedbackType, setFeedbackType] = useState('SUGGESTION');
+    const [feedbackContent, setFeedbackContent] = useState('');
+    const [submittingFeedback, setSubmittingFeedback] = useState(false);
+    const [showThankYou, setShowThankYou] = useState(false);
 
     useEffect(() => {
         const loadTheme = async () => {
@@ -108,26 +119,84 @@ const ProfileScreen = ({
         setBgmVolume(val);
     };
 
+    const handleSubmitFeedback = async (e) => {
+        e.preventDefault();
+        const content = feedbackContent.trim();
+        if (!content) return;
+
+        setSubmittingFeedback(true);
+        try {
+            const token = await storageGet('access_token');
+            const res = await fetch(`${API_BASE}/api/social/feedback`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    feedback_type: feedbackType,
+                    content: content
+                })
+            });
+
+            if (res.ok) {
+                setIsFeedbackOpen(false);
+                setFeedbackContent('');
+                setFeedbackType('SUGGESTION');
+                setShowThankYou(true);
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                void showAlert(errData.detail || 'Gửi đóng góp ý kiến thất bại.');
+            }
+        } catch (err) {
+            console.error('Error submitting feedback:', err);
+            void showAlert('Không thể kết nối tới máy chủ. Vui lòng thử lại sau.');
+        } finally {
+            setSubmittingFeedback(false);
+        }
+    };
+
     return (
         <div className="profile-screen">
             <div className="profile-player-card">
-                <div className="profile-avatar-frame">
-                    <img
-                        src={getSafeAvatarSrc(userInfo?.avatar_url, profileName)}
-                        alt="Avatar"
-                        className="profile-avatar"
-                        onError={(event) => {
-                            event.currentTarget.onerror = null;
-                            event.currentTarget.src = profileAvatarFallback;
-                        }}
-                    />
-                    <div className="profile-level-badge">Lv.{level}</div>
-                </div>
-                <h3 className="profile-player-name">{profileName}</h3>
-                <span className="profile-player-tier profile-tier-row">
-                    <TierIcon size={13} /> {tierMeta.label}
-                </span>
+                <div className="profile-card-top-row" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    
+                    {/* Left Side: Avatar & Name */}
+                    <div className="profile-card-user-info" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div className="profile-avatar-frame">
+                            <img
+                                src={getSafeAvatarSrc(userInfo?.avatar_url, profileName)}
+                                alt="Avatar"
+                                className="profile-avatar"
+                                onError={(event) => {
+                                    event.currentTarget.onerror = null;
+                                    event.currentTarget.src = profileAvatarFallback;
+                                }}
+                            />
+                            <div className="profile-level-badge">Lv.{level}</div>
+                        </div>
+                        <h3 className="profile-player-name">{profileName}</h3>
+                        <span className="profile-player-tier profile-tier-row">
+                            <TierIcon size={13} /> {tierMeta.label}
+                        </span>
+                    </div>
 
+                    {/* Right Side: Stacked Stats */}
+                    <div className="profile-card-stats-stack" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'stretch' }}>
+                        <div className="stat-stack-item" style={{ display: 'flex', gap: '6px' }}>
+                            <Coins size={16} /> {pointsBalance} Xu vàng
+                        </div>
+                        <div className="stat-stack-item" style={{ display: 'flex', gap: '6px' }}>
+                            <Trophy size={16} /> {achievements.filter(a => a.unlocked).length} Huy hiệu
+                        </div>
+                        <div className="stat-stack-item" style={{ fontSize: '13px', lineHeight: '1.3', display: 'flex', gap: '6px' }}>
+                            {userInfo?.kyc_status === 'APPROVED' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                            {userInfo?.kyc_status === 'APPROVED' ? 'Đã xác minh\nbảo mật' : 'Chưa xác minh\nbảo mật'}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bottom: EXP Bar */}
                 <div className="profile-exp-section">
                     <div className="profile-exp-label">
                         <span className="profile-exp-title"><Star size={13} /> EXP</span>
@@ -136,30 +205,6 @@ const ProfileScreen = ({
                     <div className="profile-exp-bar">
                         <div className="profile-exp-fill" style={{ width: `${expPercentage}%` }}></div>
                     </div>
-                </div>
-            </div>
-
-            <div className="profile-stats-row">
-                <div className="profile-stat-box">
-                    <div className="stat-box-icon"><Coins size={18} /></div>
-                    <div className="stat-box-value">{pointsBalance}</div>
-                    <div className="stat-box-label">Xu vàng</div>
-                </div>
-
-                <div className="profile-stat-box">
-                    <div className="stat-box-icon"><Trophy size={18} /></div>
-                    <div className="stat-box-value">{achievements.filter(a => a.unlocked).length}</div>
-                    <div className="stat-box-label">Huy hiệu</div>
-                </div>
-
-                <div className="profile-stat-box">
-                    <div className="stat-box-icon">
-                        {userInfo?.kyc_status === 'APPROVED' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
-                    </div>
-                    <div className="stat-box-value" style={{ fontSize: '12px' }}>
-                        {userInfo?.kyc_status === 'APPROVED' ? 'Đã xác minh' : 'Chưa xác minh'}
-                    </div>
-                    <div className="stat-box-label">Bảo mật</div>
                 </div>
             </div>
 
@@ -175,7 +220,8 @@ const ProfileScreen = ({
                     {[
                         { id: 'badges', label: '🏆 Huy hiệu' },
                         { id: 'quests', label: '⚡ Nhiệm vụ' },
-                        { id: 'shop', label: '🎁 Cửa hàng' }
+                        { id: 'shop', label: '🎁 Cửa hàng' },
+                        { id: 'wallet', label: '🎫 Quà của tôi' }
                     ].map((tab) => (
                         <button
                             key={tab.id}
@@ -186,7 +232,7 @@ const ProfileScreen = ({
                                 fontWeight: 'bold',
                                 fontSize: '13px',
                                 border: 'none',
-                                borderRight: tab.id !== 'shop' ? '2.5px solid var(--game-border-color)' : 'none',
+                                borderRight: tab.id !== 'wallet' ? '2.5px solid var(--game-border-color)' : 'none',
                                 backgroundColor: rewardsTab === tab.id ? 'var(--game-yellow)' : 'transparent',
                                 color: rewardsTab === tab.id ? '#2c3e50' : 'var(--st-text)',
                                 cursor: 'pointer',
@@ -344,6 +390,15 @@ const ProfileScreen = ({
                         }} />
                     </div>
                 )}
+
+                {rewardsTab === 'wallet' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <h4 className="achievements-title" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '0 0 10px 0' }}>
+                            <Ticket size={18} style={{ color: '#ff4757' }} /> Quà tặng đã đổi của tôi
+                        </h4>
+                        <VoucherWallet />
+                    </div>
+                )}
             </div>
 
             <div className="achievements-card profile-settings-section" style={{ marginTop: '16px', padding: '16px', border: '2.5px solid var(--game-border-color)', borderRadius: '16px', backgroundColor: 'var(--st-surface)', boxShadow: '0 4px 0 var(--game-border-color)' }}>
@@ -492,7 +547,7 @@ const ProfileScreen = ({
                     <span className="profile-menu-label">Trợ giúp và hỗ trợ</span>
                     <span className="menu-btn-arrow">›</span>
                 </button>
-                <button className="profile-menu-btn">
+                <button className="profile-menu-btn" onClick={() => setIsFeedbackOpen(true)}>
                     <span className="menu-btn-icon"><MessageCircle size={18} /></span>
                     <span className="profile-menu-label">Đóng góp ý kiến</span>
                     <span className="menu-btn-arrow">›</span>
@@ -503,6 +558,109 @@ const ProfileScreen = ({
                     <span className="menu-btn-arrow">›</span>
                 </button>
             </div>
+
+            {/* Feedback Modal */}
+            {isFeedbackOpen && (
+                <div className="modal-overlay" style={{ display: 'flex' }}>
+                    <div className="modal-content cartoon-card" style={{ maxWidth: '420px', width: '90%', padding: '24px', borderRadius: '24px', position: 'relative' }}>
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--st-text)' }}>Đóng Góp Ý Kiến</h3>
+                            <button 
+                                className="btn-close" 
+                                onClick={() => setIsFeedbackOpen(false)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--st-text)' }}
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleSubmitFeedback}>
+                            <div className="feedback-field" style={{ marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'left' }}>
+                                <label style={{ fontWeight: 'bold', fontSize: '13px', color: 'var(--st-text)' }}>Loại đóng góp:</label>
+                                <select 
+                                    value={feedbackType} 
+                                    onChange={(e) => setFeedbackType(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px',
+                                        borderRadius: '10px',
+                                        border: '2.5px solid var(--game-border-color)',
+                                        backgroundColor: 'var(--st-surface)',
+                                        color: 'var(--st-text)',
+                                        fontWeight: 'bold',
+                                        outline: 'none'
+                                    }}
+                                >
+                                    <option value="SUGGESTION">💡 Góp ý / Đề xuất tính năng</option>
+                                    <option value="BUG">🐛 Báo lỗi hệ thống (Bug)</option>
+                                </select>
+                            </div>
+
+                            <div className="feedback-field" style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'left' }}>
+                                <label style={{ fontWeight: 'bold', fontSize: '13px', color: 'var(--st-text)' }}>Nội dung chi tiết:</label>
+                                <textarea
+                                    value={feedbackContent}
+                                    onChange={(e) => setFeedbackContent(e.target.value)}
+                                    placeholder="Vui lòng mô tả chi tiết ý kiến hoặc lỗi bạn gặp phải để chúng tôi cải thiện ứng dụng..."
+                                    rows="5"
+                                    required
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        borderRadius: '10px',
+                                        border: '2.5px solid var(--game-border-color)',
+                                        backgroundColor: 'var(--st-surface)',
+                                        color: 'var(--st-text)',
+                                        outline: 'none',
+                                        resize: 'none',
+                                        boxSizing: 'border-box'
+                                    }}
+                                />
+                            </div>
+
+                            <div className="modal-actions-row" style={{ display: 'flex', gap: '10px' }}>
+                                <button 
+                                    type="button" 
+                                    className="squishy-btn red" 
+                                    onClick={() => setIsFeedbackOpen(false)}
+                                    style={{ flex: 1, padding: '10px', fontWeight: 'bold' }}
+                                >
+                                    Hủy
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="squishy-btn green" 
+                                    disabled={submittingFeedback}
+                                    style={{ flex: 1, padding: '10px', fontWeight: 'bold' }}
+                                >
+                                    {submittingFeedback ? 'Đang gửi...' : 'Gửi góp ý'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Thank You Modal */}
+            {showThankYou && (
+                <div className="modal-overlay" style={{ display: 'flex' }}>
+                    <div className="modal-content cartoon-card text-center" style={{ maxWidth: '380px', width: '90%', padding: '24px', borderRadius: '24px' }}>
+                        <div className="badge-3d-hexagon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px auto', width: '70px', height: '70px', background: 'var(--game-yellow)', borderRadius: '50%', border: '3px solid var(--game-border-color)', boxShadow: '0 4px 0 var(--game-border-color)' }}>
+                            <Sparkles size={36} style={{ color: '#2c3e50' }} />
+                        </div>
+                        <h2 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '10px', color: 'var(--st-text)' }}>CẢM ƠN BẠN!</h2>
+                        <p style={{ fontSize: '14px', color: 'var(--st-text-muted)', lineHeight: '1.5', marginBottom: '20px' }}>
+                            Ý kiến đóng góp quý báu của bạn đã được ghi nhận. Chúng tôi sẽ nghiên cứu để hoàn thiện ứng dụng tốt hơn!
+                        </p>
+                        <button 
+                            className="squishy-btn green" 
+                            onClick={() => setShowThankYou(false)}
+                            style={{ width: '100%', padding: '12px', fontWeight: 'bold' }}
+                        >
+                            Đồng ý & Đóng
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -141,6 +141,24 @@
     margin-top: 2px;
 }
 
+/* New Stat Stack Items (Right side of player card) */
+.stat-stack-item {
+    background-color: rgba(52, 152, 219, 0.15); /* Màu xanh nhạt trong suốt */
+    color: #2c3e50;
+    border: 2px solid #2c3e50;
+    border-radius: 12px;
+    padding: 10px 16px;
+    text-align: center;
+    font-weight: 800;
+    font-size: 14px;
+    width: 100%;
+    box-shadow: 0 3px 0 #2c3e50;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* Menu buttons với arrow */
 .profile-menu-btn {
     display: flex;
@@ -643,6 +661,12 @@ body.dark-theme .profile-stat-box .stat-box-value {
 body.dark-theme .profile-stat-box .stat-box-label {
     color: var(--st-text-muted);
 }
+body.dark-theme .stat-stack-item {
+    background-color: rgba(52, 152, 219, 0.25);
+    color: var(--st-text);
+    border-color: var(--game-border-color);
+    box-shadow: 0 3px 0 var(--game-border-color);
+}
 body.dark-theme .achievements-card {
     background-color: var(--st-surface);
     border-color: var(--game-border-color);
@@ -671,4 +695,44 @@ body.dark-theme .profile-menu-btn {
 }
 body.dark-theme .profile-menu-label {
     color: var(--st-text);
+}
+
+/* === FEEDBACK MODAL STYLE === */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(10, 15, 30, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    padding: 16px;
+    animation: fadeInFeedback 0.25s ease;
+}
+
+.modal-content {
+    background-color: #ffffff;
+    border: 3.5px solid #2c3e50;
+    box-shadow: 0 8px 0 #2c3e50;
+    transition: transform 0.2s ease;
+}
+
+body.dark-theme .modal-content {
+    background-color: var(--st-surface);
+    border-color: var(--game-border-color);
+    box-shadow: 0 8px 0 var(--game-border-color);
+}
+
+.feedback-field select,
+.feedback-field textarea {
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: 14px;
+}
+
+@keyframes fadeInFeedback {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }

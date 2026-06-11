@@ -87,6 +87,7 @@ def complete_trip(
     if not trip or trip.user_id != user_id:
         raise HTTPException(status_code=403, detail="Lộ trình không tồn tại hoặc không thuộc về bạn")
         
+    # Nếu đã hoàn thành trước đó (do Auto-Complete), trả về dữ liệu an toàn luôn
     if trip.status == ItineraryStatus.COMPLETED:
         stmt_prof = select(UserProfiles).where(UserProfiles.user_id == user_id)
         profile = db.exec(stmt_prof).first()
@@ -99,7 +100,7 @@ def complete_trip(
             new_points_balance=profile.points_balance if profile else None,
         )
         
-    # Tính số trạm đã check-in
+    # Kiểm tra xem có đi đủ 100% số trạm để phát quà thưởng Perfect danh giá không
     stmt_completed = (
         select(func.count(ItineraryStops.stop_id))
         .join(ItineraryDays, ItineraryStops.day_id == ItineraryDays.day_id)
@@ -115,13 +116,10 @@ def complete_trip(
     )
     total_stops = db.exec(stmt_total).one()
     
-    # Tính điểm
     is_perfect = (completed_stops == total_stops and total_stops > 0)
     
-    completion_score = int(
-        (completed_stops * 20) + 
-        (100 if is_perfect else 0)
-    )
+    # Chỉ nhận thêm 100 điểm thưởng nếu đạt trạng thái đi đủ tất cả các điểm dừng
+    completion_score = 100 if is_perfect else 0
     
     # Cập nhật trạng thái lộ trình
     trip.status = ItineraryStatus.COMPLETED
@@ -129,7 +127,7 @@ def complete_trip(
     trip.update_at = datetime.utcnow()
     db.add(trip)
     
-    # Cộng điểm thưởng lộ trình vào profile (KHÔNG reset total_points)
+    # --- ĐÃ SỬA LỖI: Đưa đoạn lấy dữ liệu profile lên TRƯỚC khi gọi câu lệnh "if profile:" ---
     stmt_prof = select(UserProfiles).where(UserProfiles.user_id == user_id)
     profile = db.exec(stmt_prof).first()
 
@@ -140,6 +138,7 @@ def complete_trip(
         profile.total_points = current_points + completion_score
         profile.points_balance = current_coins + completion_score
         db.add(profile)
+    # ------------------------------------------------------------------------------------
         
     # Kích hoạt kiểm tra thành tựu
     unlocked_msg = ""
@@ -152,13 +151,16 @@ def complete_trip(
         unlocked_msg = f" 🎉 Bạn đã mở khóa thành tựu mới: {titles}!"
         
     db.commit()
-
-    # Refresh lại profile để lấy dữ liệu chuẩn xác nhất sau khi commit
     if profile:
         db.refresh(profile)
 
+    if is_perfect:
+        detail_msg = f"Chúc mừng bạn đã hoàn thành lộ trình xuất sắc! Bạn nhận được thêm +{completion_score} EXP và +{completion_score} xu thưởng hoàn hảo.{unlocked_msg}"
+    else:
+        detail_msg = f"Lộ trình du lịch đã được đóng lại thành công! Điểm của bạn đã được tích lũy đầy đủ qua từng trạm check-in trước đó.{unlocked_msg}"
+
     return MessageResponse(
-        detail=f"Chúc mừng bạn đã hoàn thành chuyến đi! Bạn nhận được +{completion_score} EXP và +{completion_score} xu.{unlocked_msg}",
+        detail=detail_msg,
         completion_score=completion_score,
         earned_from_trip=trip.score_earned,
         total_rewarded=completion_score,
@@ -338,6 +340,8 @@ def create_new_itinerary(
 
 @router.get("/{itinerary_id}", response_model=ItineraryDetailResponse, summary="Xem chi tiết chuyến đi")
 def get_trip_detail(itinerary_id: UUID, db: Session = Depends(get_session)):
+    from models import ItineraryRoutes, LocationsImage
+
     trip = get_itinerary_by_id(db, itinerary_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Không tìm thấy chuyến đi")
@@ -348,8 +352,16 @@ def get_trip_detail(itinerary_id: UUID, db: Session = Depends(get_session)):
     db.refresh(trip)
     
     # 1. Viết câu SQL nối bảng (JOIN) để gom toàn bộ Stops, Days và Locations của Lộ trình này
+    image_subquery = (
+        select(LocationsImage.url)
+        .where(LocationsImage.location_id == Locations.location_id)
+        .order_by(LocationsImage.display_order.asc())
+        .limit(1)
+        .scalar_subquery()
+    )
+
     statement = (
-        select(ItineraryStops, ItineraryDays, Locations)
+        select(ItineraryStops, ItineraryDays, Locations, image_subquery.label("image_url"))
         .join(ItineraryDays, ItineraryStops.day_id == ItineraryDays.day_id)
         .join(Locations, ItineraryStops.location_id == Locations.location_id)
         .where(ItineraryDays.itinerary_id == itinerary_id)
@@ -360,7 +372,7 @@ def get_trip_detail(itinerary_id: UUID, db: Session = Depends(get_session)):
     
     # Lấy categories cho các location
     from models import LocationCategories, Categories
-    location_ids = [loc.location_id for _, _, loc in stops_data]
+    location_ids = [loc.location_id for _, _, loc, _ in stops_data]
     cat_map = {}
     if location_ids:
         cat_statement = (
@@ -377,7 +389,8 @@ def get_trip_detail(itinerary_id: UUID, db: Session = Depends(get_session)):
     
     # 3. Nhét thêm danh sách stops vào dictionary
     stop_dicts = []
-    for idx, (stop, day, loc) in enumerate(stops_data, start=1):
+    all_stop_ids = []
+    for idx, (stop, day, loc, image_url) in enumerate(stops_data, start=1):
         stop_dict = stop.model_dump()
         stop_dict["stop_order"] = idx
         
@@ -395,6 +408,7 @@ def get_trip_detail(itinerary_id: UUID, db: Session = Depends(get_session)):
         stop_dict["max_price"] = loc.max_price
         stop_dict["estimated_price"] = stop.estimated_price
         stop_dict["category_name"] = cat_map.get(loc.location_id)
+        stop_dict["image_url"] = image_url
         
         stop_dicts.append(stop_dict)
         
@@ -466,10 +480,11 @@ def checkin_stop(
     # Tăng lượt checkin tại địa điểm
     increment_location_checkin_count(db, stop_data.location_id)
 
-    # Không chấm điểm theo quãng đường vì người dùng tự chọn hành trình.
-    earned_points = 10
+    # Thay đổi định mức phần thưởng: 10 EXP gốc + 20 EXP thưởng trạm = 30 EXP
+    earned_points = 30
+    earned_coins = 20  # Cộng thẳng 20 xu của trạm vào đây thay vì đợi hoàn thành lộ trình
     
-    # Lưu điểm thưởng vào stop để frontend hiển thị được — dùng UPDATE trực tiếp
+    # Lưu điểm thưởng vào stop để hệ thống ghi nhận — dùng UPDATE trực tiếp
     from sqlalchemy import update as sa_update
     db.execute(
         sa_update(ItineraryStops)
@@ -477,12 +492,13 @@ def checkin_stop(
         .values(reward=earned_points)
     )
     
-    # Cộng điểm vào total_points (điểm hiện tại của chuyến đi)
+    # Tích lũy điểm và xu thẳng vào hồ sơ tài khoản ngay khi hành động xảy ra
     from models import UserProfiles
     statement = select(UserProfiles).where(UserProfiles.user_id == user_id)
     profile = db.exec(statement).first()
     if profile:
         profile.total_points += earned_points
+        profile.points_balance += earned_coins
         db.add(profile)
 
     # Kích hoạt kiểm tra thành tựu Check-in
@@ -494,7 +510,7 @@ def checkin_stop(
     if is_cafe:
         new_unlocks += check_and_update_achievements(db, user_id, "cafe_checkin", amount=1)
 
-    # AUTO-COMPLETE: Nếu tất cả trạm đã check-in → tự động hoàn thành chuyến đi
+    # AUTO-COMPLETE: Quét xem đã đi hết tất cả các trạm trong lộ trình chưa
     itinerary_id = stop_data.itinerary_id
     pending_stop = db.exec(
         select(ItineraryStops.stop_id)
@@ -508,53 +524,25 @@ def checkin_stop(
     auto_completed = False
     completion_score = 0
     if pending_stop is None:
-        # Tất cả trạm đã hoàn thành → auto-complete trip
         trip = db.exec(select(Itineraries).where(Itineraries.itinerary_id == itinerary_id)).first()
         if trip and trip.status not in (ItineraryStatus.COMPLETED, ItineraryStatus.CANCELLED):
-            from sqlmodel import func
             
-            # Tính số trạm đã check-in
-            stmt_completed = (
-                select(func.count(ItineraryStops.stop_id))
-                .join(ItineraryDays, ItineraryStops.day_id == ItineraryDays.day_id)
-                .where(ItineraryDays.itinerary_id == itinerary_id)
-                .where(ItineraryStops.status == StopStatus.COMPLETED)
-            )
-            completed_stops = db.exec(stmt_completed).one()
-            
-            stmt_total = (
-                select(func.count(ItineraryStops.stop_id))
-                .join(ItineraryDays, ItineraryStops.day_id == ItineraryDays.day_id)
-                .where(ItineraryDays.itinerary_id == itinerary_id)
-            )
-            total_stops = db.exec(stmt_total).one()
-            
-            is_perfect = (completed_stops == total_stops and total_stops > 0)
-            
-            completion_score = int(
-                (completed_stops * 20) + 
-                (100 if is_perfect else 0)
-            )
+            # GIỮ NGUYÊN: Thưởng thêm 100 EXP & 100 Xu độc quyền cho chuỗi Perfect Trip hoàn hảo
+            completion_score = 100
             
             trip.status = ItineraryStatus.COMPLETED
             trip.score_earned = completion_score
             trip.update_at = datetime.utcnow()
             db.add(trip)
             
-            # Cộng điểm thưởng lộ trình vào profile (KHÔNG reset total_points)
             if profile:
                 profile.total_points = (profile.total_points or 0) + completion_score
                 profile.points_balance = (profile.points_balance or 0) + completion_score
                 db.add(profile)
                 
-            # Kích hoạt các thành tựu hoàn thành lộ trình
             new_unlocks += check_and_update_achievements(db, user_id, "complete_itinerary", amount=1)
-            if is_perfect:
-                new_unlocks += check_and_update_achievements(db, user_id, "perfect_trip", amount=1)
+            new_unlocks += check_and_update_achievements(db, user_id, "perfect_trip", amount=1)
             auto_completed = True
-
-    # KHÔNG cần db.commit() — get_session() tự commit khi request thành công
-    # KHÔNG cần db.rollback() — get_session() tự rollback khi có exception
 
     unlocked_msg = ""
     if new_unlocks:
@@ -562,8 +550,7 @@ def checkin_stop(
         unlocked_msg = f" 🎉 Thành tựu mới: {titles}!"
 
     if auto_completed:
-        # Cập nhật trạng thái trạm hiện tại thành COMPLETED trước khi trả về
-        from sqlalchemy import update as sa_update
+        # Cập nhật trạng thái của trạm cuối cùng thành COMPLETED trước khi nộp response dữ liệu
         db.execute(
             sa_update(ItineraryStops)
             .where(ItineraryStops.stop_id == stop_id)
@@ -572,23 +559,20 @@ def checkin_stop(
 
         return CheckInResponse(
             success=True,
-            message=f"✅ Check-in thành công! +{earned_points} EXP. 🎉 Lộ trình hoàn thành! Bạn nhận thêm +{completion_score} EXP và +{completion_score} xu.{unlocked_msg}",
+            message=f"✅ Check-in thành công! +{earned_points} EXP và +{earned_coins} Xu. 🎉 Lộ trình hoàn thành xuất sắc! Bạn nhận thêm +{completion_score} EXP vinh quang!{unlocked_msg}",
             stop_id=stop_id,
             progress_id=progress_id,
             earned_points=earned_points,
-            
-            # --- BỔ SUNG CÁC TRƯỜNG ĐỂ FRONTEND MỞ POPUP NHẬN THƯỞNG ---
-            is_itinerary_completed=True,  # Cờ hiệu báo cho Frontend biết lộ trình đã kết thúc
+            is_itinerary_completed=True,
             completion_score=completion_score,
             total_rewarded=completion_score,
             new_total_points=profile.total_points if profile else None,
             new_points_balance=profile.points_balance if profile else None,
         )
 
-    # Trả về kết quả check-in thông thường nếu chưa đi hết các trạm
     return CheckInResponse(
         success=True,
-        message=f"✅ Check-in thành công! Bạn nhận được {earned_points} EXP.{unlocked_msg}",
+        message=f"✅ Check-in thành công! Bạn nhận được {earned_points} EXP và {earned_coins} xu.{unlocked_msg}",
         stop_id=stop_id,
         progress_id=progress_id,
         earned_points=earned_points

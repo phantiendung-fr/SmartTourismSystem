@@ -21,6 +21,7 @@ import {
     User,
     Users,
     X,
+    MessageSquare,
 } from 'lucide-react';
 import { adminService } from '../services/adminService';
 import './AdminModerationScreen.css';
@@ -32,6 +33,7 @@ const tabs = [
     { id: 'users', label: 'Users', title: 'Thành viên', icon: Users },
     { id: 'stats', label: 'Stats', title: 'Thống kê', icon: BarChart3 },
     { id: 'reports', label: 'Reports', title: 'Báo cáo', icon: FileText },
+    { id: 'feedbacks', label: 'Phản hồi', title: 'Ý kiến đóng góp', icon: MessageSquare },
 ];
 
 const formatDate = (value) => {
@@ -77,6 +79,7 @@ export default function AdminModerationScreen({ onBack }) {
     const [usersList, setUsersList] = useState([]);
     const [stats, setStats] = useState(null);
     const [reports, setReports] = useState([]);
+    const [feedbacks, setFeedbacks] = useState([]);
 
     const [userSearch, setUserSearch] = useState('');
     const [userActionTarget, setUserActionTarget] = useState(null);
@@ -86,15 +89,17 @@ export default function AdminModerationScreen({ onBack }) {
     const [rejectReason, setRejectReason] = useState('');
     const [confirmModal, setConfirmModal] = useState(null);
     const [isViolationMode, setIsViolationMode] = useState(false);
+    const [reportedPostModal, setReportedPostModal] = useState(null);
 
     const loadOverview = useCallback(async () => {
         setOverviewLoading(true);
         try {
-            const [enterpriseResult, locationResult, statsResult, reportsResult] = await Promise.allSettled([
+            const [enterpriseResult, locationResult, statsResult, reportsResult, feedbacksResult] = await Promise.allSettled([
                 adminService.getPendingEnterprises(),
                 adminService.getLocationSubmissions(),
                 adminService.getAdminStats(),
                 adminService.getReports(),
+                adminService.getFeedbacks(),
             ]);
 
             setOverview((current) => ({
@@ -113,6 +118,9 @@ export default function AdminModerationScreen({ onBack }) {
                 totalPoints: statsResult.status === 'fulfilled'
                     ? statsResult.value.total_points_awarded
                     : current.totalPoints,
+                feedbacks: feedbacksResult.status === 'fulfilled'
+                    ? feedbacksResult.value.filter(f => f.status === 'PENDING' || f.status === 'PROCESSING').length
+                    : current.feedbacks,
             }));
         } finally {
             setOverviewLoading(false);
@@ -162,6 +170,13 @@ export default function AdminModerationScreen({ onBack }) {
                     ...current,
                     reports: reportsData.length,
                     totalUsers: usersData.length,
+                }));
+            } else if (activeTab === 'feedbacks') {
+                const feedbacksData = await adminService.getFeedbacks();
+                setFeedbacks(feedbacksData);
+                setOverview((current) => ({
+                    ...current,
+                    feedbacks: feedbacksData.filter(f => f.status === 'PENDING' || f.status === 'PROCESSING').length,
                 }));
             }
         } catch (err) {
@@ -283,6 +298,7 @@ export default function AdminModerationScreen({ onBack }) {
         if (tabId === 'approved_locations') return approvedLocations.length;
         if (tabId === 'users') return overview.totalUsers;
         if (tabId === 'reports') return overview.reports;
+        if (tabId === 'feedbacks') return overview.feedbacks;
         return null;
     };
 
@@ -616,7 +632,22 @@ export default function AdminModerationScreen({ onBack }) {
 
                     return (
                         <div className="admin-report-row" key={report.feedback_id}>
-                            <div>
+                            <div 
+                                style={{ cursor: postId ? 'pointer' : 'default' }}
+                                onClick={async () => {
+                                    if (postId) {
+                                        try {
+                                            setLoading(true);
+                                            const postDetails = await adminService.getPostDetails(postId);
+                                            setReportedPostModal({ report, postDetails });
+                                        } catch (err) {
+                                            setError('Không thể tải chi tiết bài viết vi phạm.');
+                                        } finally {
+                                            setLoading(false);
+                                        }
+                                    }
+                                }}
+                            >
                                 <div className="ticket-badge-group">
                                     <span className={`feedback-type-badge ${typeClass}`}>
                                         {typeText}
@@ -658,18 +689,35 @@ export default function AdminModerationScreen({ onBack }) {
                                     </button>
                                 )}
                                 {postId && (
-                                    <button
-                                        type="button"
-                                        className="admin-danger-btn"
-                                        onClick={() => setConfirmModal({
-                                            title: 'Xóa bài viết',
-                                            message: 'Xóa bài viết bị báo cáo khỏi cộng đồng? Lượt thích, bình luận và lượt lưu liên quan cũng sẽ bị xóa.',
-                                            action: () => adminService.deletePost(postId),
-                                            success: 'Đã xóa bài viết vi phạm.',
-                                        })}
-                                    >
-                                        <Trash2 size={16} /> Xóa bài
-                                    </button>
+                                    <>
+                                        <button
+                                            type="button"
+                                            className="admin-secondary-btn"
+                                            onClick={() => setConfirmModal({
+                                                title: 'Bỏ qua báo cáo',
+                                                message: 'Bạn có chắc muốn bỏ qua báo cáo này? Bài viết sẽ được giữ nguyên.',
+                                                action: () => adminService.dismissReport(report.feedback_id),
+                                                success: 'Đã bỏ qua báo cáo vi phạm.',
+                                            })}
+                                        >
+                                            <X size={16} /> Bỏ qua
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="admin-danger-btn"
+                                            onClick={() => setConfirmModal({
+                                                title: 'Xóa bài viết',
+                                                message: 'Xóa bài viết bị báo cáo khỏi cộng đồng? Lượt thích, bình luận và lượt lưu liên quan cũng sẽ bị xóa.',
+                                                action: async () => {
+                                                    await adminService.deletePost(postId);
+                                                    await adminService.dismissReport(report.feedback_id);
+                                                },
+                                                success: 'Đã xóa bài viết vi phạm.',
+                                            })}
+                                        >
+                                            <Trash2 size={16} /> Xóa bài viết
+                                        </button>
+                                    </>
                                 )}
                                 {targetUserId && (
                                     <button
@@ -688,6 +736,100 @@ export default function AdminModerationScreen({ onBack }) {
         );
     };
 
+    const handleUpdateFeedbackStatus = (feedbackId, newStatus) => {
+        runAction(
+            async () => {
+                await adminService.updateFeedbackStatus(feedbackId, newStatus);
+            },
+            'Cập nhật trạng thái phản hồi thành công.'
+        );
+    };
+
+    const renderFeedbacks = () => {
+        if (feedbacks.length === 0) {
+            return <EmptyState icon={MessageSquare} text="Không có phản hồi đóng góp nào." />;
+        }
+
+        return (
+            <div className="admin-list feedbacks-list">
+                {feedbacks.map((fb) => {
+                    const isBug = fb.feedback_type === 'BUG';
+                    return (
+                        <div className="admin-list-item feedback-item-card" key={fb.feedback_id} style={{ pointerEvents: 'none', cursor: 'default' }}>
+                            <div className="feedback-card-header" style={{ pointerEvents: 'auto' }}>
+                                <span className={`feedback-type-badge ${isBug ? 'bug' : 'suggestion'}`}>
+                                    {isBug ? 'Lỗi (BUG)' : 'Góp ý (SUGGESTION)'}
+                                </span>
+                                <span className={`feedback-status-badge ${fb.status?.toLowerCase()}`}>
+                                    {fb.status === 'PENDING' ? 'Chờ xử lý' : fb.status === 'PROCESSING' ? 'Đang xử lý' : 'Đã giải quyết'}
+                                </span>
+                            </div>
+                            
+                            <div className="feedback-card-content" style={{ pointerEvents: 'auto', marginTop: '8px' }}>
+                                <p className="feedback-text">{fb.content}</p>
+                            </div>
+
+                            <div className="feedback-card-footer" style={{ pointerEvents: 'auto', marginTop: '8px' }}>
+                                <div className="feedback-user-info">
+                                    <strong>{fb.user_name || 'Khách'}</strong>
+                                    <small>{fb.user_email || 'Không có email'} · {formatDate(fb.created_at)}</small>
+                                </div>
+                                
+                                <div className="feedback-actions">
+                                    {fb.status === 'PENDING' && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                className="feedback-btn btn-processing"
+                                                onClick={() => handleUpdateFeedbackStatus(fb.feedback_id, 'PROCESSING')}
+                                            >
+                                                Xử lý
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="feedback-btn btn-resolved"
+                                                onClick={() => handleUpdateFeedbackStatus(fb.feedback_id, 'RESOLVED')}
+                                            >
+                                                Giải quyết
+                                            </button>
+                                        </>
+                                    )}
+                                    {fb.status === 'PROCESSING' && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                className="feedback-btn btn-pending"
+                                                onClick={() => handleUpdateFeedbackStatus(fb.feedback_id, 'PENDING')}
+                                            >
+                                                Chờ xử lý
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="feedback-btn btn-resolved"
+                                                onClick={() => handleUpdateFeedbackStatus(fb.feedback_id, 'RESOLVED')}
+                                            >
+                                                Giải quyết
+                                            </button>
+                                        </>
+                                    )}
+                                    {fb.status === 'RESOLVED' && (
+                                        <button
+                                            type="button"
+                                            className="feedback-btn btn-reopen"
+                                            onClick={() => handleUpdateFeedbackStatus(fb.feedback_id, 'PENDING')}
+                                        >
+                                            Mở lại
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
     const renderContent = () => {
         if (loading) return <div className="admin-loading">Đang tải dữ liệu...</div>;
         if (activeTab === 'enterprise') return renderEnterprise();
@@ -695,6 +837,7 @@ export default function AdminModerationScreen({ onBack }) {
         if (activeTab === 'approved_locations') return renderApprovedLocations();
         if (activeTab === 'users') return renderUsers();
         if (activeTab === 'stats') return renderStats();
+        if (activeTab === 'feedbacks') return renderFeedbacks();
         return renderReports();
     };
 
@@ -934,9 +1077,83 @@ export default function AdminModerationScreen({ onBack }) {
                 </div>
             )}
 
+            {reportedPostModal && (
+                <div className="admin-modal-overlay">
+                    <div className="admin-modal" style={{ maxWidth: '400px' }}>
+                        <div className="admin-modal-header">
+                            <h3>Chi tiết bài viết vi phạm</h3>
+                            <button type="button" onClick={() => setReportedPostModal(null)}><X size={18} /></button>
+                        </div>
+                        <div style={{ marginBottom: '16px' }}>
+                            <p style={{ color: '#ef4444', fontWeight: '500', marginBottom: '8px' }}>
+                                Lý do báo cáo: {reportedPostModal.report.content.split('Reason: ')[1] || 'Không rõ'}
+                            </p>
+                            <div className="post-card cartoon-card" style={{ pointerEvents: 'none', transform: 'scale(0.95)', transformOrigin: 'top center' }}>
+                                <div className="post-card-header" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <img 
+                                        src={reportedPostModal.postDetails.author_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${reportedPostModal.postDetails.author_name}`} 
+                                        alt="avatar" 
+                                        style={{ width: '36px', height: '36px', borderRadius: '50%' }}
+                                    />
+                                    <div>
+                                        <h4 style={{ margin: 0, fontSize: '0.9rem' }}>{reportedPostModal.postDetails.author_name}</h4>
+                                        <small style={{ color: '#64748b', fontSize: '0.75rem' }}>{new Date(reportedPostModal.postDetails.created_at).toLocaleDateString('vi-VN')}</small>
+                                    </div>
+                                </div>
+                                <div className="post-card-body" style={{ marginTop: '12px' }}>
+                                    <p style={{ fontSize: '0.9rem', marginBottom: '8px', color: '#334155' }}>{reportedPostModal.postDetails.caption}</p>
+                                    {reportedPostModal.postDetails.image_url && (
+                                        <img 
+                                            src={reportedPostModal.postDetails.image_url.split('|')[0]} 
+                                            alt="post preview" 
+                                            style={{ width: '100%', borderRadius: '8px', maxHeight: '200px', objectFit: 'cover' }} 
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="admin-action-row">
+                            <button 
+                                type="button" 
+                                className="admin-secondary-btn" 
+                                onClick={() => {
+                                    setConfirmModal({
+                                        title: 'Bỏ qua báo cáo',
+                                        message: 'Bạn có chắc muốn bỏ qua báo cáo này? Bài viết sẽ được giữ nguyên.',
+                                        action: () => adminService.dismissReport(reportedPostModal.report.feedback_id),
+                                        success: 'Đã bỏ qua báo cáo vi phạm.',
+                                    });
+                                    setReportedPostModal(null);
+                                }}
+                            >
+                                <X size={16} /> Bỏ qua
+                            </button>
+                            <button 
+                                type="button" 
+                                className="admin-danger-btn" 
+                                onClick={() => {
+                                    setConfirmModal({
+                                        title: 'Xóa bài viết',
+                                        message: 'Xóa bài viết bị báo cáo khỏi cộng đồng? Lượt thích, bình luận và lượt lưu liên quan cũng sẽ bị xóa.',
+                                        action: async () => {
+                                            await adminService.deletePost(reportedPostModal.postDetails.post_id);
+                                            await adminService.dismissReport(reportedPostModal.report.feedback_id);
+                                        },
+                                        success: 'Đã xóa bài viết vi phạm.',
+                                    });
+                                    setReportedPostModal(null);
+                                }}
+                            >
+                                <Trash2 size={16} /> Xóa bài viết
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {confirmModal && (
                 <div className="admin-modal-overlay">
-                    <div className="admin-modal">
+                    <div className="admin-modal admin-confirm-modal">
                         <div className="admin-modal-header">
                             <h3>{confirmModal.title}</h3>
                             <button type="button" onClick={() => setConfirmModal(null)}><X size={18} /></button>
