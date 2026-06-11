@@ -32,6 +32,8 @@ from models import (
     UserVoucherStatusEnum,
     VoucherStatusEnum,
     VoucherTypeEnum,
+    FeedbackType,
+    FeedbackStatus,
 )
 
 
@@ -689,3 +691,26 @@ class ClaimVoucherResponse(BaseModel):
     message: str
     user_voucher_id: UUID
     new_point_balance: int
+
+
+# ============================================================
+# SUPPORT TICKET / FEEDBACK SCHEMAS
+# ============================================================
+
+class FeedbackCreate(BaseModel):
+    """Payload to create a new user support ticket / feedback."""
+    feedback_type: FeedbackType = Field(default=FeedbackType.SUGGESTION)
+    content: str = Field(min_length=10, max_length=2000, description="Nội dung phản hồi hoặc yêu cầu hỗ trợ")
+
+
+class FeedbackResponse(BaseModel):
+    """Response representation of a user support ticket / feedback."""
+    feedback_id: UUID
+    user_id: UUID
+    feedback_type: FeedbackType
+    content: str
+    status: FeedbackStatus
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+

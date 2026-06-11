@@ -591,7 +591,7 @@ export default function AdminModerationScreen({ onBack }) {
 
     const renderReports = () => {
         if (reports.length === 0) {
-            return <EmptyState icon={Check} text="Không có báo cáo vi phạm nào." />;
+            return <EmptyState icon={Check} text="Không có báo cáo vi phạm hoặc phản hồi nào." />;
         }
 
         return (
@@ -602,14 +602,61 @@ export default function AdminModerationScreen({ onBack }) {
                     const userIdMatch = content.match(/Target User ID:\s*([a-fA-F0-9-]+)/);
                     const targetUserId = userIdMatch ? userIdMatch[1] : null;
 
+                    const typeText = report.feedback_type === 'BUG' ? '🐞 Báo lỗi ứng dụng'
+                                   : report.feedback_type === 'SUGGESTION' ? '💡 Góp ý tính năng'
+                                   : report.feedback_type === 'REPORT' ? '⚠️ Báo cáo vi phạm'
+                                   : 'Hỗ trợ / Khác';
+                    
+                    const typeClass = String(report.feedback_type || '').toLowerCase();
+                    const statusClass = String(report.status || '').toLowerCase();
+                    const statusText = report.status === 'PENDING' ? 'Đang chờ'
+                                     : report.status === 'PROCESSING' ? 'Đang xử lý'
+                                     : report.status === 'RESOLVED' ? 'Đã giải quyết'
+                                     : report.status;
+
                     return (
                         <div className="admin-report-row" key={report.feedback_id}>
                             <div>
-                                <strong>Báo cáo vi phạm</strong>
-                                <small>{formatDate(report.created_at)}</small>
-                                <p>{content}</p>
+                                <div className="ticket-badge-group">
+                                    <span className={`feedback-type-badge ${typeClass}`}>
+                                        {typeText}
+                                    </span>
+                                    <span className={`feedback-status-badge ${statusClass}`}>
+                                        {statusText}
+                                    </span>
+                                </div>
+                                <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '6px' }}>
+                                    <strong>Người gửi:</strong> {report.user_name} ({report.user_email}) · <small>{formatDate(report.created_at)}</small>
+                                </div>
+                                <p style={{ fontSize: '0.9rem', lineHeight: '1.45', color: '#1e293b', whiteSpace: 'pre-wrap', margin: 0 }}>{content}</p>
                             </div>
-                            <div className="admin-action-row" style={{ marginTop: '6px' }}>
+                            <div className="admin-action-row" style={{ marginTop: '10px' }}>
+                                {report.status === 'PENDING' && (
+                                    <button
+                                        type="button"
+                                        className="admin-primary-btn"
+                                        style={{ background: '#0284c7', borderColor: '#0284c7', color: '#fff' }}
+                                        onClick={() => runAction(
+                                            () => adminService.updateReportStatus(report.feedback_id, 'PROCESSING'),
+                                            'Đã chuyển trạng thái yêu cầu sang Đang xử lý.'
+                                        )}
+                                    >
+                                        Nhận xử lý
+                                    </button>
+                                )}
+                                {(report.status === 'PENDING' || report.status === 'PROCESSING') && (
+                                    <button
+                                        type="button"
+                                        className="admin-primary-btn"
+                                        style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}
+                                        onClick={() => runAction(
+                                            () => adminService.updateReportStatus(report.feedback_id, 'RESOLVED'),
+                                            'Đã giải quyết phản hồi hỗ trợ.'
+                                        )}
+                                    >
+                                        Giải quyết
+                                    </button>
+                                )}
                                 {postId && (
                                     <button
                                         type="button"
@@ -621,7 +668,7 @@ export default function AdminModerationScreen({ onBack }) {
                                             success: 'Đã xóa bài viết vi phạm.',
                                         })}
                                     >
-                                        <Trash2 size={16} /> Xóa
+                                        <Trash2 size={16} /> Xóa bài
                                     </button>
                                 )}
                                 {targetUserId && (
@@ -630,7 +677,7 @@ export default function AdminModerationScreen({ onBack }) {
                                         className="admin-danger-btn"
                                         onClick={() => handleActionUser(targetUserId)}
                                     >
-                                        <AlertTriangle size={16} /> Xử lý
+                                        <AlertTriangle size={16} /> Khóa/Phạt
                                     </button>
                                 )}
                             </div>

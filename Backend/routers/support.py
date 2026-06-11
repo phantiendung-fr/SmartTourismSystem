@@ -5,7 +5,14 @@ from __future__ import annotations
 import logging
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session
+from uuid import UUID
+from database import get_session
+from core.security import verify_token
+import schemas
+from crud.crud_feedback import create_user_feedback, get_user_feedbacks
+from models import UserFeedbacks
 from pydantic import BaseModel, Field
 
 from services.customer_support_service import get_customer_support_service
@@ -62,3 +69,39 @@ async def chat_with_customer_support(request: SupportChatRequest) -> SupportChat
         ) from exc
 
     return SupportChatResponse(reply=reply, suggestions=DEFAULT_SUGGESTIONS)
+
+
+@router.post("/tickets", response_model=schemas.FeedbackResponse)
+def create_support_ticket(
+    request: schemas.FeedbackCreate,
+    db: Session = Depends(get_session),
+    current_user: dict = Depends(verify_token)
+) -> UserFeedbacks:
+    """Gửi yêu cầu hỗ trợ mới đến Admin."""
+    user_id_str = current_user.get("sub") or current_user.get("user_id")
+    if not user_id_str:
+        raise HTTPException(status_code=401, detail="Token không hợp lệ hoặc thiếu User ID.")
+    try:
+        user_id = UUID(str(user_id_str))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="User ID không hợp lệ.")
+    
+    return create_user_feedback(db, user_id, request.feedback_type, request.content)
+
+
+@router.get("/tickets", response_model=list[schemas.FeedbackResponse])
+def list_support_tickets(
+    db: Session = Depends(get_session),
+    current_user: dict = Depends(verify_token)
+) -> list[UserFeedbacks]:
+    """Lấy danh sách yêu cầu hỗ trợ đã gửi của người dùng hiện tại."""
+    user_id_str = current_user.get("sub") or current_user.get("user_id")
+    if not user_id_str:
+        raise HTTPException(status_code=401, detail="Token không hợp lệ hoặc thiếu User ID.")
+    try:
+        user_id = UUID(str(user_id_str))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="User ID không hợp lệ.")
+    
+    return get_user_feedbacks(db, user_id)
+

@@ -5,9 +5,13 @@ import {
     RotateCcw,
     Send,
     X,
+    ClipboardList,
+    MessageSquare,
+    Lock,
 } from 'lucide-react';
 
-import { sendSupportMessage } from '../../services/supportService';
+import { sendSupportMessage, createSupportTicket, listSupportTickets } from '../../services/supportService';
+import { storageGet } from '../../platform/storage';
 import './SupportChatbot.css';
 
 const WELCOME_MESSAGE = {
@@ -27,6 +31,19 @@ export default function SupportChatbot({ isOpen, onClose }) {
     const [suggestions, setSuggestions] = useState(INITIAL_SUGGESTIONS);
     const [input, setInput] = useState('');
     const [sending, setSending] = useState(false);
+    
+    // Support ticket states
+    const [activeTab, setActiveTab] = useState('chat');
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [tickets, setTickets] = useState([]);
+    const [loadingTickets, setLoadingTickets] = useState(false);
+    const [ticketType, setTicketType] = useState('SUGGESTION');
+    const [ticketContent, setTicketContent] = useState('');
+    const [submittingTicket, setSubmittingTicket] = useState(false);
+    const [ticketSuccess, setTicketSuccess] = useState(false);
+    const [ticketError, setTicketError] = useState('');
+    const [expandedTicketId, setExpandedTicketId] = useState(null);
+
     const [viewportState, setViewportState] = useState({
         height: null,
         offsetTop: 0,
@@ -73,12 +90,44 @@ export default function SupportChatbot({ isOpen, onClose }) {
         };
     }, [isOpen]);
 
+    // Authentication and Ticket fetching effect
     useEffect(() => {
-        if (!isOpen) return;
+        const checkAuthAndFetch = async () => {
+            try {
+                const token = await storageGet('access_token');
+                const loggedIn = !!token;
+                setIsLoggedIn(loggedIn);
+                if (loggedIn && activeTab === 'ticket') {
+                    await fetchTickets();
+                }
+            } catch (err) {
+                setIsLoggedIn(false);
+            }
+        };
+
+        if (isOpen) {
+            void checkAuthAndFetch();
+        }
+    }, [isOpen, activeTab]);
+
+    const fetchTickets = async () => {
+        setLoadingTickets(true);
+        try {
+            const list = await listSupportTickets();
+            setTickets(list);
+        } catch (err) {
+            console.error('Error fetching tickets:', err);
+        } finally {
+            setLoadingTickets(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!isOpen || activeTab !== 'chat') return;
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 150);
         return () => window.clearTimeout(focusTimer);
-    }, [isOpen, messages, sending]);
+    }, [isOpen, messages, sending, activeTab]);
 
     const clearConversation = () => {
         setMessages([WELCOME_MESSAGE]);
@@ -127,6 +176,30 @@ export default function SupportChatbot({ isOpen, onClose }) {
         void submitMessage(input);
     };
 
+    const handleTicketSubmit = async (event) => {
+        event.preventDefault();
+        const content = ticketContent.trim();
+        if (content.length < 10) {
+            setTicketError('Nội dung yêu cầu cần tối thiểu 10 ký tự.');
+            return;
+        }
+
+        setSubmittingTicket(true);
+        setTicketError('');
+        setTicketSuccess(false);
+
+        try {
+            await createSupportTicket(ticketType, content);
+            setTicketSuccess(true);
+            setTicketContent('');
+            await fetchTickets();
+        } catch (err) {
+            setTicketError(err.message || 'Có lỗi xảy ra khi gửi yêu cầu.');
+        } finally {
+            setSubmittingTicket(false);
+        }
+    };
+
     if (!isOpen) return null;
 
     const keyboardViewportStyle = viewportState.keyboardVisible
@@ -156,15 +229,17 @@ export default function SupportChatbot({ isOpen, onClose }) {
                             <strong>Trợ lý hỗ trợ</strong>
                             <span><i /> Smart Tourism AI</span>
                         </div>
-                        <button
-                            type="button"
-                            className="support-chatbot-icon-btn"
-                            onClick={clearConversation}
-                            title="Bắt đầu lại"
-                            aria-label="Bắt đầu lại cuộc trò chuyện"
-                        >
-                            <RotateCcw size={17} />
-                        </button>
+                        {activeTab === 'chat' && (
+                            <button
+                                type="button"
+                                className="support-chatbot-icon-btn"
+                                onClick={clearConversation}
+                                title="Bắt đầu lại"
+                                aria-label="Bắt đầu lại cuộc trò chuyện"
+                            >
+                                <RotateCcw size={17} />
+                            </button>
+                        )}
                         <button
                             type="button"
                             className="support-chatbot-icon-btn"
@@ -176,67 +251,223 @@ export default function SupportChatbot({ isOpen, onClose }) {
                         </button>
                     </header>
 
-                    <div className="support-chatbot-messages" aria-live="polite">
-                        {messages.map((message, index) => (
-                            <div
-                                key={`${message.role}-${index}`}
-                                className={`support-message-row ${message.role}`}
-                            >
-                                {message.role === 'assistant' && (
-                                    <span className="support-message-avatar"><Bot size={15} /></span>
-                                )}
-                                <div className={`support-message-bubble ${message.isError ? 'error' : ''}`}>
-                                    {message.content}
-                                </div>
-                            </div>
-                        ))}
-
-                        {sending && (
-                            <div className="support-message-row assistant">
-                                <span className="support-message-avatar"><Bot size={15} /></span>
-                                <div className="support-message-bubble support-typing">
-                                    <LoaderCircle size={16} />
-                                    Đang tìm câu trả lời...
-                                </div>
-                            </div>
-                        )}
-                        <div ref={messagesEndRef} />
-                    </div>
-
-                    <div className="support-chatbot-suggestions">
-                        {suggestions.map((suggestion) => (
-                            <button
-                                type="button"
-                                key={suggestion}
-                                onClick={() => void submitMessage(suggestion)}
-                                disabled={sending}
-                            >
-                                {suggestion}
-                            </button>
-                        ))}
-                    </div>
-
-                    <form className="support-chatbot-form" onSubmit={handleSubmit}>
-                        <input
-                            ref={inputRef}
-                            value={input}
-                            onChange={(event) => setInput(event.target.value)}
-                            maxLength={1000}
-                            placeholder="Nhập vấn đề bạn cần hỗ trợ..."
-                            disabled={sending}
-                            aria-label="Tin nhắn hỗ trợ"
-                        />
+                    <div className="support-chatbot-tabs">
                         <button
-                            type="submit"
-                            disabled={sending || !input.trim()}
-                            aria-label="Gửi tin nhắn"
+                            type="button"
+                            className={`support-tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('chat')}
                         >
-                            <Send size={18} />
+                            <MessageSquare size={13} style={{ marginRight: '5px' }} />
+                            Trợ lý AI
                         </button>
-                    </form>
-                    <p className="support-chatbot-disclaimer">
-                        AI có thể trả lời chưa chính xác. Không cung cấp mật khẩu hoặc mã OTP.
-                    </p>
+                        <button
+                            type="button"
+                            className={`support-tab-btn ${activeTab === 'ticket' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('ticket')}
+                        >
+                            <ClipboardList size={13} style={{ marginRight: '5px' }} />
+                            Gửi hỗ trợ Admin
+                        </button>
+                    </div>
+
+                    {activeTab === 'chat' ? (
+                        <>
+                            <div className="support-chatbot-messages" aria-live="polite">
+                                {messages.map((message, index) => (
+                                    <div
+                                        key={`${message.role}-${index}`}
+                                        className={`support-message-row ${message.role}`}
+                                    >
+                                        {message.role === 'assistant' && (
+                                            <span className="support-message-avatar"><Bot size={15} /></span>
+                                        )}
+                                        <div className={`support-message-bubble ${message.isError ? 'error' : ''}`}>
+                                            {message.content}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {sending && (
+                                    <div className="support-message-row assistant">
+                                        <span className="support-message-avatar"><Bot size={15} /></span>
+                                        <div className="support-message-bubble support-typing">
+                                            <LoaderCircle size={16} />
+                                            Đang tìm câu trả lời...
+                                        </div>
+                                    </div>
+                                )}
+                                <div ref={messagesEndRef} />
+                            </div>
+
+                            <div className="support-chatbot-suggestions">
+                                {suggestions.map((suggestion) => (
+                                    <button
+                                        type="button"
+                                        key={suggestion}
+                                        onClick={() => void submitMessage(suggestion)}
+                                        disabled={sending}
+                                    >
+                                        {suggestion}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <form className="support-chatbot-form" onSubmit={handleSubmit}>
+                                <input
+                                    ref={inputRef}
+                                    value={input}
+                                    onChange={(event) => setInput(event.target.value)}
+                                    maxLength={1000}
+                                    placeholder="Nhập vấn đề bạn cần hỗ trợ..."
+                                    disabled={sending}
+                                    aria-label="Tin nhắn hỗ trợ"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={sending || !input.trim()}
+                                    aria-label="Gửi tin nhắn"
+                                >
+                                    <Send size={18} />
+                                </button>
+                            </form>
+                            <p className="support-chatbot-disclaimer">
+                                AI có thể trả lời chưa chính xác. Không cung cấp mật khẩu hoặc mã OTP.
+                            </p>
+                        </>
+                    ) : (
+                        <div className="support-ticket-container">
+                            {!isLoggedIn ? (
+                                <div className="support-ticket-login-required">
+                                    <Lock size={40} className="lock-icon" />
+                                    <h3>Yêu cầu đăng nhập</h3>
+                                    <p>Vui lòng đăng nhập tài khoản Smart Tourism để gửi yêu cầu hỗ trợ trực tiếp đến quản trị viên và theo dõi lịch sử hỗ trợ.</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <form className="support-ticket-form-tab" onSubmit={handleTicketSubmit}>
+                                        <h4>Gửi hỗ trợ mới</h4>
+                                        {ticketSuccess && (
+                                            <div className="ticket-alert success">
+                                                Gửi yêu cầu hỗ trợ thành công! Admin sẽ xử lý sớm nhất có thể.
+                                            </div>
+                                        )}
+                                        {ticketError && (
+                                            <div className="ticket-alert error">
+                                                {ticketError}
+                                            </div>
+                                        )}
+
+                                        <div className="form-group">
+                                            <label>Loại hỗ trợ:</label>
+                                            <div className="ticket-type-selector">
+                                                {[
+                                                    { key: 'BUG', label: 'Báo lỗi' },
+                                                    { key: 'SUGGESTION', label: 'Góp ý' },
+                                                    { key: 'REPORT', label: 'Báo cáo/Khác' },
+                                                ].map((type) => (
+                                                    <button
+                                                        type="button"
+                                                        key={type.key}
+                                                        className={`type-chip ${ticketType === type.key ? 'active' : ''}`}
+                                                        onClick={() => setTicketType(type.key)}
+                                                    >
+                                                        {type.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label htmlFor="ticket-content">Nội dung chi tiết:</label>
+                                            <textarea
+                                                id="ticket-content"
+                                                value={ticketContent}
+                                                onChange={(event) => setTicketContent(event.target.value)}
+                                                placeholder="Vui lòng mô tả chi tiết lỗi hoặc vấn đề bạn cần trợ giúp..."
+                                                maxLength={2000}
+                                                rows={4}
+                                                required
+                                            />
+                                            <div className="char-counter">
+                                                {ticketContent.length}/2000 ký tự (tối thiểu 10)
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            className="ticket-submit-btn"
+                                            disabled={submittingTicket || ticketContent.trim().length < 10}
+                                        >
+                                            {submittingTicket ? (
+                                                <>
+                                                    <LoaderCircle size={16} className="spinner-animation" /> Đang gửi...
+                                                </>
+                                            ) : (
+                                                'Gửi hỗ trợ đến Admin'
+                                            )}
+                                        </button>
+                                    </form>
+
+                                    <div className="support-ticket-history">
+                                        <h4>Lịch sử hỗ trợ của bạn</h4>
+                                        {loadingTickets ? (
+                                            <div className="history-loading">
+                                                <LoaderCircle size={18} className="spinner-animation" />
+                                                <span>Đang tải lịch sử...</span>
+                                            </div>
+                                        ) : tickets.length === 0 ? (
+                                            <div className="history-empty">
+                                                Bạn chưa gửi yêu cầu hỗ trợ nào.
+                                            </div>
+                                        ) : (
+                                            <div className="ticket-list">
+                                                {tickets.map((ticket) => {
+                                                    const isExpanded = expandedTicketId === ticket.feedback_id;
+                                                    return (
+                                                        <div
+                                                            key={ticket.feedback_id}
+                                                            className={`ticket-item-card ${isExpanded ? 'expanded' : ''}`}
+                                                            onClick={() => setExpandedTicketId(isExpanded ? null : ticket.feedback_id)}
+                                                        >
+                                                            <div className="ticket-card-header">
+                                                                <span className={`ticket-type-badge ${ticket.feedback_type.toLowerCase()}`}>
+                                                                    {ticket.feedback_type === 'BUG' && 'Báo lỗi'}
+                                                                    {ticket.feedback_type === 'SUGGESTION' && 'Góp ý'}
+                                                                    {ticket.feedback_type === 'REPORT' && 'Báo cáo/Khác'}
+                                                                </span>
+                                                                <span className={`ticket-status-badge ${ticket.status.toLowerCase()}`}>
+                                                                    {ticket.status === 'PENDING' && 'Đang chờ'}
+                                                                    {ticket.status === 'PROCESSING' && 'Đang xử lý'}
+                                                                    {ticket.status === 'RESOLVED' && 'Đã giải quyết'}
+                                                                </span>
+                                                            </div>
+                                                            <p className="ticket-card-content">
+                                                                {ticket.content}
+                                                            </p>
+                                                            <div className="ticket-card-footer">
+                                                                <span>{new Date(ticket.created_at).toLocaleString('vi-VN', {
+                                                                    day: '2-digit',
+                                                                    month: '2-digit',
+                                                                    year: 'numeric',
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit'
+                                                                })}</span>
+                                                                {ticket.content.length > 80 && (
+                                                                    <span className="expand-trigger">
+                                                                        {isExpanded ? 'Thu gọn' : 'Xem thêm'}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
             </section>
         </div>
     );
