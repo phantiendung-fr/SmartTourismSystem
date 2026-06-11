@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from database import get_session
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
-from sqlalchemy import func
+import secrets
+from sqlalchemy import func, text
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 
@@ -103,6 +104,19 @@ def _revoke_user_sessions(db: Session, user_id: UUID) -> None:
         db.add(session)
 
 
+def _sync_locations_image_sequence(db: Session) -> None:
+    bind = db.get_bind()
+    if not bind or bind.dialect.name != "postgresql":
+        return
+    db.exec(text("""
+        SELECT setval(
+            pg_get_serial_sequence('locations_image', 'image_id'),
+            COALESCE((SELECT MAX(image_id) FROM locations_image), 1),
+            (SELECT COALESCE(MAX(image_id), 0) > 0 FROM locations_image)
+        )
+    """))
+
+
 def _create_location_from_submission(
     db: Session,
     sub: models.LocationSubmissions,
@@ -182,6 +196,9 @@ def _create_location_from_submission(
             if tag_id in valid_tag_ids:
                 db.add(models.LocationTags(location_id=location.location_id, tag_id=tag_id))
 
+    if data.get("images"):
+        _sync_locations_image_sequence(db)
+
     for index, image_url in enumerate(data.get("images") or [], start=1):
         if image_url:
             db.add(
@@ -191,6 +208,58 @@ def _create_location_from_submission(
                     display_order=index,
                 )
             )
+
+    photo_task = data.get("photo_task") or {}
+    if photo_task.get("title") and photo_task.get("reference_image_url"):
+        db.add(
+            models.PhotoTasks(
+                location_id=location.location_id,
+                title=photo_task["title"],
+                description=photo_task.get("description"),
+                reference_image_url=photo_task["reference_image_url"],
+                reward_exp=int(photo_task.get("reward_exp", 100)),
+                radius_meters=int(photo_task.get("radius_meters", 80)),
+                difficulty=models.TaskDifficultyEnum.EASY,
+                latitude=lat,
+                longitude=lon,
+                is_active=True,
+            )
+        )
+
+    qa_task = data.get("qa_task") or {}
+    required_qa_keys = ("question", "option_a", "option_b", "option_c", "option_d", "correct_answer")
+    if all(qa_task.get(key) for key in required_qa_keys):
+        db.add(
+            models.QATasks(
+                location_id=location.location_id,
+                question=qa_task["question"],
+                option_a=qa_task["option_a"],
+                option_b=qa_task["option_b"],
+                option_c=qa_task["option_c"],
+                option_d=qa_task["option_d"],
+                correct_answer=str(qa_task["correct_answer"]).strip().upper(),
+                difficulty=str(qa_task.get("difficulty") or "easy").lower(),
+                reward_exp=int(qa_task.get("reward_exp", 30)),
+                reward_coin=int(qa_task.get("reward_coin", 15)),
+            )
+        )
+
+    qr_task = data.get("qr_task") or {}
+    qr_token = f"LOC-{location.location_id.hex[:8].upper()}-{secrets.token_hex(4).upper()}"
+    valid_days = int(qr_task.get("valid_days", 365))
+    db.add(
+        models.QRTasks(
+            location_id=location.location_id,
+            qr_token=qr_token,
+            reward_exp=int(qr_task.get("reward_exp", 50)),
+            reward_coin=int(qr_task.get("reward_coin", 25)),
+            is_one_time=False,
+            expired_at=now + timedelta(days=valid_days),
+        )
+    )
+
+    data.setdefault("qr_task", {})
+    data["qr_task"]["qr_token"] = qr_token
 
     return location
 
@@ -734,6 +803,7 @@ def approve_location_submission(
         if sub.type == "CREATE":
             location = _create_location_from_submission(db, sub, data)
             sub.location_id = location.location_id
+            sub.data_json = json.dumps(data, ensure_ascii=False)
 
         elif sub.type == "UPDATE" and sub.location_id:
             loc = db.exec(select(models.Locations).where(models.Locations.location_id == sub.location_id)).first()

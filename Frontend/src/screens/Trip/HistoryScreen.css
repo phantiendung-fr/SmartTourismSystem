@@ -274,7 +274,7 @@
     margin: 0 0 8px 0;
     font-size: 17px;
     color: #212529;
-    max-width: 70%;
+    padding-right: 112px;
 }
 
 .card-date {
@@ -443,6 +443,8 @@
     min-height: 30px;
     justify-content: center;
     padding: 4px 8px;
+    max-width: 112px;
+    line-height: 1.2;
 }
 
 .card-status[data-status='COMPLETED'] {

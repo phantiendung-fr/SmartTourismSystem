@@ -48,7 +48,17 @@ const TripInputForm = ({ onSubmitPlan, onCancel }) => {
 
     const getTodayStr = () => {
         const today = new Date();
-        return today.toISOString().split('T')[0];
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const toLocalDateStr = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     };
 
     // State tổng chứa toàn bộ DỮ LIỆU ĐẦU VÀO để giao cho Backend
@@ -88,7 +98,7 @@ const TripInputForm = ({ onSubmitPlan, onCancel }) => {
         const start = new Date(tripData.start_day);
         const end = new Date(start);
         end.setDate(start.getDate() + tripData.days - 1);
-        const end_day = end.toISOString().split('T')[0];
+        const end_day = toLocalDateStr(end);
 
         const selectedCity = cities.find(c => c.city_id === tripData.city_id);
 

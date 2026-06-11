@@ -1,9 +1,11 @@
 import pytest
+from datetime import datetime, time, timedelta
 from uuid import uuid4
+from decimal import Decimal
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from models import Users, EnterpriseProfiles, EnterpriseStatus, UserRole, UserStatus, RegisterType
+from models import BusinessLocation, Cities, Locations, QRTasks, Users, EnterpriseProfiles, EnterpriseStatus, UserRole, UserStatus, RegisterType
 from core.security import create_access_token
 
 @pytest.fixture(name="enterprise_setup")
@@ -153,3 +155,72 @@ def test_verify_enterprise_profile_api(client: TestClient, db_session: Session, 
 
     db_session.refresh(user2)
     assert user2.role == UserRole.ENTERPRISE
+
+
+def test_enterprise_locations_auto_renews_expired_qr(client: TestClient, db_session: Session):
+    user_id = uuid4()
+    enterprise_user = Users(
+        user_id=user_id,
+        full_name="Enterprise Active",
+        email="active.enterprise@gmail.com",
+        register_type=RegisterType.EMAIL,
+        role=UserRole.ENTERPRISE,
+        status=UserStatus.ACTIVE,
+    )
+    enterprise = EnterpriseProfiles(
+        user_id=user_id,
+        business_name="Active Corp",
+        contact_person="Owner",
+        contact_email="owner@active.com",
+        contact_phone="0123456789",
+        status=EnterpriseStatus.ACTIVE,
+    )
+    city = Cities(
+        city_id=77,
+        city_name="Đà Nẵng",
+        region="Miền Trung",
+        latitude=Decimal("16.054407"),
+        longitude=Decimal("108.202167"),
+    )
+    location_id = uuid4()
+    location = Locations(
+        location_id=location_id,
+        location_name="Cafe Biển",
+        address="Biển Mỹ Khê, Đà Nẵng",
+        latitude=Decimal("16.061000"),
+        longitude=Decimal("108.246000"),
+        city_id=77,
+        open_time=time(8, 0),
+        close_time=time(22, 0),
+        min_price=Decimal("30000"),
+        max_price=Decimal("70000"),
+        is_active=True,
+    )
+    expired_qr = QRTasks(
+        location_id=location_id,
+        qr_token="LOC-EXPIRED-TEST",
+        reward_exp=50,
+        reward_coin=25,
+        is_one_time=False,
+        expired_at=datetime.utcnow() - timedelta(days=1),
+    )
+
+    db_session.add(enterprise_user)
+    db_session.add(enterprise)
+    db_session.add(city)
+    db_session.add(location)
+    db_session.commit()
+    db_session.add(BusinessLocation(business_id=enterprise.enterprise_id, location_id=location_id))
+    db_session.add(expired_qr)
+    db_session.commit()
+
+    token = create_access_token(data={"sub": str(user_id), "role": "ENTERPRISE"})
+    response = client.get("/enterprise/locations", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 200
+    locations = response.json()
+    assert locations[0]["qr_token"] == "LOC-EXPIRED-TEST"
+    assert datetime.fromisoformat(locations[0]["qr_expired_at"]) > datetime.utcnow()
+
+    db_session.refresh(expired_qr)
+    assert expired_qr.expired_at > datetime.utcnow()

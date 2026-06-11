@@ -44,3 +44,27 @@ export const getRecommendations = async (payload, token = null) => {
         throw error;
     }
 };
+
+export const getCityLocations = async (cityId, token = null, search = '') => {
+    try {
+        const headers = {};
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        const params = new URLSearchParams();
+        if (search) params.set('search', search);
+        const query = params.toString();
+        const response = await fetch(
+            `${API_BASE}/api/suggestions/cities/${cityId}/locations${query ? `?${query}` : ''}`,
+            { headers }
+        );
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || "Lỗi khi lấy danh sách địa điểm trong thành phố");
+        }
+        return await response.json();
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
+};

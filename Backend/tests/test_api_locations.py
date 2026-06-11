@@ -10,6 +10,7 @@ from models import (
     BusinessLocation, Categories, Cities, LocationCategories, Locations, LocationsImage,
     LocationReviews, EnterpriseProfiles, EnterpriseStatus, LocationSubmissions
 )
+from models import Tags
 from core.security import create_access_token
 
 @pytest.fixture(name="setup_data")
@@ -88,6 +89,11 @@ def setup_data_fixture(db_session: Session):
     attraction_category = Categories(category_name="Điểm tham quan")
     db_session.add(attraction_category)
     db_session.commit()
+    culture_tag = Tags(tag_name="Văn hóa")
+    food_tag = Tags(tag_name="Ẩm thực")
+    db_session.add(culture_tag)
+    db_session.add(food_tag)
+    db_session.commit()
     db_session.add(LocationCategories(
         location_id=loc_id,
         category_id=attraction_category.category_id,
@@ -98,7 +104,9 @@ def setup_data_fixture(db_session: Session):
         "city_id": 10,
         "enterprise_user_id": ent_user_id,
         "normal_user_id": normal_user_id,
-        "location_id": loc_id
+        "location_id": loc_id,
+        "category_id": attraction_category.category_id,
+        "tag_ids": [culture_tag.tag_id, food_tag.tag_id],
     }
 
 def test_register_location_api(client: TestClient, db_session: Session, setup_data):
@@ -110,14 +118,34 @@ def test_register_location_api(client: TestClient, db_session: Session, setup_da
     payload = {
         "location_name": "Nhà thờ Đức Bà",
         "address": "Công xã Paris, Bến Nghé, Quận 1, Hồ Chí Minh",
+        "latitude": 10.779783,
+        "longitude": 106.699019,
         "city_id": setup_data["city_id"],
         "open_time": "08:00:00",
         "close_time": "17:00:00",
         "min_price": 0.00,
         "max_price": 0.00,
         "currency": "VND",
-        "category_ids": [],
-        "tag_ids": []
+        "category_ids": [setup_data["category_id"]],
+        "tag_ids": setup_data["tag_ids"],
+        "image_urls": ["https://example.com/notre-dame.jpg"],
+        "photo_task_title": "Chụp ảnh mặt tiền Nhà thờ Đức Bà",
+        "photo_task_description": "Chụp ảnh khu vực mặt tiền để xác thực trải nghiệm.",
+        "reference_image_url": "https://example.com/notre-dame-reference.jpg",
+        "photo_reward_exp": 100,
+        "photo_radius_meters": 80,
+        "qa_question": "Nhà thờ Đức Bà nằm ở thành phố nào?",
+        "qa_option_a": "Hồ Chí Minh",
+        "qa_option_b": "Hà Nội",
+        "qa_option_c": "Đà Nẵng",
+        "qa_option_d": "Huế",
+        "qa_correct_answer": "A",
+        "qa_difficulty": "easy",
+        "qa_reward_exp": 30,
+        "qa_reward_coin": 15,
+        "qr_reward_exp": 50,
+        "qr_reward_coin": 25,
+        "qr_valid_days": 365,
     }
     response = client.post("/api/v1/locations/register", json=payload, headers=headers)
     assert response.status_code == 201
@@ -129,6 +157,9 @@ def test_register_location_api(client: TestClient, db_session: Session, setup_da
     submissions = db_session.query(LocationSubmissions).all()
     assert len(submissions) == 1
     assert submissions[0].status == "PENDING"
+    assert "qa_task" in submissions[0].data_json
+    assert "photo_task" in submissions[0].data_json
+    assert "qr_task" in submissions[0].data_json
 
     # 2. Đăng ký sai: Close time trước open time
     payload_invalid_time = dict(payload)

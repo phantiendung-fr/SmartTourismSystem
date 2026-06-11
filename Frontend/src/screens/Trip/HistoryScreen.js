@@ -92,6 +92,12 @@ const HistoryScreen = ({ onBack }) => {
         });
     };
 
+    const getStatusLabel = (status) => {
+        if (status === 'COMPLETED') return 'Hoàn thành';
+        if (status === 'CANCELLED') return 'Đã hủy';
+        return 'Đang diễn ra';
+    };
+
     if (selectedTripId) {
         return <HistoryDetail
             itineraryId={selectedTripId}
@@ -185,6 +191,7 @@ const HistoryScreen = ({ onBack }) => {
                                 ) : (
                                     <RefreshCw size={14} />
                                 )}
+                                <span>{getStatusLabel(item.status)}</span>
                             </div>
                             <div className="card-info">
                                 <h3>{item.name || 'Hành trình không tên'}</h3>

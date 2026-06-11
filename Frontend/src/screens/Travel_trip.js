@@ -28,6 +28,7 @@ import './Travel_trip.css';
 
 const HomeTravel = ({ isGuest, onRequireLogin, user, onOpenPlan, onOpenHistory, onOpenTripDetail, refreshUser, onOpenLocationDetail }) => {
     const [ongoingTrips, setOngoingTrips] = useState([]);
+    const [tripSummary, setTripSummary] = useState({ total: 0 });
     const [loadingTrips, setLoadingTrips] = useState(false);
     const [topPlayers, setTopPlayers] = useState([]);
     const [loadingPlayers, setLoadingPlayers] = useState(false);
@@ -218,10 +219,12 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onOpenPlan, onOpenHistory, 
             setLoadingTrips(true);
             try {
                 const data = await getTripHistory(token);
-                const ongoing = data.filter((item) => item.status === 'DRAFT' || item.status === 'CONFIRMED');
+                const ongoing = data.filter((item) => item.status !== 'COMPLETED' && item.status !== 'CANCELLED');
+                setTripSummary({ total: data.length });
                 setOngoingTrips(ongoing);
             } catch (err) {
                 console.error('Lỗi lấy lịch trình:', err);
+                setTripSummary({ total: 0 });
             } finally {
                 setLoadingTrips(false);
             }
@@ -389,10 +392,12 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onOpenPlan, onOpenHistory, 
                                 fontSize: '13px',
                                 boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
                             }}>
-                                Bạn chưa có hành trình nào đang diễn ra.<br/>
-                                <span style={{ fontSize: '11px', fontWeight: 'normal', color: '#95a5a6', marginTop: '4px', display: 'inline-block' }}>
-                                    Nhấn "BẮT ĐẦU" ở trên để thiết lập lộ trình mới!
-                                </span>
+                                Không có lịch trình đang diễn ra.
+                                {tripSummary.total > 0 && (
+                                    <span style={{ fontSize: '11px', fontWeight: 'normal', color: '#95a5a6', marginTop: '4px', display: 'block' }}>
+                                        Lịch sử: {tripSummary.total} lộ trình
+                                    </span>
+                                )}
                             </div>
                         )}
                     </div>

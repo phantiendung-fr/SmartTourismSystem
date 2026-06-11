@@ -314,6 +314,8 @@ class LocationCreate(BaseModel):
     """
     location_name: str = Field(max_length=255, description="Tên địa điểm kinh doanh")
     address: str = Field(description="Địa chỉ đầy đủ dùng để xác định tọa độ")
+    latitude: Optional[Decimal] = Field(default=None, ge=-90, le=90, decimal_places=6, description="Vĩ độ GPS của địa điểm")
+    longitude: Optional[Decimal] = Field(default=None, ge=-180, le=180, decimal_places=6, description="Kinh độ GPS của địa điểm")
     city_id: int = Field(description="ID thành phố thuộc hệ thống")
     open_time: time = Field(description="Giờ mở cửa (HH:MM:SS)")
     close_time: time = Field(description="Giờ đóng cửa (HH:MM:SS) — phải sau open_time")
@@ -322,6 +324,24 @@ class LocationCreate(BaseModel):
     currency: CurrencyEnum = Field(default=CurrencyEnum.VND)
     category_ids: list[int] = Field(default_factory=list, description="Danh sách category_id")
     tag_ids: list[int] = Field(default_factory=list, description="Danh sách tag_id")
+    image_urls: list[str] = Field(default_factory=list, description="Danh sách URL ảnh địa điểm do doanh nghiệp cung cấp")
+    photo_task_title: str = Field(max_length=255, description="Tiêu đề nhiệm vụ chụp ảnh tại địa điểm")
+    photo_task_description: Optional[str] = Field(default=None, max_length=1000, description="Mô tả nhiệm vụ chụp ảnh")
+    reference_image_url: str = Field(max_length=500, description="Ảnh mẫu để AI đối chiếu nhiệm vụ chụp ảnh")
+    photo_reward_exp: int = Field(default=100, ge=0, description="EXP thưởng nhiệm vụ ảnh")
+    photo_radius_meters: int = Field(default=80, ge=1, le=1000, description="Bán kính GPS cho nhiệm vụ ảnh")
+    qa_question: str = Field(max_length=1000, description="Câu hỏi nhiệm vụ kiến thức")
+    qa_option_a: str = Field(max_length=500)
+    qa_option_b: str = Field(max_length=500)
+    qa_option_c: str = Field(max_length=500)
+    qa_option_d: str = Field(max_length=500)
+    qa_correct_answer: str = Field(max_length=1, pattern=r"^[ABCDabcd]$", description="Đáp án đúng A/B/C/D")
+    qa_difficulty: str = Field(default="easy", max_length=20, description="easy, medium hoặc hard")
+    qa_reward_exp: int = Field(default=30, ge=0)
+    qa_reward_coin: int = Field(default=15, ge=0)
+    qr_reward_exp: int = Field(default=50, ge=0)
+    qr_reward_coin: int = Field(default=25, ge=0)
+    qr_valid_days: int = Field(default=365, ge=1, le=3650, description="Số ngày QR còn hiệu lực sau khi admin duyệt")
 
 class LocationRegisterResponse(BaseModel):
     """
