@@ -209,10 +209,10 @@ export const showToast = (message, type = 'info', duration = 3000) => {
     if (!message || typeof document === 'undefined') return;
 
     const colors = {
-        info:    { bg: '#1e3a5f', border: '#3498db', icon: 'ℹ️' },
-        success: { bg: '#1a472a', border: '#2ecc71', icon: '✅' },
-        error:   { bg: '#4a1020', border: '#e74c3c', icon: '❌' },
-        warning: { bg: '#4a3000', border: '#f39c12', icon: '⚠️' },
+        info:    { bg: '#1e3a5f', border: '#3498db', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3498db" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; display: block;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>' },
+        success: { bg: '#1a472a', border: '#2ecc71', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2ecc71" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; display: block;"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>' },
+        error:   { bg: '#4a1020', border: '#e74c3c', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e74c3c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; display: block;"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>' },
+        warning: { bg: '#4a3000', border: '#f39c12', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f39c12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; display: block;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>' },
     };
     const { bg, border, icon } = colors[type] || colors.info;
 
@@ -240,7 +240,7 @@ export const showToast = (message, type = 'info', duration = 3000) => {
     `;
 
     const iconEl = document.createElement('span');
-    iconEl.textContent = icon;
+    iconEl.innerHTML = icon;
     iconEl.style.fontSize = '16px';
     iconEl.style.flexShrink = '0';
     iconEl.style.marginTop = '1px';
