@@ -362,55 +362,11 @@ def admin_delete_post(post_id: UUID, admin: models.Users = Depends(check_admin_a
 
 @router.get("/social/reports")
 def get_reports(admin: models.Users = Depends(check_admin_access), db: Session = Depends(get_session)):
-    """Lấy danh sách báo cáo vi phạm và phản hồi hỗ trợ kèm thông tin người gửi"""
-    stmt = (
-        select(models.UserFeedbacks, models.Users)
-        .join(models.Users, models.UserFeedbacks.user_id == models.Users.user_id)
-        .order_by(models.UserFeedbacks.created_at.desc())
-    )
-    results = db.exec(stmt).all()
-    return [
-        {
-            "feedback_id": fb.feedback_id,
-            "user_id": fb.user_id,
-            "user_name": u.full_name,
-            "user_email": u.email,
-            "feedback_type": fb.feedback_type,
-            "content": fb.content,
-            "status": fb.status,
-            "created_at": fb.created_at
-        }
-        for fb, u in results
-    ]
-
-
-
-@router.patch("/social/reports/{feedback_id}/status")
-def update_report_status(
-    feedback_id: UUID,
-    data: dict,
-    admin: models.Users = Depends(check_admin_access),
-    db: Session = Depends(get_session)
-):
-    """Admin cập nhật trạng thái của báo cáo/phản hồi (PENDING, PROCESSING, RESOLVED)."""
-    feedback = db.exec(select(models.UserFeedbacks).where(models.UserFeedbacks.feedback_id == feedback_id)).first()
-    if not feedback:
-        raise HTTPException(status_code=404, detail="Không tìm thấy báo cáo/phản hồi.")
-    
-    new_status_str = data.get("status")
-    if not new_status_str:
-        raise HTTPException(status_code=400, detail="Thiếu trạng thái status.")
-    
-    try:
-        new_status = models.FeedbackStatus(new_status_str)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Trạng thái không hợp lệ.")
-    
-    feedback.status = new_status
-    db.add(feedback)
-    db.commit()
-    db.refresh(feedback)
-    return {"message": "Đã cập nhật trạng thái phản hồi.", "status": feedback.status}
+    """Lấy danh sách báo cáo vi phạm"""
+    reports = db.exec(
+        select(models.UserFeedbacks).where(models.UserFeedbacks.feedback_type == models.FeedbackType.REPORT)
+    ).all()
+    return reports
 
 
 
