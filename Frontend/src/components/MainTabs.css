@@ -2,9 +2,9 @@
 .main-layout {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    position: absolute;
+    inset: 0;
     width: 100%;
-    position: relative;
     background-color: var(--st-bg); /* Use theme bg variable */
     min-height: 0;
     min-width: 0;
@@ -232,9 +232,15 @@
     width: 100%;
 }
 
+.content-area-map {
+    position: relative;
+    overflow: hidden;
+    padding-bottom: 0;
+}
+
 .bottom-nav {
     position: absolute;
-    bottom: 20px;
+    bottom: 8px;
     left: 20px;
     right: 20px;
     height: 64px;
@@ -718,12 +724,12 @@ body.dark-theme .bottom-nav {
     margin: 0;
     overflow: hidden;
     font-family: 'Inter', sans-serif;
-    border-radius: 40px;
+    border-radius: 0;
 }
 
 .map-overlay-top {
     position: absolute;
-    top: 84px; /* Clearance for the 68px game HUD + padding */
+    top: 16px;
     left: 20px;
     right: 20px;
     display: flex;

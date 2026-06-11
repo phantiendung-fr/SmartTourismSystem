@@ -12,6 +12,13 @@ const BUDGET_PRESETS = [
     { label: '5tr', value: 5000000 }
 ];
 
+const formatDateInputValue = (value) => {
+    if (!value) return 'dd/mm/yyyy';
+
+    const [year, month, day] = value.split('-');
+    return year && month && day ? `${day}/${month}/${year}` : value;
+};
+
 const TripInputForm = ({ onSubmitPlan, onCancel }) => {
     // State quản lý bước hiện tại 
     const [step, setStep] = useState(1);
@@ -156,13 +163,16 @@ const TripInputForm = ({ onSubmitPlan, onCancel }) => {
 
                     <div className="input-group">
                         <label>Ngày cắm mốc xuất hành</label>
-                        <input
-                            type="date"
-                            value={tripData.start_day}
-                            min={getTodayStr()}
-                            onChange={(e) => handleChange('start_day', e.target.value)}
-                            className="cartoon-input"
-                        />
+                        <div className="planning-date-input">
+                            <span>{formatDateInputValue(tripData.start_day)}</span>
+                            <input
+                                type="date"
+                                value={tripData.start_day}
+                                min={getTodayStr()}
+                                aria-label="Ngày cắm mốc xuất hành"
+                                onChange={(e) => handleChange('start_day', e.target.value)}
+                            />
+                        </div>
                     </div>
 
                     <div className="input-row-grid">

@@ -7,6 +7,13 @@ import { getSafeAvatarSrc, createInitialAvatarDataUrl } from '../utils/avatar';
 import VoucherWallet from '../components/Voucher/VoucherWallet';
 import './UserProfile.css';
 
+const formatDateValue = (value) => {
+    if (!value) return '';
+
+    const [year, month, day] = String(value).slice(0, 10).split('-');
+    return year && month && day ? `${day}/${month}/${year}` : value;
+};
+
 const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
     // 1. Kiểm tra vai trò người dùng (Bắt lỗi nếu user lồng nhau)
     const userInfo = user?.user || user;
@@ -180,6 +187,16 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
                     <textarea
                         rows="3" value={value} onChange={(e) => handleChange(field, e.target.value)}
                     />
+                ) : type === "date" ? (
+                    <div className="user-profile-compact-date">
+                        <span>{formatDateValue(value) || 'dd/mm/yyyy'}</span>
+                        <input
+                            type="date"
+                            value={value}
+                            aria-label={label}
+                            onChange={(e) => handleChange(field, e.target.value)}
+                        />
+                    </div>
                 ) : (
                     <input
                         type={type} value={value} onChange={(e) => handleChange(field, e.target.value)}
@@ -187,7 +204,7 @@ const UserProfile = ({ user, onBack, onUpdateSuccess }) => {
                 )
             ) : (
                 <div className="view-value">
-                    {value || "(Chưa cập nhật)"}
+                    {(type === "date" ? formatDateValue(value) : value) || "(Chưa cập nhật)"}
                 </div>
             )}
         </div>

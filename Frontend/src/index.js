@@ -6,6 +6,32 @@ import reportWebVitals from './reportWebVitals';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import L from 'leaflet';
 
+const syncAppViewportHeight = () => {
+  const viewportHeight = Math.max(
+    window.innerHeight || 0,
+    document.documentElement.clientHeight || 0
+  );
+  const isStandalone =
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+
+  let appHeight = viewportHeight;
+
+  if (isStandalone && window.screen) {
+    const isPortrait = window.innerHeight >= window.innerWidth;
+    const screenHeight = isPortrait
+      ? Math.max(window.screen.width, window.screen.height)
+      : Math.min(window.screen.width, window.screen.height);
+    appHeight = Math.max(appHeight, screenHeight);
+  }
+
+  document.documentElement.style.setProperty('--app-height', `${Math.round(appHeight)}px`);
+};
+
+syncAppViewportHeight();
+window.addEventListener('resize', syncAppViewportHeight);
+window.addEventListener('orientationchange', syncAppViewportHeight);
+
 // Safeguard Leaflet against race conditions during unmounting transitions
 if (L && L.DomUtil) {
   const originalGetPosition = L.DomUtil.getPosition;

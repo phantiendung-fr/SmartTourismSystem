@@ -1,7 +1,7 @@
 .recommend-screen {
     padding: 14px;
     padding-top: calc(14px + env(safe-area-inset-top, 0px));
-    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: 14px;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -53,7 +53,8 @@
     font-weight: 700;
 }
 
-.loading-state, .error-state {
+.plan-recommend-loading-state,
+.plan-recommend-error-state {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -65,6 +66,13 @@
     border-radius: 0;
     box-shadow: none;
     padding: 20px;
+}
+
+.plan-recommend-loading-state h2,
+.plan-recommend-loading-state p,
+.plan-recommend-error-state h2,
+.plan-recommend-error-state p {
+    color: inherit;
 }
 
 .locations-list {
@@ -143,16 +151,16 @@
 }
 
 .recommend-footer {
-    margin-top: 15px;
-    padding: 15px;
-    padding-bottom: calc(15px + env(safe-area-inset-bottom, 0px));
+    margin-top: 10px;
+    padding: 12px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     background: #fffdf0;
     border-radius: 16px;
     border: 2.5px solid #2c3e50;
     box-shadow: 0 4px 0 #2c3e50;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     flex-shrink: 0;
 }
 
@@ -405,5 +413,3 @@ body.dark-theme .budget-bar-container {
 body.dark-theme .loc-view-detail {
     color: var(--game-sky);
 }
-
-

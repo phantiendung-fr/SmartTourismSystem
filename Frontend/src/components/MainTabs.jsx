@@ -32,7 +32,7 @@ import SupportChatbot from './SupportChatbot/SupportChatbot';
 import { API_BASE } from '../config/api';
 import { storageGet } from '../platform/storage';
 import { showAlert, showConfirm } from '../platform/dialog';
-import { getCurrentPosition, startWatchingPosition } from '../platform/location';
+import { getCurrentPosition, requestLocationPermission, startWatchingPosition } from '../platform/location';
 import { getSafeAvatarSrc, createInitialAvatarDataUrl } from '../utils/avatar';
 
 const getTierMeta = (level) => {
@@ -351,52 +351,61 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
 
     // Lấy vị trí khi chuyển sang tab Location
     const handleTabChange = async (tab) => {
-        setActiveTab(tab);
-        if (tab === 'location') {
-            if (window.isMockGpsActive && userLocation) {
-                if (!isGuest) {
-                    fetchActiveCampaigns(userLocation, true);
-                    pingLocation(userLocation.lat, userLocation.lng)
-                        .then((res) => {
-                            if (res.spawned) {
-                                void showAlert(`[Nhiệm vụ ẩn] Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện!`);
-                            }
-                            fetchActiveTasks();
-                        })
-                        .catch((err) => console.error(err));
-                }
-                return;
-            }
-
-            try {
-                const position = await getCurrentPosition({
-                    enableHighAccuracy: false,
-                    timeout: 10000,
-                    maximumAge: 10000
-                });
-
-                const loc = {
-                    lat: position.latitude,
-                    lng: position.longitude
-                };
-                setUserLocation(loc);
-                sendLocation(loc.lat, loc.lng);
-
-                if (!isGuest) {
-                    fetchActiveCampaigns(loc, true);
-                    pingLocation(loc.lat, loc.lng)
-                        .then((res) => {
-                            if (res.spawned) {
-                                void showAlert(`[Nhiệm vụ ẩn] Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện!`);
-                            }
-                            fetchActiveTasks();
-                        })
-                        .catch((err) => console.error(err));
-                }
-            } catch (geoError) {
-                console.warn("Lỗi lấy vị trí:", geoError);
-            }
+        if (tab !== 'location') {
+            setActiveTab(tab);
+            return;
         }
+
+        if (window.isMockGpsActive && userLocation) {
+            setActiveTab(tab);
+            if (!isGuest) {
+                fetchActiveCampaigns(userLocation, true);
+                pingLocation(userLocation.lat, userLocation.lng)
+                    .then((res) => {
+                        if (res.spawned) {
+                            void showAlert(`[Nhiệm vụ ẩn] Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện!`);
+                        }
+                        fetchActiveTasks();
+                    })
+                    .catch((err) => console.error(err));
+            }
+            return;
+        }
+
+        try {
+            // Trên iOS PWA, lời gọi đầu tiên phải chạy trực tiếp từ thao tác bấm của người dùng.
+            const position = await requestLocationPermission({
+                enableHighAccuracy: false,
+                timeout: 10000,
+                maximumAge: 10000
+            });
+
+            const loc = {
+                lat: position.latitude,
+                lng: position.longitude
+            };
+            setUserLocation(loc);
+            sendLocation(loc.lat, loc.lng);
+
+            if (!isGuest) {
+                fetchActiveCampaigns(loc, true);
+                pingLocation(loc.lat, loc.lng)
+                    .then((res) => {
+                        if (res.spawned) {
+                            void showAlert(`[Nhiệm vụ ẩn] Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện!`);
+                        }
+                        fetchActiveTasks();
+                    })
+                    .catch((err) => console.error(err));
+            }
+        } catch (geoError) {
+            console.warn("Lỗi lấy vị trí:", geoError);
+            await showAlert(geoError?.message || 'Không thể bật GPS trên thiết bị.', {
+                title: 'Bật định vị GPS'
+            });
+        }
+
+        setActiveTab(tab);
     };
 
     // Render nội dung tương ứng với tab được chọn
@@ -557,7 +566,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
             </div>
 
             {/* Vùng hiển thị nội dung của từng tab */}
-            <div className="content-area">
+            <div className={`content-area ${activeTab === 'location' && !isGuest ? 'content-area-map' : ''}`}>
                 {renderContent()}
             </div>
 

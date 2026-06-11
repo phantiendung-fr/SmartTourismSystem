@@ -25,6 +25,13 @@ export const toLocalDateInputValue = (dateValue) => {
     return `${year}-${month}-${day}`;
 };
 
+const formatDateInputValue = (value) => {
+    if (!value) return 'dd/mm/yyyy';
+
+    const [year, month, day] = value.split('-');
+    return year && month && day ? `${day}/${month}/${year}` : value;
+};
+
 const HistoryScreen = ({ onBack }) => {
     const [history, setHistory] = useState([]);
     const [filteredHistory, setFilteredHistory] = useState([]);
@@ -125,6 +132,7 @@ const HistoryScreen = ({ onBack }) => {
                         <Calendar size={16} /> Chọn ngày
                     </label>
                     <div className="date-input-wrapper">
+                        <span className="compact-date-value">{formatDateInputValue(filterDate)}</span>
                         <input
                             id="history-date-filter"
                             type="date"

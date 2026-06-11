@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { API_BASE } from '../../config/api';
 import { storageGet } from '../../platform/storage';
 import { 
@@ -33,6 +33,11 @@ export const LocationTasks = ({ locationId, locationName, itineraryId, userId, o
   const [internalTasks, setInternalTasks] = useState([]);
   const [internalLoading, setInternalLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartYRef = useRef(null);
+  const dragOffsetRef = useRef(0);
+  const suppressHandleClickRef = useRef(false);
 
   const isControlled = propsTasks !== undefined;
   const tasks = isControlled ? propsTasks : internalTasks;
@@ -72,11 +77,63 @@ export const LocationTasks = ({ locationId, locationName, itineraryId, userId, o
     }
   }, [locationId, itineraryId, userId, propsTasks]);
 
+  const handleDragStart = (event) => {
+    dragStartYRef.current = event.clientY;
+    setIsDragging(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handleDragMove = (event) => {
+    if (dragStartYRef.current === null) return;
+    const nextOffset = Math.max(0, event.clientY - dragStartYRef.current);
+    dragOffsetRef.current = nextOffset;
+    setDragOffset(nextOffset);
+  };
+
+  const finishDrag = () => {
+    if (dragStartYRef.current === null) return;
+
+    const shouldClose = dragOffsetRef.current >= 80;
+    suppressHandleClickRef.current = dragOffsetRef.current > 5;
+    dragStartYRef.current = null;
+    dragOffsetRef.current = 0;
+    setIsDragging(false);
+
+    if (shouldClose) {
+      onClose();
+      return;
+    }
+
+    setDragOffset(0);
+  };
+
+  const handleDragZoneClick = () => {
+    if (suppressHandleClickRef.current) {
+      suppressHandleClickRef.current = false;
+      return;
+    }
+    onClose();
+  };
+
   return (
     <div className="location-tasks-drawer">
       <div className="drawer-overlay" onClick={onClose} />
-      <div className="drawer-content">
-        <div className="drawer-handle" />
+      <div
+        className={`drawer-content ${isDragging ? 'is-dragging' : ''}`}
+        style={{ transform: `translateY(${dragOffset}px)` }}
+      >
+        <button
+          type="button"
+          className="drawer-drag-zone"
+          aria-label="Kéo xuống hoặc bấm để đóng"
+          onClick={handleDragZoneClick}
+          onPointerDown={handleDragStart}
+          onPointerMove={handleDragMove}
+          onPointerUp={finishDrag}
+          onPointerCancel={finishDrag}
+        >
+          <span className="drawer-handle" />
+        </button>
         
         <div className="drawer-header">
           <div className="header-info">
@@ -189,4 +246,3 @@ export const LocationTasks = ({ locationId, locationName, itineraryId, userId, o
 };
 
 export default LocationTasks;
-

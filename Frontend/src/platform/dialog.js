@@ -189,7 +189,7 @@ const getToastContainer = () => {
     if (!toastContainer || !document.body.contains(toastContainer)) {
         toastContainer = document.createElement('div');
         toastContainer.style.position = 'fixed';
-        toastContainer.style.top = '16px';
+        toastContainer.style.top = 'calc(12px + env(safe-area-inset-top, 0px))';
         toastContainer.style.left = '50%';
         toastContainer.style.transform = 'translateX(-50%)';
         toastContainer.style.zIndex = '9999999';

@@ -488,8 +488,11 @@ const LocationDetailScreen = ({ location, onBack }) => {
 
             {/* ── Write Review Modal / Overlay ── */}
             {showReviewForm && (
-                <div className="review-modal-overlay">
-                    <div className="review-modal-sheet">
+                <div
+                    className="review-modal-overlay"
+                    onClick={() => { setShowReviewForm(false); setSubmitMsg(''); }}
+                >
+                    <div className="review-modal-sheet" onClick={(event) => event.stopPropagation()}>
                         <h3 className="review-modal-title">Viết đánh giá</h3>
 
                         {/* Chọn sao */}
@@ -529,12 +532,14 @@ const LocationDetailScreen = ({ location, onBack }) => {
                 </div>
             )}
 
-            {/* ── Bottom Fixed Bar ── */}
-            <div className="bottom-fixed-bar">
-                <button className="btn-write-review" onClick={() => { setShowReviewForm(true); setSubmitMsg(''); }}>
-                    Write Review
-                </button>
-            </div>
+            {/* ── Review Action ── */}
+            {!showReviewForm && (
+                <div className="bottom-fixed-bar">
+                    <button className="btn-write-review" onClick={() => { setShowReviewForm(true); setSubmitMsg(''); }}>
+                        Write Review
+                    </button>
+                </div>
+            )}
 
             {/* ── Map Overlay ── */}
             {showMap && (() => {

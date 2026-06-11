@@ -670,23 +670,8 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                         }}>
                             <button 
                                 onClick={handleCloseDetail} 
-                                style={{
-                                    position: 'absolute',
-                                    top: '16px',
-                                    left: '16px',
-                                    width: '36px',
-                                    height: '36px',
-                                    borderRadius: '50%',
-                                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                                    border: '1.5px solid #2c3e50',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    cursor: 'pointer',
-                                    color: '#2c3e50',
-                                    zIndex: 10
-                                }}
+                                className="location-detail-back-btn"
+                                aria-label="Quay lại"
                             >
                                 <ArrowLeft size={20} />
                             </button>

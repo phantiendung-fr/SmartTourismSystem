@@ -33,15 +33,38 @@
   box-sizing: border-box;
   box-shadow: var(--st-shadow);
   animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  transition: transform 0.22s ease, background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.drawer-content.is-dragging {
+  transition: none;
+}
+
+.drawer-drag-zone {
+  width: 100%;
+  min-height: 36px;
+  margin: -12px 0 3px;
+  padding: 12px 0 10px;
+  border: none;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drawer-drag-zone:active {
+  cursor: grabbing;
 }
 
 .drawer-handle {
+  display: block;
   width: 40px;
   height: 5px;
   background-color: var(--st-border);
   border-radius: 10px;
-  margin: 0 auto 15px;
+  pointer-events: none;
 }
 
 .drawer-header {

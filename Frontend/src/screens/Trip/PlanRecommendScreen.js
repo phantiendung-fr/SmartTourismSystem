@@ -188,7 +188,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
     if (loading) {
         return (
             <div className="recommend-screen">
-                <div className="loading-state">
+                <div className="plan-recommend-loading-state">
                     <div className="plan-loader-spinner"></div>
                     <h2>Đang tìm kiếm gợi ý...</h2>
                     <p>Vui lòng đợi giây lát</p>
@@ -207,7 +207,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
 
         return (
             <div className="recommend-screen">
-                <div className="error-state">
+                <div className="plan-recommend-error-state">
                     {isTokenExpired ? (
                         <>
                             <h2 style={{ fontSize: '20px', color: '#de350b', marginBottom: '10px' }}>

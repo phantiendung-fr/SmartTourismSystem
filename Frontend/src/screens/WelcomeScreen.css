@@ -2,8 +2,8 @@
 
 .welcome-container {
     width: 100%;
-    min-height: 100vh;
-    min-height: 100dvh;
+    height: 100%;
+    min-height: 100%;
     margin: 0 auto;
     background: linear-gradient(180deg, #70a1ff 0%, #1e90ff 100%);
     display: flex;
