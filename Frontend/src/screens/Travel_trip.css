@@ -1,12 +1,14 @@
 .home-container {
     padding: 16px;
-    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    padding-top: 12px;
     font-family: 'Be Vietnam Pro', sans-serif;
     background: transparent;
     min-height: 100%;
+    min-width: 0;
     width: 100%;
     box-sizing: border-box;
     position: relative;
+    overflow-x: hidden;
 }
 
 /* Ongoing trip sections */
@@ -564,6 +566,8 @@
     padding: 16px;
     box-shadow: 0 6px 0 #2c3e50;
     margin-bottom: 24px;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .attendance-guest-state {
@@ -584,9 +588,11 @@
 
 .attendance-days-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
     margin-bottom: 16px;
+    min-width: 0;
+    width: 100%;
 }
 
 .attendance-day-box {
@@ -599,8 +605,10 @@
     align-items: center;
     justify-content: space-between;
     min-height: 72px;
+    min-width: 0;
     position: relative;
     box-sizing: border-box;
+    overflow: hidden;
     transition: all 0.2s ease;
     pointer-events: none;
     user-select: none;
@@ -610,6 +618,8 @@
     font-size: 9px;
     font-weight: 800;
     color: #7f8c8d;
+    min-width: 0;
+    white-space: nowrap;
 }
 
 .attendance-day-box .day-status-icon {
@@ -624,7 +634,10 @@
     font-size: 8px;
     font-weight: 900;
     color: #7f8c8d;
-    white-space: nowrap;
+    line-height: 1.15;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: center;
 }
 
 /* Day states */
@@ -917,4 +930,3 @@ body.dark-theme .plan-banner h3 {
     text-shadow: 1.5px 1.5px 0 var(--game-border-color);
     -webkit-text-stroke: 0.5px var(--game-border-color);
 }
-

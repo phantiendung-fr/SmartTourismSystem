@@ -28,6 +28,7 @@ import RedeemSuccessModal from './MainTabs/RedeemSuccessModal';
 import { getActiveTasks, pingLocation, getActiveCampaigns } from '../services/hiddenQuestService';
 import { useSocialQuest } from './SocialQuest/SocialQuestProvider';
 import ChestOpeningAnimation from './HiddenQuest/ChestOpeningAnimation';
+import SupportChatbot from './SupportChatbot/SupportChatbot';
 import { API_BASE } from '../config/api';
 import { storageGet } from '../platform/storage';
 import { showAlert, showConfirm } from '../platform/dialog';
@@ -55,6 +56,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
 
     // State quản lý tab đang hiển thị
     const [activeTab, setActiveTab] = useState('home');
+    const [showSupportChat, setShowSupportChat] = useState(false);
     const [userLocation, setUserLocation] = useState(null);
     
     // State quản lý Thành tựu
@@ -486,6 +488,7 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                         onOpenAdminModeration={onOpenAdminModeration}
                         onOpenHistory={onOpenHistory}
                         onOpenProfileEdit={onOpenProfileEdit}
+                        onOpenSupport={() => setShowSupportChat(true)}
                         onLogout={onLogout}
                         setLocalPointsBalance={setLocalPointsBalance}
                     />
@@ -662,6 +665,11 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
                     onClose={() => setShowRedeemSuccessModal(false)}
                 />
             )}
+
+            <SupportChatbot
+                isOpen={showSupportChat}
+                onClose={() => setShowSupportChat(false)}
+            />
         </div>
     );
 };

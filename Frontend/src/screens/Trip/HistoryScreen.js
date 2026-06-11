@@ -8,6 +8,23 @@ import {
 import HistoryDetail from './HistoryDetail';
 import './HistoryScreen.css';
 
+export const parseTripDate = (dateValue) => {
+    if (!dateValue) return null;
+
+    const date = new Date(dateValue);
+    return Number.isNaN(date.getTime()) ? null : date;
+};
+
+export const toLocalDateInputValue = (dateValue) => {
+    const date = parseTripDate(dateValue);
+    if (!date) return '';
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 const HistoryScreen = ({ onBack }) => {
     const [history, setHistory] = useState([]);
     const [filteredHistory, setFilteredHistory] = useState([]);
@@ -20,13 +37,20 @@ const HistoryScreen = ({ onBack }) => {
 
     useEffect(() => {
         const fetchHistory = async () => {
-            const token = await storageGet('access_token');
-            if (token) {
-                const data = await getTripHistory(token);
-                setHistory(data);
-                setFilteredHistory(data);
+            try {
+                const token = await storageGet('access_token');
+                if (token) {
+                    const data = await getTripHistory(token);
+                    const historyItems = Array.isArray(data) ? data : [];
+                    setHistory(historyItems);
+                    setFilteredHistory(historyItems);
+                }
+            } catch {
+                setHistory([]);
+                setFilteredHistory([]);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         fetchHistory();
     }, []);
@@ -44,17 +68,17 @@ const HistoryScreen = ({ onBack }) => {
         }
 
         if (filterDate) {
-            result = result.filter(item => {
-                const itemDate = new Date(item.create_at).toISOString().split('T')[0];
-                return itemDate === filterDate;
-            });
+            result = result.filter(item => toLocalDateInputValue(item.create_at) === filterDate);
         }
 
         setFilteredHistory(result);
     }, [filterStatus, filterDate, history]);
 
     const formatDate = (dateString) => {
-        return new Date(dateString).toLocaleDateString('vi-VN', {
+        const date = parseTripDate(dateString);
+        if (!date) return 'Không rõ ngày';
+
+        return date.toLocaleDateString('vi-VN', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric'
@@ -80,10 +104,11 @@ const HistoryScreen = ({ onBack }) => {
             {/* Thanh bộ lọc mới */}
             <div className="filter-bar">
                 <div className="filter-group">
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <label htmlFor="history-status-filter" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Filter size={16} /> Trạng thái
                     </label>
                     <select
+                        id="history-status-filter"
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
                         className="filter-select"
@@ -96,18 +121,26 @@ const HistoryScreen = ({ onBack }) => {
                 </div>
 
                 <div className="filter-group">
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <label htmlFor="history-date-filter" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Calendar size={16} /> Chọn ngày
                     </label>
                     <div className="date-input-wrapper">
                         <input
+                            id="history-date-filter"
                             type="date"
                             value={filterDate}
                             onChange={(e) => setFilterDate(e.target.value)}
                             className="filter-date"
                         />
                         {filterDate && (
-                            <button className="clear-date" onClick={() => setFilterDate('')}>&times;</button>
+                            <button
+                                type="button"
+                                className="clear-date"
+                                onClick={() => setFilterDate('')}
+                                aria-label="Xóa ngày đã chọn"
+                            >
+                                &times;
+                            </button>
                         )}
                     </div>
                 </div>

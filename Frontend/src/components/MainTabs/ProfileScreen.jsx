@@ -32,6 +32,7 @@ const ProfileScreen = ({
     onOpenAdminModeration,
     onOpenHistory,
     onOpenProfileEdit,
+    onOpenSupport,
     onLogout,
     setLocalPointsBalance
 }) => {
@@ -486,7 +487,7 @@ const ProfileScreen = ({
                     <span className="profile-menu-label">Cài đặt quyền riêng tư</span>
                     <span className="menu-btn-arrow">›</span>
                 </button>
-                <button className="profile-menu-btn">
+                <button className="profile-menu-btn" onClick={onOpenSupport}>
                     <span className="menu-btn-icon"><HelpCircle size={18} /></span>
                     <span className="profile-menu-label">Trợ giúp và hỗ trợ</span>
                     <span className="menu-btn-arrow">›</span>
