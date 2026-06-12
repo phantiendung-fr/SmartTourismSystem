@@ -238,6 +238,26 @@
     padding-bottom: 0;
 }
 
+html.chat-conversation-active .game-hud-header,
+html.chat-conversation-active .friends-sub-tabs,
+html.chat-conversation-active .bottom-nav {
+    display: none !important;
+}
+
+html.chat-conversation-active .content-area {
+    overflow: hidden;
+    padding-bottom: 0;
+}
+
+html.chat-keyboard-visible .content-area {
+    overflow: hidden;
+    padding-bottom: 0;
+}
+
+html.chat-keyboard-visible .bottom-nav {
+    display: none;
+}
+
 .bottom-nav {
     position: absolute;
     bottom: 8px;
