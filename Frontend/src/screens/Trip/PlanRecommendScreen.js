@@ -203,23 +203,44 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
         }
     };
 
-    const locationCatalog = useMemo(() => {
-        const map = new Map();
-        [...recommendations, ...cityLocations].forEach((loc) => {
-            if (loc?.location_id) map.set(loc.location_id, loc);
-        });
-        return map;
-    }, [recommendations, cityLocations]);
-
     const recommendationIds = useMemo(
         () => new Set(recommendations.map((loc) => loc.location_id)),
         [recommendations]
     );
 
-    const filteredCityLocations = useMemo(() => {
+    const allLocations = useMemo(() => {
+        const cityLocationMap = new Map(
+            cityLocations
+                .filter((loc) => loc?.location_id)
+                .map((loc) => [loc.location_id, loc])
+        );
+        const seen = new Set();
+        const result = [];
+
+        recommendations.forEach((loc) => {
+            if (!loc?.location_id || seen.has(loc.location_id)) return;
+            result.push({ ...cityLocationMap.get(loc.location_id), ...loc });
+            seen.add(loc.location_id);
+        });
+
+        cityLocations.forEach((loc) => {
+            if (!loc?.location_id || seen.has(loc.location_id)) return;
+            result.push(loc);
+            seen.add(loc.location_id);
+        });
+
+        return result;
+    }, [recommendations, cityLocations]);
+
+    const locationCatalog = useMemo(
+        () => new Map(allLocations.map((loc) => [loc.location_id, loc])),
+        [allLocations]
+    );
+
+    const filteredLocations = useMemo(() => {
         const keyword = manualSearch.trim().toLowerCase();
-        if (!keyword) return cityLocations;
-        return cityLocations.filter((loc) => {
+        if (!keyword) return allLocations;
+        return allLocations.filter((loc) => {
             const text = [
                 loc.location_name,
                 (loc.tags || []).join(' '),
@@ -228,7 +249,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
             ].join(' ').toLowerCase();
             return text.includes(keyword);
         });
-    }, [cityLocations, manualSearch]);
+    }, [allLocations, manualSearch]);
 
     if (loading) {
         return (
@@ -366,19 +387,11 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
                 <h2>Gợi ý địa điểm</h2>
             </div>
 
-            <p className="recommend-subtitle">
-                Chúng tôi tìm thấy {recommendations.length} địa điểm phù hợp. Hãy chọn những nơi bạn thích!
-            </p>
-
-            <div className="locations-list">
-                {recommendations.map((loc) => renderLocationCard(loc))}
-            </div>
-
             <section className="manual-location-section">
                 <div className="manual-section-header">
                     <div>
                         <h3>Tất cả địa điểm trong thành phố</h3>
-                        <span>{filteredCityLocations.length} / {cityLocations.length} địa điểm</span>
+                        <span>{filteredLocations.length} / {allLocations.length} địa điểm</span>
                     </div>
                 </div>
                 <label className="manual-search-box">
@@ -391,10 +404,10 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
                     />
                 </label>
                 <div className="manual-locations-list">
-                    {filteredCityLocations.length === 0 ? (
+                    {filteredLocations.length === 0 ? (
                         <div className="manual-empty">Không tìm thấy địa điểm phù hợp.</div>
                     ) : (
-                        filteredCityLocations.map((loc) => renderLocationCard(loc, { manual: true }))
+                        filteredLocations.map((loc) => renderLocationCard(loc, { manual: true }))
                     )}
                 </div>
             </section>

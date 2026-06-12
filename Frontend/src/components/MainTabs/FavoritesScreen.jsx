@@ -44,7 +44,7 @@ const FavoritesScreen = ({ onOpenLocationDetail }) => {
 
     return (
         <div className="favorites-screen-wrapper" style={{ padding: '16px', height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: '950', color: 'var(--st-text)', marginBottom: '16px', textShadow: '1.5px 1.5px 0 var(--st-bg)' }}>Yêu Thích Đã Lưu</h2>
+            <h2 style={{ fontSize: '24px', fontWeight: '950', color: 'var(--st-text)', marginBottom: '16px', textShadow: '1.5px 1.5px 0 var(--st-bg)' }}>Yêu Thích</h2>
             
             {/* Địa điểm yêu thích */}
             {savedLocations.length > 0 && (
