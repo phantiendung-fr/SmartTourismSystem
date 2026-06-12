@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { ArrowLeft, Heart } from 'lucide-react';
 import { API_BASE } from '../../config/api';
 import { storageGet } from '../../platform/storage';
 import { showToast } from '../../platform/dialog';
@@ -324,7 +325,7 @@ const LocationDetailScreen = ({ location, onBack }) => {
                 )}
                 <div className="banner-overlay">
                     <button type="button" className="banner-btn back-btn" onClick={onBack} aria-label="Quay lại">
-                        <i className="fas fa-arrow-left"></i>
+                        <ArrowLeft size={20} />
                     </button>
                     <button
                         type="button"
@@ -333,7 +334,7 @@ const LocationDetailScreen = ({ location, onBack }) => {
                         disabled={favoriteLoading}
                         aria-label={isFavorite ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
                     >
-                        <i className={`${isFavorite ? 'fas' : 'far'} fa-heart`}></i>
+                        <Heart size={20} fill={isFavorite ? 'currentColor' : 'none'} />
                     </button>
                 </div>
 

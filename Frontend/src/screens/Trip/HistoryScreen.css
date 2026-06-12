@@ -270,7 +270,7 @@
     color: #1976d2;
 }
 
-.card-info h3 {
+.history-card .card-info h3 {
     margin: 0 0 8px 0;
     font-size: 17px;
     color: #212529;
@@ -462,7 +462,7 @@
     color: #1d4ed8;
 }
 
-.card-info h3 {
+.history-card .card-info h3 {
     color: #2c3e50;
     font-weight: 900;
     max-width: calc(100% - 110px);
@@ -481,7 +481,7 @@
         margin-bottom: 8px;
     }
 
-    .card-info h3 {
+    .history-card .card-info h3 {
         max-width: 100%;
     }
 

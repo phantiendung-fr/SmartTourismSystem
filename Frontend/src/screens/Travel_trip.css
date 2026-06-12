@@ -72,7 +72,7 @@
     box-shadow: 0 4px 0 #2c3e50;
 }
 
-.card-info {
+.ongoing-trip-info {
     grid-area: info;
     min-width: 0;
 }
@@ -82,8 +82,8 @@
     font-size: 15px;
     font-weight: 900;
     color: #2c3e50;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
+    overflow-wrap: anywhere;
+    word-break: normal;
     white-space: normal;
     line-height: 1.3;
 }

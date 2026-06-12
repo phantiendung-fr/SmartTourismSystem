@@ -20,6 +20,13 @@
   transform: translate(0, 0);
 }
 
+html.chat-ios-standalone-active .app-container,
+html.comments-ios-standalone-active .app-container,
+html.support-ios-standalone-active .app-container {
+  transform: none;
+}
+
+
 .app-main-screen {
   position: relative;
   width: 100%;

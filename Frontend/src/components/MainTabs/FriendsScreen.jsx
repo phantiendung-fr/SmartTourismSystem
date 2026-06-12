@@ -13,9 +13,9 @@ const FriendsScreen = ({
     const [friendsTab, setFriendsTab] = useState('feed'); // 'feed', 'matching', 'chat'
 
     return (
-        <div className="friends-screen-wrapper" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div className="friends-screen-wrapper" style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* Internal sub-navigation tabs */}
-            <div className="friends-sub-tabs" style={{ display: 'flex', borderBottom: '2.5px solid var(--game-border-color)', backgroundColor: 'var(--st-surface)', padding: '8px 16px', gap: '8px', zIndex: 10 }}>
+            <div className="friends-sub-tabs" style={{ display: 'flex', flexShrink: 0, borderBottom: '2.5px solid var(--game-border-color)', backgroundColor: 'var(--st-surface)', padding: '8px 16px', gap: '8px', zIndex: 10 }}>
                 <button 
                     onClick={() => setFriendsTab('feed')}
                     style={{
@@ -72,7 +72,7 @@ const FriendsScreen = ({
                 </button>
             </div>
 
-            <div className="friends-screen-content" style={{ flex: 1, overflowY: 'auto' }}>
+            <div className="friends-screen-content" style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 <div style={{ display: friendsTab === 'feed' ? 'block' : 'none', height: '100%' }}>
                     <SocialFeedScreen 
                         user={userInfo} 

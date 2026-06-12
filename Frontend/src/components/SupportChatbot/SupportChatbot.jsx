@@ -26,6 +26,17 @@ const INITIAL_SUGGESTIONS = [
     'Ảnh check-in không được duyệt',
 ];
 
+const isIosStandalone = () => {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isStandalone = window.navigator.standalone === true
+        || window.matchMedia?.('(display-mode: standalone)').matches;
+
+    return isIos && isStandalone;
+};
+
 export default function SupportChatbot({ isOpen, onClose }) {
     const [messages, setMessages] = useState([WELCOME_MESSAGE]);
     const [suggestions, setSuggestions] = useState(INITIAL_SUGGESTIONS);
@@ -89,6 +100,39 @@ export default function SupportChatbot({ isOpen, onClose }) {
             setViewportState({ height: null, offsetTop: 0, keyboardVisible: false });
         };
     }, [isOpen]);
+
+    useEffect(() => {
+        const root = document.documentElement;
+        const iosStandaloneActive = isOpen && isIosStandalone();
+
+        root.classList.toggle('support-active', isOpen);
+        root.classList.toggle('support-ios-standalone-active', iosStandaloneActive);
+
+        if (isOpen && viewportState.height !== null) {
+            root.style.setProperty('--support-visual-height', `${viewportState.height}px`);
+            root.style.setProperty('--support-visual-offset-top', `${viewportState.offsetTop}px`);
+        } else {
+            root.style.removeProperty('--support-visual-height');
+            root.style.removeProperty('--support-visual-offset-top');
+        }
+
+        if (isOpen && viewportState.keyboardVisible) {
+            root.classList.add('support-keyboard-visible');
+        } else {
+            root.classList.remove('support-keyboard-visible');
+        }
+        return undefined;
+    }, [viewportState, isOpen]);
+
+    useEffect(() => () => {
+        const root = document.documentElement;
+        root.classList.remove('support-active');
+        root.classList.remove('support-ios-standalone-active');
+        root.classList.remove('support-keyboard-visible');
+        root.style.removeProperty('--support-visual-height');
+        root.style.removeProperty('--support-visual-offset-top');
+    }, []);
+
 
     // Authentication and Ticket fetching effect
     useEffect(() => {
@@ -212,7 +256,7 @@ export default function SupportChatbot({ isOpen, onClose }) {
 
     return (
         <div
-            className={`support-chatbot-root ${viewportState.keyboardVisible ? 'keyboard-visible' : ''}`}
+            className={`support-chatbot-root ${viewportState.keyboardVisible ? 'keyboard-visible' : ''} ${isIosStandalone() ? 'ios-standalone-support' : ''}`}
             style={keyboardViewportStyle}
             onClick={onClose}
         >

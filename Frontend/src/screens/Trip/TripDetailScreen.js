@@ -18,6 +18,7 @@ import { showAlert, showConfirm, showToast } from '../../platform/dialog';
 import { getCurrentPosition, startWatchingPosition } from '../../platform/location';
 import { isMascotEnabled } from '../../config/uiFlags';
 import { playSound } from '../../utils/soundUtils';
+import { getLocationFallbackImages } from '../../services/locationImageService';
 import { 
   ArrowLeft, CheckCircle2, XCircle, AlertTriangle, 
   MapPin, Sparkles, Coins, Star, Clock, Ticket, X, Check, Flame, Award, HelpCircle,
@@ -151,6 +152,9 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
     const userId = user?.user_id || user?.id || '296be4b0-9556-42bb-9be1-fdb1277a06c2';
 
     const [selectedStop, setSelectedStop] = useState(null);
+    const [failedCoverImages, setFailedCoverImages] = useState([]);
+    const [fallbackCoverImages, setFallbackCoverImages] = useState({});
+    const fallbackCoverImagesRef = useRef({});
     const [checkinLoading, setCheckinLoading] = useState(false);
     const checkinInProgress = useRef(false);
 
@@ -211,6 +215,35 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
             setTimeout(() => setCloudState('idle'), 600);
         }, 500);
     };
+
+    useEffect(() => {
+        const locationId = selectedStop?.location_id;
+        const providedCovers = [selectedStop?.image_url, selectedStop?.cover_image].filter(Boolean);
+        const hasUsableProvidedCover = providedCovers.some(url => !failedCoverImages.includes(url));
+        if (!locationId || hasUsableProvidedCover || fallbackCoverImagesRef.current[locationId]) return;
+
+        let active = true;
+        const loadingEntry = { status: 'loading', images: [] };
+        fallbackCoverImagesRef.current[locationId] = loadingEntry;
+        setFallbackCoverImages(current => ({ ...current, [locationId]: loadingEntry }));
+
+        getLocationFallbackImages(locationId)
+            .then(images => {
+                if (!active) return;
+                const completedEntry = { status: 'done', images };
+                fallbackCoverImagesRef.current[locationId] = completedEntry;
+                setFallbackCoverImages(current => ({ ...current, [locationId]: completedEntry }));
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [
+        selectedStop?.location_id,
+        selectedStop?.image_url,
+        selectedStop?.cover_image,
+        failedCoverImages,
+    ]);
 
     const fetchTasksForLocation = async (locId, silent = false) => {
         if (!locId || !itineraryId || !userId) return;
@@ -662,17 +695,46 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
         if (selectedStop) {
             const stopInDetail = tripDetail.stops?.find(s => s.stop_id === selectedStop.stop_id) || selectedStop;
             const isCheckedIn = stopInDetail.status === 'COMPLETED';
+            const fallbackEntry = fallbackCoverImages[stopInDetail.location_id];
+            const coverCandidates = [
+                stopInDetail.image_url ? { url: stopInDetail.image_url, source: 'provided' } : null,
+                stopInDetail.cover_image ? { url: stopInDetail.cover_image, source: 'provided' } : null,
+                ...(fallbackEntry?.images || []),
+            ].filter(Boolean);
+            const coverImage = coverCandidates.find(image => !failedCoverImages.includes(image.url));
+            const coverUrl = coverImage?.url || null;
+            const isCoverLoading = fallbackEntry?.status === 'loading';
 
             return (
                 <div className="trip-detail-screen location-detail-mode">
                     <div className="location-detail-content" style={{ marginTop: 0 }}>
-                        {/* Ảnh bìa địa điểm — ưu tiên ảnh thực từ API, fallback về ảnh placeholder trung tính thay vì ảnh map-dao */}
-                        <div className="location-cover-image" style={{ 
-                            backgroundImage: `url(${stopInDetail.image_url || stopInDetail.cover_image || 'https://placehold.co/600x400/2c3e50/FFF?text=Chưa+có+ảnh+địa+điểm&font=roboto'})`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            position: 'relative'
-                        }}>
+                        <div className={`location-cover-image ${coverUrl ? '' : 'location-cover-image--empty'}`}>
+                            {coverUrl ? (
+                                <img
+                                    className="location-cover-photo"
+                                    src={coverUrl}
+                                    alt={stopInDetail.location_name}
+                                    onError={() => setFailedCoverImages(current => (
+                                        current.includes(coverUrl) ? current : [...current, coverUrl]
+                                    ))}
+                                />
+                            ) : (
+                                <div className="location-cover-placeholder">
+                                    <MapPin size={30} />
+                                    <span>{isCoverLoading ? 'Đang tìm ảnh địa điểm...' : 'Địa điểm chưa có ảnh'}</span>
+                                </div>
+                            )}
+                            {coverImage?.source === 'external' && coverImage.source_url && (
+                                <a
+                                    className="location-cover-credit"
+                                    href={coverImage.source_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    Ảnh: {coverImage.author || 'Wikimedia Commons'}
+                                    {coverImage.license ? ` · ${coverImage.license}` : ''}
+                                </a>
+                            )}
                             <button 
                                 onClick={handleCloseDetail} 
                                 className="location-detail-back-btn"

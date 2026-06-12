@@ -8,7 +8,8 @@ from sqlmodel import Session
 from models import (
     Users, UserProfiles, UserRole, UserStatus, RegisterType,
     BusinessLocation, Categories, Cities, LocationCategories, Locations, LocationsImage,
-    LocationReviews, EnterpriseProfiles, EnterpriseStatus, LocationSubmissions
+    LocationReviews, EnterpriseProfiles, EnterpriseStatus, LocationSubmissions,
+    UserLocationFavorites,
 )
 from models import Tags
 from core.security import create_access_token
@@ -372,3 +373,55 @@ def test_reviews_ratings_endpoints(client: TestClient, db_session: Session, setu
     assert summary_resp.json()["average_rating"] == 4.0
     assert summary_resp.json()["distribution"]["4"] == 1
     assert summary_resp.json()["distribution"]["5"] == 0
+
+
+def test_location_favorites_are_synchronized_per_user(client: TestClient, db_session: Session, setup_data):
+    location_id = setup_data["location_id"]
+    user_token = create_access_token(data={"sub": str(setup_data["normal_user_id"]), "role": "USER"})
+    user_headers = {"Authorization": f"Bearer {user_token}"}
+
+    response = client.get("/api/v1/locations/favorites")
+    assert response.status_code == 401
+
+    response = client.get("/api/v1/locations/favorites", headers=user_headers)
+    assert response.status_code == 200
+    assert response.json()["favorites"] == []
+
+    response = client.put(f"/api/v1/locations/{location_id}/favorite", headers=user_headers)
+    assert response.status_code == 200
+    assert response.json()["favorites"][0]["location_id"] == str(location_id)
+    assert response.json()["favorites"][0]["location_name"] == "Chợ Bến Thành"
+    assert response.json()["favorites"][0]["city_name"] == "Hồ Chí Minh"
+
+    stored = db_session.get(UserLocationFavorites, (setup_data["normal_user_id"], location_id))
+    assert stored is not None
+
+    enterprise_token = create_access_token(data={"sub": str(setup_data["enterprise_user_id"]), "role": "ENTERPRISE"})
+    enterprise_headers = {"Authorization": f"Bearer {enterprise_token}"}
+    response = client.get("/api/v1/locations/favorites", headers=enterprise_headers)
+    assert response.status_code == 200
+    assert response.json()["favorites"] == []
+
+    response = client.post(
+        "/api/v1/locations/favorites/sync",
+        json={"add_location_ids": [], "remove_location_ids": [str(location_id)]},
+        headers=user_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["favorites"] == []
+    assert db_session.get(UserLocationFavorites, (setup_data["normal_user_id"], location_id)) is None
+
+
+def test_location_favorites_sync_imports_local_ids(client: TestClient, setup_data):
+    location_id = setup_data["location_id"]
+    access_token = create_access_token(data={"sub": str(setup_data["normal_user_id"]), "role": "USER"})
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    response = client.post(
+        "/api/v1/locations/favorites/sync",
+        json={"add_location_ids": [str(location_id)], "remove_location_ids": []},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert [item["location_id"] for item in response.json()["favorites"]] == [str(location_id)]
