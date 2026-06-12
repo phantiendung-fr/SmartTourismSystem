@@ -2,10 +2,13 @@
 .main-layout {
     display: flex;
     flex-direction: column;
-    height: 100%;
-    position: relative;
+    position: absolute;
+    inset: 0;
+    width: 100%;
     background-color: var(--st-bg); /* Use theme bg variable */
     min-height: 0;
+    min-width: 0;
+    overflow: hidden;
     transition: background-color 0.3s ease;
 }
 
@@ -16,8 +19,12 @@
     align-items: center;
     background-color: var(--st-surface);
     border-bottom: 4px solid var(--game-border-color);
-    padding: 10px 16px 10px 20px;
-    height: 68px;
+    padding:
+        calc(10px + env(safe-area-inset-top, 0px))
+        calc(16px + env(safe-area-inset-right, 0px))
+        10px
+        calc(20px + env(safe-area-inset-left, 0px));
+    height: calc(68px + env(safe-area-inset-top, 0px));
     z-index: 1010;
     cursor: pointer;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
@@ -185,7 +192,11 @@
 
 @media (max-width: 380px) {
     .game-hud-header {
-        padding: 9px 12px;
+        padding:
+            calc(9px + env(safe-area-inset-top, 0px))
+            calc(12px + env(safe-area-inset-right, 0px))
+            9px
+            calc(12px + env(safe-area-inset-left, 0px));
         gap: 6px;
     }
 
@@ -217,11 +228,39 @@
     overflow-y: auto;
     padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); /* Chừa khoảng trống cho thanh menu không đè lên nội dung */
     min-height: 0;
+    min-width: 0;
+    width: 100%;
+}
+
+.content-area-map {
+    position: relative;
+    overflow: hidden;
+    padding-bottom: 0;
+}
+
+html.chat-conversation-active .game-hud-header,
+html.chat-conversation-active .friends-sub-tabs,
+html.chat-conversation-active .bottom-nav {
+    display: none !important;
+}
+
+html.chat-conversation-active .content-area {
+    overflow: hidden;
+    padding-bottom: 0;
+}
+
+html.chat-keyboard-visible .content-area {
+    overflow: hidden;
+    padding-bottom: 0;
+}
+
+html.chat-keyboard-visible .bottom-nav {
+    display: none;
 }
 
 .bottom-nav {
     position: absolute;
-    bottom: 20px;
+    bottom: 8px;
     left: 20px;
     right: 20px;
     height: 64px;
@@ -705,12 +744,12 @@ body.dark-theme .bottom-nav {
     margin: 0;
     overflow: hidden;
     font-family: 'Inter', sans-serif;
-    border-radius: 40px;
+    border-radius: 0;
 }
 
 .map-overlay-top {
     position: absolute;
-    top: 84px; /* Clearance for the 68px game HUD + padding */
+    top: 16px;
     left: 20px;
     right: 20px;
     display: flex;
@@ -840,4 +879,3 @@ body.dark-theme .bottom-nav {
     border-top: 1px solid var(--st-border);
     box-shadow: var(--st-shadow);
 }
-

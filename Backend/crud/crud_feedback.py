@@ -58,3 +58,23 @@ def get_system_feedbacks(
     
     statement = statement.order_by(UserFeedbacks.created_at.desc())
     return db.exec(statement).all()
+
+
+# ---------------------------------------------------------------------------
+# Q3 – Lấy danh sách Feedback của một User (SELECT user_feedbacks WHERE user_id)
+# ---------------------------------------------------------------------------
+
+def get_user_feedbacks(
+    db: Session,
+    user_id: UUID
+) -> list[UserFeedbacks]:
+    """
+    Lấy danh sách các phản hồi/yêu cầu hỗ trợ của một user cụ thể.
+    """
+    statement = (
+        select(UserFeedbacks)
+        .where(UserFeedbacks.user_id == user_id)
+        .order_by(UserFeedbacks.created_at.desc())
+    )
+    return db.exec(statement).all()
+

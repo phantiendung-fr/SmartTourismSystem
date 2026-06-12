@@ -1,10 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Heart, MessageCircle, Bookmark, Send, MapPin, Flag, Image as ImageIcon, X, AlertTriangle, Plus, MoreHorizontal, Trash2, Locate } from 'lucide-react';
 import { API_BASE } from '../config/api';
 import { storageGet } from '../platform/storage';
 import { getCurrentPosition } from '../platform/location';
 import { showAlert, showConfirm } from '../platform/dialog';
 import './SocialFeedScreen.css';
+
+const isIosStandalone = () => {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isStandalone = window.navigator.standalone === true
+        || window.matchMedia?.('(display-mode: standalone)').matches;
+
+    return isIos && isStandalone;
+};
+
 
 const parseBackendDate = (value) => {
     if (!value) return null;
@@ -60,6 +72,88 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
     const [reportPostId, setReportPostId] = useState(null);
     const [reportReason, setReportReason] = useState('');
     const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+
+    const [keyboardViewport, setKeyboardViewport] = useState({
+        height: null,
+        offsetTop: 0,
+        visible: false
+    });
+    const commentInputRef = useRef(null);
+
+    useEffect(() => {
+        if (!activeCommentsPostId) return undefined;
+
+        const visualViewport = window.visualViewport;
+        let animationFrame;
+
+        const syncViewport = () => {
+            window.cancelAnimationFrame(animationFrame);
+            animationFrame = window.requestAnimationFrame(() => {
+                const height = Math.round(visualViewport?.height || window.innerHeight);
+                const offsetTop = Math.round(visualViewport?.offsetTop || 0);
+                const inputFocused = document.activeElement === commentInputRef.current;
+                const visible = inputFocused;
+
+                setKeyboardViewport((current) => (
+                    current.height === height
+                    && current.offsetTop === offsetTop
+                    && current.visible === visible
+                        ? current
+                        : { height, offsetTop, visible }
+                ));
+            });
+        };
+
+        syncViewport();
+        window.addEventListener('resize', syncViewport);
+        window.addEventListener('focusin', syncViewport);
+        window.addEventListener('focusout', syncViewport);
+        visualViewport?.addEventListener('resize', syncViewport);
+        visualViewport?.addEventListener('scroll', syncViewport);
+
+        return () => {
+            window.cancelAnimationFrame(animationFrame);
+            window.removeEventListener('resize', syncViewport);
+            window.removeEventListener('focusin', syncViewport);
+            window.removeEventListener('focusout', syncViewport);
+            visualViewport?.removeEventListener('resize', syncViewport);
+            visualViewport?.removeEventListener('scroll', syncViewport);
+            setKeyboardViewport({ height: null, offsetTop: 0, visible: false });
+        };
+    }, [activeCommentsPostId]);
+
+    useEffect(() => {
+        const root = document.documentElement;
+        const iosStandaloneActive = Boolean(activeCommentsPostId) && isIosStandalone();
+
+        root.classList.toggle('comments-active', Boolean(activeCommentsPostId));
+        root.classList.toggle('comments-ios-standalone-active', iosStandaloneActive);
+
+        if (activeCommentsPostId && keyboardViewport.height !== null) {
+            root.style.setProperty('--comments-visual-height', `${keyboardViewport.height}px`);
+            root.style.setProperty('--comments-visual-offset-top', `${keyboardViewport.offsetTop}px`);
+        } else {
+            root.style.removeProperty('--comments-visual-height');
+            root.style.removeProperty('--comments-visual-offset-top');
+        }
+
+        if (activeCommentsPostId && keyboardViewport.visible) {
+            root.classList.add('comments-keyboard-visible');
+        } else {
+            root.classList.remove('comments-keyboard-visible');
+        }
+        return undefined;
+    }, [keyboardViewport, activeCommentsPostId]);
+
+    useEffect(() => () => {
+        const root = document.documentElement;
+        root.classList.remove('comments-active');
+        root.classList.remove('comments-ios-standalone-active');
+        root.classList.remove('comments-keyboard-visible');
+        root.style.removeProperty('--comments-visual-height');
+        root.style.removeProperty('--comments-visual-offset-top');
+    }, []);
+
 
     useEffect(() => {
         fetchPosts();
@@ -223,15 +317,67 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
         }
     };
 
-    const handleImageUpload = (e) => {
+    const handleImageUpload = async (e) => {
         const files = Array.from(e.target.files || []);
-        files.slice(0, 4 - imagePreviews.length).forEach(file => {
+        
+        // Kiểm tra xem có file nào là HEIC/HEIF không
+        const hasHeic = files.some(file => 
+            file.name.toLowerCase().endsWith('.heic') || 
+            file.name.toLowerCase().endsWith('.heif') ||
+            file.type === 'image/heic' || 
+            file.type === 'image/heif'
+        );
+        
+        let heic2anyFunc = null;
+        if (hasHeic) {
+            try {
+                // Tải thư viện heic2any động từ CDN nếu chưa có
+                if (!window.heic2any) {
+                    await new Promise((resolve, reject) => {
+                        const script = document.createElement('script');
+                        script.src = 'https://cdn.jsdelivr.net/npm/heic2any/dist/heic2any.min.js';
+                        script.onload = () => resolve();
+                        script.onerror = (err) => reject(err);
+                        document.head.appendChild(script);
+                    });
+                }
+                heic2anyFunc = window.heic2any;
+            } catch (error) {
+                console.error('Không thể tải thư viện heic2any:', error);
+            }
+        }
+
+        const filesToProcess = files.slice(0, 4 - imagePreviews.length);
+        
+        for (const file of filesToProcess) {
+            let finalFile = file;
+            const isHeic = file.name.toLowerCase().endsWith('.heic') || 
+                           file.name.toLowerCase().endsWith('.heif') ||
+                           file.type === 'image/heic' || 
+                           file.type === 'image/heif';
+                           
+            if (isHeic && heic2anyFunc) {
+                try {
+                    const convertedBlob = await heic2anyFunc({
+                        blob: file,
+                        toType: 'image/jpeg',
+                        quality: 0.7
+                    });
+                    const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+                    finalFile = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
+                        type: 'image/jpeg'
+                    });
+                } catch (err) {
+                    console.error('Lỗi chuyển đổi ảnh HEIC:', err);
+                }
+            }
+            
             const reader = new FileReader();
             reader.onloadend = () => {
                 setImagePreviews(prev => [...prev, reader.result]);
             };
-            reader.readAsDataURL(file);
-        });
+            reader.readAsDataURL(finalFile);
+        }
     };
 
     const handleLocate = () => {
@@ -701,7 +847,7 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
 
             {/* Comments Drawer */}
             {activeCommentsPostId && (
-                <div className="modal-overlay">
+                <div className={`modal-overlay comments-modal-overlay ${isIosStandalone() ? 'ios-standalone-comments' : ''} ${keyboardViewport.visible ? 'keyboard-visible' : ''}`}>
                     <div className="comments-drawer-content cartoon-card">
                         <div className="modal-header">
                             <h3>Bình Luận</h3>
@@ -749,6 +895,7 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
                         {user && (
                             <form onSubmit={handleAddComment} className="add-comment-form">
                                 <input 
+                                    ref={commentInputRef}
                                     type="text" 
                                     placeholder="Viết bình luận..." 
                                     value={commentText}

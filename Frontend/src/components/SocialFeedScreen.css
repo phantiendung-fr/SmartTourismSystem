@@ -264,8 +264,8 @@
 .comments-drawer-content {
     background-color: #ffffff;
     width: min(calc(100% - 24px), 420px);
-    max-height: calc(100% - 24px);
-    height: min(80%, 760px);
+    max-height: calc(100% - env(safe-area-inset-top, 20px) - 24px);
+    height: min(88%, 820px);
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -281,6 +281,26 @@
     animation: slideUpComments 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     transition: box-shadow 0.2s ease, transform 0s;
 }
+
+/* iOS Standalone (PWA) layout support when comments are active */
+.modal-overlay.ios-standalone-comments {
+    position: fixed;
+    top: var(--comments-visual-offset-top, 0px);
+    height: var(--comments-visual-height, 100dvh);
+    bottom: auto;
+    left: 0;
+    right: 0;
+    z-index: 2000;
+}
+
+/* Adjust drawer when keyboard is visible on comments screen */
+.comments-modal-overlay.keyboard-visible .comments-drawer-content {
+    height: calc(100% - env(safe-area-inset-top, 20px) - 6px);
+    max-height: 100%;
+    bottom: 6px;
+    border-radius: 14px !important;
+}
+
 
 @keyframes slideUpComments {
     from {
@@ -520,6 +540,13 @@
     font-weight: 600;
     outline: none;
 }
+
+@media (max-width: 767px) {
+    .add-comment-form input {
+        font-size: 16px;
+    }
+}
+
 
 .send-comment-btn {
     padding: 10px 14px;

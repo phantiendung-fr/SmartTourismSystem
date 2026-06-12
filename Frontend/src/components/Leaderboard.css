@@ -307,9 +307,8 @@
 }
 
 .my-rank-sticky-card {
-    position: sticky;
-    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
-    margin: 0 16px 8px;
+    position: static;
+    margin: 0 16px 14px;
     padding: 12px;
     border-radius: 14px;
     border: 1px solid #bfdbfe;

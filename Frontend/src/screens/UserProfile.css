@@ -229,6 +229,10 @@
 .user-profile-field input,
 .user-profile-field select,
 .user-profile-field textarea {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     padding: 12px;
     border-radius: 12px;
     border: 2px solid #2c3e50;
@@ -238,6 +242,31 @@
     color: var(--st-text, #243447);
     background: #fffde8;
     font-family: 'Be Vietnam Pro', sans-serif;
+}
+
+.user-profile-compact-date {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 2px solid #2c3e50;
+    background: #fffde8;
+    color: var(--st-text, #243447);
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+
+.user-profile-compact-date input[type="date"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
 }
 
 .user-profile-field input:focus,
@@ -461,4 +490,10 @@ body.dark-theme .user-profile-wallet-btn {
 body.dark-theme .user-profile-field input::placeholder,
 body.dark-theme .user-profile-field textarea::placeholder {
     color: var(--st-text-muted);
+}
+
+body.dark-theme .user-profile-compact-date {
+    background: var(--st-surface-muted);
+    border-color: var(--st-border);
+    color: var(--st-text);
 }

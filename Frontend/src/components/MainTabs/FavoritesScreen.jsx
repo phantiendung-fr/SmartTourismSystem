@@ -1,5 +1,5 @@
 // src/components/MainTabs/FavoritesScreen.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Heart, MapPin } from 'lucide-react';
 import { storageGet } from '../../platform/storage';
 import { API_BASE } from '../../config/api';
@@ -10,9 +10,10 @@ const FavoritesScreen = ({ onOpenLocationDetail }) => {
     const [savedList, setSavedList] = useState([]);
     const [savedLocations, setSavedLocations] = useState([]);
     const [loadingSaved, setLoadingSaved] = useState(true);
+    const [loadingLocations, setLoadingLocations] = useState(true);
     const [postFilter, setPostFilter] = useState('saved'); // 'saved', 'liked', 'commented'
 
-    const fetchSavedPosts = async (filterType = postFilter) => {
+    const fetchSavedPosts = useCallback(async (filterType) => {
         setLoadingSaved(true);
         try {
             const token = await storageGet('access_token');
@@ -29,49 +30,82 @@ const FavoritesScreen = ({ onOpenLocationDetail }) => {
         } finally {
             setLoadingSaved(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchSavedPosts(postFilter);
-    }, [postFilter]);
+    }, [fetchSavedPosts, postFilter]);
+
+    const loadLocations = useCallback(async () => {
+        setLoadingLocations(true);
+        try {
+            setSavedLocations(await getFavoriteLocations());
+        } catch (error) {
+            console.error('Error loading favorite locations:', error);
+            setSavedLocations([]);
+        } finally {
+            setLoadingLocations(false);
+        }
+    }, []);
 
     useEffect(() => {
-        const loadLocations = () => getFavoriteLocations().then(setSavedLocations);
         loadLocations();
+
+        const reloadWhenVisible = () => {
+            if (document.visibilityState === 'visible') loadLocations();
+        };
+
         window.addEventListener(FAVORITE_LOCATIONS_CHANGED, loadLocations);
-        return () => window.removeEventListener(FAVORITE_LOCATIONS_CHANGED, loadLocations);
-    }, []);
+        window.addEventListener('pageshow', loadLocations);
+        window.addEventListener('storage', loadLocations);
+        document.addEventListener('visibilitychange', reloadWhenVisible);
+        return () => {
+            window.removeEventListener(FAVORITE_LOCATIONS_CHANGED, loadLocations);
+            window.removeEventListener('pageshow', loadLocations);
+            window.removeEventListener('storage', loadLocations);
+            document.removeEventListener('visibilitychange', reloadWhenVisible);
+        };
+    }, [loadLocations]);
 
     return (
         <div className="favorites-screen-wrapper" style={{ padding: '16px', height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: '950', color: 'var(--st-text)', marginBottom: '16px', textShadow: '1.5px 1.5px 0 var(--st-bg)' }}>Yêu Thích Đã Lưu</h2>
+            <h2 style={{ fontSize: '24px', fontWeight: '950', color: 'var(--st-text)', marginBottom: '16px', textShadow: '1.5px 1.5px 0 var(--st-bg)' }}>Yêu Thích</h2>
             
             {/* Địa điểm yêu thích */}
-            {savedLocations.length > 0 && (
-                <div className="favorite-location-list" style={{ marginBottom: '20px' }}>
-                    <h3>Địa điểm yêu thích</h3>
-                    {savedLocations.map((location) => (
-                        <button
-                            type="button"
-                            key={location.location_id}
-                            className="favorite-location-card"
-                            onClick={() => onOpenLocationDetail?.(location)}
-                        >
-                            <div
-                                className="favorite-location-image"
-                                style={location.image_url ? { backgroundImage: `url(${location.image_url})` } : undefined}
+            <div className="favorite-location-list" style={{ marginBottom: '20px' }}>
+                <h3>Địa điểm yêu thích</h3>
+                {loadingLocations ? (
+                    <div className="favorite-location-state">Đang tải địa điểm yêu thích...</div>
+                ) : savedLocations.length > 0 ? (
+                    <>
+                        {savedLocations.map((location) => (
+                            <button
+                                type="button"
+                                key={location.location_id || location.id}
+                                className="favorite-location-card"
+                                onClick={() => onOpenLocationDetail?.(location)}
                             >
-                                {!location.image_url && <MapPin size={24} />}
-                            </div>
-                            <span>
-                                <strong>{location.location_name}</strong>
-                                <small><MapPin size={11} /> {location.address}</small>
-                            </span>
-                            <Heart size={18} fill="currentColor" />
-                        </button>
-                    ))}
-                </div>
-            )}
+                                <div
+                                    className="favorite-location-image"
+                                    style={location.image_url ? { backgroundImage: `url(${location.image_url})` } : undefined}
+                                >
+                                    {!location.image_url && <MapPin size={24} />}
+                                </div>
+                                <span>
+                                    <strong>{location.location_name}</strong>
+                                    <small><MapPin size={11} /> {location.address}</small>
+                                </span>
+                                <Heart size={18} fill="currentColor" />
+                            </button>
+                        ))}
+                    </>
+                ) : (
+                    <div className="favorite-location-state favorite-location-state--empty">
+                        <MapPin size={22} />
+                        <span>Chưa có địa điểm yêu thích.</span>
+                    </div>
+                )}
+            </div>
 
             {/* Bộ lọc bài viết */}
             <div className="favorites-posts-header" style={{ marginTop: '24px', marginBottom: '12px' }}>

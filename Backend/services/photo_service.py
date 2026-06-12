@@ -99,7 +99,7 @@ class GeminiPhotoService:
     async def generate_text(
         self,
         prompt: str,
-        image_bytes_list: Sequence[bytes],
+        image_bytes_list: Sequence[bytes] = (),
         mime_types: Sequence[str] | None = None,
     ) -> str:
         """
@@ -107,7 +107,8 @@ class GeminiPhotoService:
 
         Args:
             prompt: Nội dung văn bản.
-            image_bytes_list: Danh sách ảnh cần gửi kèm (bytes).
+            image_bytes_list: Danh sách ảnh cần gửi kèm (bytes), có thể để trống
+                cho yêu cầu chỉ có văn bản.
             mime_types: MIME type tương ứng; tự động detect nếu None.
 
         Returns:

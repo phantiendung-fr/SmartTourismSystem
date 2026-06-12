@@ -8,8 +8,10 @@ from sqlmodel import Session
 from models import (
     Users, UserProfiles, UserRole, UserStatus, RegisterType,
     BusinessLocation, Categories, Cities, LocationCategories, Locations, LocationsImage,
-    LocationReviews, EnterpriseProfiles, EnterpriseStatus, LocationSubmissions
+    LocationReviews, EnterpriseProfiles, EnterpriseStatus, LocationSubmissions,
+    UserLocationFavorites,
 )
+from models import Tags
 from core.security import create_access_token
 
 @pytest.fixture(name="setup_data")
@@ -88,6 +90,11 @@ def setup_data_fixture(db_session: Session):
     attraction_category = Categories(category_name="Điểm tham quan")
     db_session.add(attraction_category)
     db_session.commit()
+    culture_tag = Tags(tag_name="Văn hóa")
+    food_tag = Tags(tag_name="Ẩm thực")
+    db_session.add(culture_tag)
+    db_session.add(food_tag)
+    db_session.commit()
     db_session.add(LocationCategories(
         location_id=loc_id,
         category_id=attraction_category.category_id,
@@ -98,7 +105,9 @@ def setup_data_fixture(db_session: Session):
         "city_id": 10,
         "enterprise_user_id": ent_user_id,
         "normal_user_id": normal_user_id,
-        "location_id": loc_id
+        "location_id": loc_id,
+        "category_id": attraction_category.category_id,
+        "tag_ids": [culture_tag.tag_id, food_tag.tag_id],
     }
 
 def test_register_location_api(client: TestClient, db_session: Session, setup_data):
@@ -110,14 +119,34 @@ def test_register_location_api(client: TestClient, db_session: Session, setup_da
     payload = {
         "location_name": "Nhà thờ Đức Bà",
         "address": "Công xã Paris, Bến Nghé, Quận 1, Hồ Chí Minh",
+        "latitude": 10.779783,
+        "longitude": 106.699019,
         "city_id": setup_data["city_id"],
         "open_time": "08:00:00",
         "close_time": "17:00:00",
         "min_price": 0.00,
         "max_price": 0.00,
         "currency": "VND",
-        "category_ids": [],
-        "tag_ids": []
+        "category_ids": [setup_data["category_id"]],
+        "tag_ids": setup_data["tag_ids"],
+        "image_urls": ["https://example.com/notre-dame.jpg"],
+        "photo_task_title": "Chụp ảnh mặt tiền Nhà thờ Đức Bà",
+        "photo_task_description": "Chụp ảnh khu vực mặt tiền để xác thực trải nghiệm.",
+        "reference_image_url": "https://example.com/notre-dame-reference.jpg",
+        "photo_reward_exp": 100,
+        "photo_radius_meters": 80,
+        "qa_question": "Nhà thờ Đức Bà nằm ở thành phố nào?",
+        "qa_option_a": "Hồ Chí Minh",
+        "qa_option_b": "Hà Nội",
+        "qa_option_c": "Đà Nẵng",
+        "qa_option_d": "Huế",
+        "qa_correct_answer": "A",
+        "qa_difficulty": "easy",
+        "qa_reward_exp": 30,
+        "qa_reward_coin": 15,
+        "qr_reward_exp": 50,
+        "qr_reward_coin": 25,
+        "qr_valid_days": 365,
     }
     response = client.post("/api/v1/locations/register", json=payload, headers=headers)
     assert response.status_code == 201
@@ -129,6 +158,9 @@ def test_register_location_api(client: TestClient, db_session: Session, setup_da
     submissions = db_session.query(LocationSubmissions).all()
     assert len(submissions) == 1
     assert submissions[0].status == "PENDING"
+    assert "qa_task" in submissions[0].data_json
+    assert "photo_task" in submissions[0].data_json
+    assert "qr_task" in submissions[0].data_json
 
     # 2. Đăng ký sai: Close time trước open time
     payload_invalid_time = dict(payload)
@@ -341,3 +373,55 @@ def test_reviews_ratings_endpoints(client: TestClient, db_session: Session, setu
     assert summary_resp.json()["average_rating"] == 4.0
     assert summary_resp.json()["distribution"]["4"] == 1
     assert summary_resp.json()["distribution"]["5"] == 0
+
+
+def test_location_favorites_are_synchronized_per_user(client: TestClient, db_session: Session, setup_data):
+    location_id = setup_data["location_id"]
+    user_token = create_access_token(data={"sub": str(setup_data["normal_user_id"]), "role": "USER"})
+    user_headers = {"Authorization": f"Bearer {user_token}"}
+
+    response = client.get("/api/v1/locations/favorites")
+    assert response.status_code == 401
+
+    response = client.get("/api/v1/locations/favorites", headers=user_headers)
+    assert response.status_code == 200
+    assert response.json()["favorites"] == []
+
+    response = client.put(f"/api/v1/locations/{location_id}/favorite", headers=user_headers)
+    assert response.status_code == 200
+    assert response.json()["favorites"][0]["location_id"] == str(location_id)
+    assert response.json()["favorites"][0]["location_name"] == "Chợ Bến Thành"
+    assert response.json()["favorites"][0]["city_name"] == "Hồ Chí Minh"
+
+    stored = db_session.get(UserLocationFavorites, (setup_data["normal_user_id"], location_id))
+    assert stored is not None
+
+    enterprise_token = create_access_token(data={"sub": str(setup_data["enterprise_user_id"]), "role": "ENTERPRISE"})
+    enterprise_headers = {"Authorization": f"Bearer {enterprise_token}"}
+    response = client.get("/api/v1/locations/favorites", headers=enterprise_headers)
+    assert response.status_code == 200
+    assert response.json()["favorites"] == []
+
+    response = client.post(
+        "/api/v1/locations/favorites/sync",
+        json={"add_location_ids": [], "remove_location_ids": [str(location_id)]},
+        headers=user_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["favorites"] == []
+    assert db_session.get(UserLocationFavorites, (setup_data["normal_user_id"], location_id)) is None
+
+
+def test_location_favorites_sync_imports_local_ids(client: TestClient, setup_data):
+    location_id = setup_data["location_id"]
+    access_token = create_access_token(data={"sub": str(setup_data["normal_user_id"]), "role": "USER"})
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    response = client.post(
+        "/api/v1/locations/favorites/sync",
+        json={"add_location_ids": [str(location_id)], "remove_location_ids": []},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert [item["location_id"] for item in response.json()["favorites"]] == [str(location_id)]

@@ -64,6 +64,26 @@
     color: var(--st-text-muted);
 }
 
+.favorite-location-state {
+    min-height: 68px;
+    border: 2px dashed var(--st-border);
+    border-radius: 16px;
+    background: var(--st-surface);
+    color: var(--st-text-muted);
+    display: grid;
+    place-items: center;
+    padding: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.favorite-location-state--empty {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
 /* Favorites Filter Tabs */
 .favorites-filter-tabs {
     display: flex;
@@ -102,4 +122,3 @@ body.dark-theme .favorites-filter-btn.active {
     background: #ff4757;
     color: #ffffff;
 }
-

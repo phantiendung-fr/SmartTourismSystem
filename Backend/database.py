@@ -42,8 +42,8 @@ else:
     # a new TCP+SSL connection per request.
     engine_options.update(
         {
-            "pool_size": 5,
-            "max_overflow": 10,
+            "pool_size": 4,
+            "max_overflow": 4,
             "pool_recycle": 300,
             "pool_pre_ping": True,
             "connect_args": {

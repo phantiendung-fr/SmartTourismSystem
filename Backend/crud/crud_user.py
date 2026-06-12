@@ -380,6 +380,14 @@ def update_user_profile(
     # Cập nhật giờ sửa đổi
     profile.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     
+    # Đồng bộ full_name sang bảng users
+    if "full_name" in kwargs and kwargs["full_name"] is not None:
+        user_record = db.exec(select(Users).where(Users.user_id == user_id)).first()
+        if user_record:
+            user_record.full_name = kwargs["full_name"]
+            user_record.update_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            db.add(user_record)
+
     # Lưu chính thức vào database
     db.add(profile)
     db.commit()
@@ -467,6 +475,14 @@ def update_enterprise_profile(
             
     profile.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     
+    # Đồng bộ business_name sang bảng users (trường full_name)
+    if "business_name" in kwargs and kwargs["business_name"] is not None:
+        user_record = db.exec(select(Users).where(Users.user_id == user_id)).first()
+        if user_record:
+            user_record.full_name = kwargs["business_name"]
+            user_record.update_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            db.add(user_record)
+
     db.add(profile)
     db.commit()
     db.refresh(profile)
@@ -779,6 +795,14 @@ def update_user_profile(
 
     # Cập nhật thời gian sửa đổi
     row.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    # Đồng bộ full_name sang bảng users
+    if "full_name" in kwargs and kwargs["full_name"] is not None:
+        user_record = db.exec(select(Users).where(Users.user_id == user_id)).first()
+        if user_record:
+            user_record.full_name = kwargs["full_name"]
+            user_record.update_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            db.add(user_record)
 
     db.add(row)
     db.commit()

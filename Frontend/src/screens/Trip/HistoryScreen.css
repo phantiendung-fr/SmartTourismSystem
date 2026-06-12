@@ -74,7 +74,8 @@
 /* --- Filter Bar Styles --- */
 .filter-bar {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
+    min-width: 0;
     gap: 15px;
     background: white;
     padding: 15px;
@@ -88,8 +89,10 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    flex: 1;
-    min-width: 140px;
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .filter-group label {
@@ -103,6 +106,7 @@
 
 .filter-select,
 .filter-date {
+    display: block;
     padding: 10px 12px;
     border-radius: 10px;
     border: 1px solid #dee2e6;
@@ -111,11 +115,21 @@
     font-size: 16px;
     transition: all 0.2s ease;
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
     min-height: 44px;
 }
 
+.filter-date {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
 .filter-select:focus,
-.filter-date:focus {
+.date-input-wrapper:focus-within {
     outline: none;
     border-color: #007bff;
     background-color: white;
@@ -125,6 +139,22 @@
     position: relative;
     display: flex;
     align-items: center;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+    color: #212529;
+    overflow: hidden;
+}
+
+.compact-date-value {
+    font-size: 16px;
+    line-height: 1.25;
+    white-space: nowrap;
 }
 
 .clear-date {
@@ -142,6 +172,7 @@
     font-size: 12px;
     min-width: 24px;
     min-height: 24px;
+    z-index: 2;
 }
 
 .reset-filter-btn {
@@ -239,11 +270,11 @@
     color: #1976d2;
 }
 
-.card-info h3 {
+.history-card .card-info h3 {
     margin: 0 0 8px 0;
     font-size: 17px;
     color: #212529;
-    max-width: 70%;
+    padding-right: 112px;
 }
 
 .card-date {
@@ -412,6 +443,8 @@
     min-height: 30px;
     justify-content: center;
     padding: 4px 8px;
+    max-width: 112px;
+    line-height: 1.2;
 }
 
 .card-status[data-status='COMPLETED'] {
@@ -429,7 +462,7 @@
     color: #1d4ed8;
 }
 
-.card-info h3 {
+.history-card .card-info h3 {
     color: #2c3e50;
     font-weight: 900;
     max-width: calc(100% - 110px);
@@ -448,7 +481,7 @@
         margin-bottom: 8px;
     }
 
-    .card-info h3 {
+    .history-card .card-info h3 {
         max-width: 100%;
     }
 
@@ -481,7 +514,7 @@ body.dark-theme .history-card .card-info h3 {
 }
 
 body.dark-theme .filter-select,
-body.dark-theme .filter-date,
+body.dark-theme .date-input-wrapper,
 body.dark-theme .clear-date {
     background-color: var(--st-surface-muted);
     border-color: var(--st-border);
@@ -490,7 +523,7 @@ body.dark-theme .clear-date {
 }
 
 body.dark-theme .filter-select:focus,
-body.dark-theme .filter-date:focus {
+body.dark-theme .date-input-wrapper:focus-within {
     background-color: var(--st-surface);
 }
 

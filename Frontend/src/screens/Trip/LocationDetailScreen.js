@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { ArrowLeft, Heart } from 'lucide-react';
 import { API_BASE } from '../../config/api';
 import { storageGet } from '../../platform/storage';
 import { showToast } from '../../platform/dialog';
@@ -48,6 +49,8 @@ const LocationDetailScreen = ({ location, onBack }) => {
     const [myComment, setMyComment] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [submitMsg, setSubmitMsg] = useState('');
+    const [submitStatus, setSubmitStatus] = useState(''); // 'success' or 'error'
+    const submitTimeoutRef = useRef(null);
 
     // Map overlay
     const [showMap, setShowMap] = useState(false);
@@ -82,6 +85,16 @@ const LocationDetailScreen = ({ location, onBack }) => {
         setCoverIdx(0);
         setRatingSummary(null);
         setReviews([]);
+
+        // Reset review state on location change
+        setSubmitMsg('');
+        setSubmitStatus('');
+        setMyComment('');
+        setMyRating(5);
+        setShowReviewForm(false);
+        if (submitTimeoutRef.current) {
+            clearTimeout(submitTimeoutRef.current);
+        }
 
         const providedImageExists = [
             location.image_url,
@@ -132,7 +145,12 @@ const LocationDetailScreen = ({ location, onBack }) => {
         // Reviews
         fetchReviews();
 
-        return () => { active = false; };
+        return () => { 
+            active = false; 
+            if (submitTimeoutRef.current) {
+                clearTimeout(submitTimeoutRef.current);
+            }
+        };
     }, [
         location?.location_id,
         location?.image_url,
@@ -222,26 +240,49 @@ const LocationDetailScreen = ({ location, onBack }) => {
     const handleSubmitReview = async () => {
         setSubmitting(true);
         setSubmitMsg('');
+        setSubmitStatus('');
+        if (submitTimeoutRef.current) {
+            clearTimeout(submitTimeoutRef.current);
+        }
         try {
             const token = await storageGet('access_token');
-            if (!token) { setSubmitMsg('Bạn cần đăng nhập để đánh giá.'); return; }
+            if (!token) { 
+                setSubmitMsg('Bạn cần đăng nhập để đánh giá.'); 
+                setSubmitStatus('error');
+                return; 
+            }
             const res = await fetch(`${API_BASE}/api/v1/locations/${location.location_id}/reviews`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ rating: myRating, comment: myComment }),
             });
             if (res.ok) {
-                setSubmitMsg('✅ Đã lưu đánh giá!');
+                setSubmitMsg('Đã lưu đánh giá!');
+                setSubmitStatus('success');
                 setShowReviewForm(false);
                 setMyComment('');
                 setMyRating(5);
                 await fetchReviews();           // Refresh danh sách
+                submitTimeoutRef.current = setTimeout(() => {
+                    setSubmitMsg('');
+                    setSubmitStatus('');
+                }, 3000);
             } else {
                 const err = await res.json().catch(() => ({}));
-                setSubmitMsg(`❌ ${err.detail || 'Lỗi khi lưu'}`);
+                setSubmitMsg(err.detail || 'Lỗi khi lưu');
+                setSubmitStatus('error');
+                submitTimeoutRef.current = setTimeout(() => {
+                    setSubmitMsg('');
+                    setSubmitStatus('');
+                }, 4000);
             }
         } catch (e) {
-            setSubmitMsg('❌ Không thể kết nối server');
+            setSubmitMsg('Không thể kết nối server');
+            setSubmitStatus('error');
+            submitTimeoutRef.current = setTimeout(() => {
+                setSubmitMsg('');
+                setSubmitStatus('');
+            }, 4000);
         } finally {
             setSubmitting(false);
         }
@@ -284,7 +325,7 @@ const LocationDetailScreen = ({ location, onBack }) => {
                 )}
                 <div className="banner-overlay">
                     <button type="button" className="banner-btn back-btn" onClick={onBack} aria-label="Quay lại">
-                        <i className="fas fa-arrow-left"></i>
+                        <ArrowLeft size={20} />
                     </button>
                     <button
                         type="button"
@@ -293,7 +334,7 @@ const LocationDetailScreen = ({ location, onBack }) => {
                         disabled={favoriteLoading}
                         aria-label={isFavorite ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
                     >
-                        <i className={`${isFavorite ? 'fas' : 'far'} fa-heart`}></i>
+                        <Heart size={20} fill={isFavorite ? 'currentColor' : 'none'} />
                     </button>
                 </div>
 
@@ -479,7 +520,12 @@ const LocationDetailScreen = ({ location, onBack }) => {
 
                     {/* Thông báo sau submit */}
                     {submitMsg && (
-                        <p className={`submit-msg ${submitMsg.startsWith('✅') ? 'submit-msg--success' : 'submit-msg--error'}`}>
+                        <p className={`submit-msg ${submitStatus === 'success' ? 'submit-msg--success' : 'submit-msg--error'}`}>
+                            {submitStatus === 'success' ? (
+                                <i className="fa-solid fa-circle-check" style={{ color: '#2ecc71', marginRight: 6 }}></i>
+                            ) : (
+                                <i className="fa-solid fa-circle-xmark" style={{ color: '#e17055', marginRight: 6 }}></i>
+                            )}
                             {submitMsg}
                         </p>
                     )}
@@ -488,8 +534,11 @@ const LocationDetailScreen = ({ location, onBack }) => {
 
             {/* ── Write Review Modal / Overlay ── */}
             {showReviewForm && (
-                <div className="review-modal-overlay">
-                    <div className="review-modal-sheet">
+                <div
+                    className="review-modal-overlay"
+                    onClick={() => { setShowReviewForm(false); setSubmitMsg(''); setSubmitStatus(''); }}
+                >
+                    <div className="review-modal-sheet" onClick={(event) => event.stopPropagation()}>
                         <h3 className="review-modal-title">Viết đánh giá</h3>
 
                         {/* Chọn sao */}
@@ -514,7 +563,7 @@ const LocationDetailScreen = ({ location, onBack }) => {
 
                         <div className="modal-actions">
                             <button
-                                onClick={() => { setShowReviewForm(false); setSubmitMsg(''); }}
+                                onClick={() => { setShowReviewForm(false); setSubmitMsg(''); setSubmitStatus(''); }}
                                 className="btn-modal-cancel"
                             >Huỷ</button>
                             <button
@@ -529,12 +578,14 @@ const LocationDetailScreen = ({ location, onBack }) => {
                 </div>
             )}
 
-            {/* ── Bottom Fixed Bar ── */}
-            <div className="bottom-fixed-bar">
-                <button className="btn-write-review" onClick={() => { setShowReviewForm(true); setSubmitMsg(''); }}>
-                    Write Review
-                </button>
-            </div>
+            {/* ── Review Action ── */}
+            {!showReviewForm && (
+                <div className="bottom-fixed-bar">
+                    <button className="btn-write-review" onClick={() => { setShowReviewForm(true); setSubmitMsg(''); setSubmitStatus(''); }}>
+                        Write Review
+                    </button>
+                </div>
+            )}
 
             {/* ── Map Overlay ── */}
             {showMap && (() => {

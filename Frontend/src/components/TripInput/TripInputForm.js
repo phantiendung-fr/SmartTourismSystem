@@ -4,13 +4,28 @@ import { ArrowLeft, ArrowRight, Compass, Sparkles, Coins, MapPin } from 'lucide-
 import { showAlert } from '../../platform/dialog';
 import './TripInputForm.css';
 
-const BUDGET_PRESETS = [
+const BUDGET_SET_PRESETS = [
     { label: '350k', value: 350000 },
     { label: '500k', value: 500000 },
     { label: '1tr', value: 1000000 },
     { label: '2tr', value: 2000000 },
     { label: '5tr', value: 5000000 }
 ];
+
+const BUDGET_ADD_PRESETS = [
+    { label: '+350k', value: 350000 },
+    { label: '+500k', value: 500000 },
+    { label: '+1tr', value: 1000000 },
+    { label: '+2tr', value: 2000000 },
+    { label: '+5tr', value: 5000000 }
+];
+
+const formatDateInputValue = (value) => {
+    if (!value) return 'dd/mm/yyyy';
+
+    const [year, month, day] = value.split('-');
+    return year && month && day ? `${day}/${month}/${year}` : value;
+};
 
 const TripInputForm = ({ onSubmitPlan, onCancel }) => {
     // State quản lý bước hiện tại 
@@ -41,7 +56,17 @@ const TripInputForm = ({ onSubmitPlan, onCancel }) => {
 
     const getTodayStr = () => {
         const today = new Date();
-        return today.toISOString().split('T')[0];
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const toLocalDateStr = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     };
 
     // State tổng chứa toàn bộ DỮ LIỆU ĐẦU VÀO để giao cho Backend
@@ -81,7 +106,7 @@ const TripInputForm = ({ onSubmitPlan, onCancel }) => {
         const start = new Date(tripData.start_day);
         const end = new Date(start);
         end.setDate(start.getDate() + tripData.days - 1);
-        const end_day = end.toISOString().split('T')[0];
+        const end_day = toLocalDateStr(end);
 
         const selectedCity = cities.find(c => c.city_id === tripData.city_id);
 
@@ -156,13 +181,16 @@ const TripInputForm = ({ onSubmitPlan, onCancel }) => {
 
                     <div className="input-group">
                         <label>Ngày cắm mốc xuất hành</label>
-                        <input
-                            type="date"
-                            value={tripData.start_day}
-                            min={getTodayStr()}
-                            onChange={(e) => handleChange('start_day', e.target.value)}
-                            className="cartoon-input"
-                        />
+                        <div className="planning-date-input">
+                            <span>{formatDateInputValue(tripData.start_day)}</span>
+                            <input
+                                type="date"
+                                value={tripData.start_day}
+                                min={getTodayStr()}
+                                aria-label="Ngày cắm mốc xuất hành"
+                                onChange={(e) => handleChange('start_day', e.target.value)}
+                            />
+                        </div>
                     </div>
 
                     <div className="input-row-grid">
@@ -266,12 +294,24 @@ const TripInputForm = ({ onSubmitPlan, onCancel }) => {
                         <div className="budget-preset-group">
                             <span className="budget-preset-label">Gợi ý</span>
                             <div className="budget-preset-buttons">
-                                {BUDGET_PRESETS.map(preset => (
+                                {BUDGET_SET_PRESETS.map(preset => (
                                     <button
                                         key={`set-${preset.value}`}
                                         type="button"
                                         className={`budget-preset-btn set ${tripData.budget === preset.value ? 'selected' : ''}`}
                                         onClick={() => setBudget(preset.value)}
+                                    >
+                                        {preset.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="budget-preset-buttons budget-add-buttons" aria-label="Cộng thêm ngân sách">
+                                {BUDGET_ADD_PRESETS.map(preset => (
+                                    <button
+                                        key={`add-${preset.value}`}
+                                        type="button"
+                                        className="budget-preset-btn add"
+                                        onClick={() => addBudget(preset.value)}
                                     >
                                         {preset.label}
                                     </button>

@@ -5,6 +5,17 @@ import { storageGet } from '../platform/storage';
 import { showConfirm } from '../platform/dialog';
 import './ChatScreen.css';
 
+const isIosStandalone = () => {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isStandalone = window.navigator.standalone === true
+        || window.matchMedia?.('(display-mode: standalone)').matches;
+
+    return isIos && isStandalone;
+};
+
 const formatLastMessageTime = (isoString) => {
     if (!isoString) return '';
     try {
@@ -37,7 +48,13 @@ export default function ChatScreen({ user, onRequireLogin }) {
     const [messageText, setMessageText] = useState('');
     const [loadingFriends, setLoadingFriends] = useState(true);
     const [sending, setSending] = useState(false);
-    const chatEndRef = useRef(null);
+    const [keyboardViewport, setKeyboardViewport] = useState({
+        height: null,
+        offsetTop: 0,
+        visible: false
+    });
+    const messagesAreaRef = useRef(null);
+    const inputRef = useRef(null);
     const pollIntervalRef = useRef(null);
     const isFirstRender = useRef(true);
 
@@ -71,6 +88,82 @@ export default function ChatScreen({ user, onRequireLogin }) {
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    useEffect(() => {
+        if (!selectedFriend) return undefined;
+
+        const visualViewport = window.visualViewport;
+        let animationFrame;
+
+        const syncViewport = () => {
+            window.cancelAnimationFrame(animationFrame);
+            animationFrame = window.requestAnimationFrame(() => {
+                const height = Math.round(visualViewport?.height || window.innerHeight);
+                const offsetTop = Math.round(visualViewport?.offsetTop || 0);
+                const inputFocused = document.activeElement === inputRef.current;
+                const visible = inputFocused;
+
+                setKeyboardViewport((current) => (
+                    current.height === height
+                    && current.offsetTop === offsetTop
+                    && current.visible === visible
+                        ? current
+                        : { height, offsetTop, visible }
+                ));
+            });
+        };
+
+        syncViewport();
+        window.addEventListener('resize', syncViewport);
+        window.addEventListener('focusin', syncViewport);
+        window.addEventListener('focusout', syncViewport);
+        visualViewport?.addEventListener('resize', syncViewport);
+        visualViewport?.addEventListener('scroll', syncViewport);
+
+        return () => {
+            window.cancelAnimationFrame(animationFrame);
+            window.removeEventListener('resize', syncViewport);
+            window.removeEventListener('focusin', syncViewport);
+            window.removeEventListener('focusout', syncViewport);
+            visualViewport?.removeEventListener('resize', syncViewport);
+            visualViewport?.removeEventListener('scroll', syncViewport);
+            setKeyboardViewport({ height: null, offsetTop: 0, visible: false });
+        };
+    }, [selectedFriend]);
+
+    useEffect(() => {
+        const root = document.documentElement;
+        const iosStandaloneActive = Boolean(selectedFriend) && isIosStandalone();
+
+        root.classList.toggle('chat-conversation-active', Boolean(selectedFriend));
+        root.classList.toggle('chat-ios-standalone-active', iosStandaloneActive);
+
+        if (selectedFriend && keyboardViewport.height !== null) {
+            root.style.setProperty('--chat-visual-height', `${keyboardViewport.height}px`);
+            root.style.setProperty('--chat-visual-offset-top', `${keyboardViewport.offsetTop}px`);
+        } else {
+            root.style.removeProperty('--chat-visual-height');
+            root.style.removeProperty('--chat-visual-offset-top');
+        }
+
+        if (selectedFriend && keyboardViewport.visible) {
+            root.classList.add('chat-keyboard-visible');
+            const frame = window.requestAnimationFrame(() => scrollToBottom('auto'));
+            return () => window.cancelAnimationFrame(frame);
+        }
+
+        root.classList.remove('chat-keyboard-visible');
+        return undefined;
+    }, [keyboardViewport, selectedFriend]);
+
+    useEffect(() => () => {
+        const root = document.documentElement;
+        root.classList.remove('chat-conversation-active');
+        root.classList.remove('chat-ios-standalone-active');
+        root.classList.remove('chat-keyboard-visible');
+        root.style.removeProperty('--chat-visual-height');
+        root.style.removeProperty('--chat-visual-offset-top');
+    }, []);
 
     const fetchFriends = async () => {
         setLoadingFriends(true);
@@ -177,12 +270,18 @@ export default function ChatScreen({ user, onRequireLogin }) {
         }
     };
 
-    const scrollToBottom = () => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const scrollToBottom = (behavior = 'smooth') => {
+        const messagesArea = messagesAreaRef.current;
+        if (!messagesArea) return;
+
+        messagesArea.scrollTo({
+            top: messagesArea.scrollHeight,
+            behavior
+        });
     };
 
     return (
-        <div className="chat-container">
+        <div className={`chat-container ${selectedFriend ? 'active-chat-container' : ''} ${isIosStandalone() ? 'ios-standalone-chat' : ''}`}>
             {!selectedFriend ? (
                 // Friends List View
                 <div className="chat-friends-view">
@@ -261,7 +360,7 @@ export default function ChatScreen({ user, onRequireLogin }) {
                     </div>
 
                     {/* Chat Messages */}
-                    <div className="chat-messages-area">
+                    <div className="chat-messages-area" ref={messagesAreaRef}>
                         {messages.length === 0 ? (
                             <div className="chat-empty-history text-center">
                                 <Smile size={32} style={{ color: '#a4b0be', marginBottom: '8px' }} />
@@ -286,7 +385,6 @@ export default function ChatScreen({ user, onRequireLogin }) {
                                         </div>
                                     );
                                 })}
-                                <div ref={chatEndRef} />
                             </div>
                         )}
                     </div>
@@ -294,6 +392,7 @@ export default function ChatScreen({ user, onRequireLogin }) {
                     {/* Input Area */}
                     <form onSubmit={handleSendMessage} className="chat-input-row cartoon-card">
                         <input 
+                            ref={inputRef}
                             type="text" 
                             value={messageText}
                             onChange={(e) => setMessageText(e.target.value)}
