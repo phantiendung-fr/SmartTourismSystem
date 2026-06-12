@@ -223,15 +223,67 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
         }
     };
 
-    const handleImageUpload = (e) => {
+    const handleImageUpload = async (e) => {
         const files = Array.from(e.target.files || []);
-        files.slice(0, 4 - imagePreviews.length).forEach(file => {
+        
+        // Kiểm tra xem có file nào là HEIC/HEIF không
+        const hasHeic = files.some(file => 
+            file.name.toLowerCase().endsWith('.heic') || 
+            file.name.toLowerCase().endsWith('.heif') ||
+            file.type === 'image/heic' || 
+            file.type === 'image/heif'
+        );
+        
+        let heic2anyFunc = null;
+        if (hasHeic) {
+            try {
+                // Tải thư viện heic2any động từ CDN nếu chưa có
+                if (!window.heic2any) {
+                    await new Promise((resolve, reject) => {
+                        const script = document.createElement('script');
+                        script.src = 'https://cdn.jsdelivr.net/npm/heic2any/dist/heic2any.min.js';
+                        script.onload = () => resolve();
+                        script.onerror = (err) => reject(err);
+                        document.head.appendChild(script);
+                    });
+                }
+                heic2anyFunc = window.heic2any;
+            } catch (error) {
+                console.error('Không thể tải thư viện heic2any:', error);
+            }
+        }
+
+        const filesToProcess = files.slice(0, 4 - imagePreviews.length);
+        
+        for (const file of filesToProcess) {
+            let finalFile = file;
+            const isHeic = file.name.toLowerCase().endsWith('.heic') || 
+                           file.name.toLowerCase().endsWith('.heif') ||
+                           file.type === 'image/heic' || 
+                           file.type === 'image/heif';
+                           
+            if (isHeic && heic2anyFunc) {
+                try {
+                    const convertedBlob = await heic2anyFunc({
+                        blob: file,
+                        toType: 'image/jpeg',
+                        quality: 0.7
+                    });
+                    const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+                    finalFile = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
+                        type: 'image/jpeg'
+                    });
+                } catch (err) {
+                    console.error('Lỗi chuyển đổi ảnh HEIC:', err);
+                }
+            }
+            
             const reader = new FileReader();
             reader.onloadend = () => {
                 setImagePreviews(prev => [...prev, reader.result]);
             };
-            reader.readAsDataURL(file);
-        });
+            reader.readAsDataURL(finalFile);
+        }
     };
 
     const handleLocate = () => {
