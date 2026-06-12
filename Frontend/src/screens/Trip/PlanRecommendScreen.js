@@ -4,7 +4,7 @@ import { createTrip } from '../../services/tripService';
 import { API_BASE } from '../../config/api';
 import { showAlert } from '../../platform/dialog';
 import { storageGet } from '../../platform/storage';
-import { ArrowLeft, ArrowRight, CheckCircle, Circle, AlertCircle, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, Circle, AlertCircle, Search, Sparkles, MapPinned } from 'lucide-react';
 import './PlanRecommendScreen.css';
 
 const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocationDetail, onSessionExpired, planCache, onCacheUpdate }) => {
@@ -14,7 +14,9 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
     const [recommendations, setRecommendations] = useState([]);
     const [cityLocations, setCityLocations] = useState([]);
     const [selectedLocations, setSelectedLocations] = useState([]);
+    const [activeLocationTab, setActiveLocationTab] = useState('recommended');
     const [manualSearch, setManualSearch] = useState('');
+    const [manualSort, setManualSort] = useState('default');
     const [accommodationNights, setAccommodationNights] = useState({});
     const [creatingTrip, setCreatingTrip] = useState(false);
 
@@ -203,53 +205,53 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
         }
     };
 
+    const locationCatalog = useMemo(() => {
+        const map = new Map();
+        [...recommendations, ...cityLocations].forEach((loc) => {
+            if (loc?.location_id) map.set(loc.location_id, loc);
+        });
+        return map;
+    }, [recommendations, cityLocations]);
+
     const recommendationIds = useMemo(
         () => new Set(recommendations.map((loc) => loc.location_id)),
         [recommendations]
     );
 
-    const allLocations = useMemo(() => {
-        const cityLocationMap = new Map(
-            cityLocations
-                .filter((loc) => loc?.location_id)
-                .map((loc) => [loc.location_id, loc])
-        );
-        const seen = new Set();
-        const result = [];
-
-        recommendations.forEach((loc) => {
-            if (!loc?.location_id || seen.has(loc.location_id)) return;
-            result.push({ ...cityLocationMap.get(loc.location_id), ...loc });
-            seen.add(loc.location_id);
-        });
-
-        cityLocations.forEach((loc) => {
-            if (!loc?.location_id || seen.has(loc.location_id)) return;
-            result.push(loc);
-            seen.add(loc.location_id);
-        });
-
-        return result;
-    }, [recommendations, cityLocations]);
-
-    const locationCatalog = useMemo(
-        () => new Map(allLocations.map((loc) => [loc.location_id, loc])),
-        [allLocations]
-    );
-
-    const filteredLocations = useMemo(() => {
+    const filteredCityLocations = useMemo(() => {
         const keyword = manualSearch.trim().toLowerCase();
-        if (!keyword) return allLocations;
-        return allLocations.filter((loc) => {
-            const text = [
-                loc.location_name,
-                (loc.tags || []).join(' '),
-                loc.min_price,
-                loc.max_price,
-            ].join(' ').toLowerCase();
-            return text.includes(keyword);
+        const filtered = cityLocations
+            .map((loc, index) => ({ loc, index }))
+            .filter(({ loc }) => {
+                if (!keyword) return true;
+                const text = [
+                    loc.location_name,
+                    (loc.tags || []).join(' '),
+                ].join(' ').toLowerCase();
+                return text.includes(keyword);
+            });
+
+        const getMinPrice = (loc) => Number(loc.min_price) || 0;
+        const getMaxPrice = (loc) => Number(loc.max_price) || 0;
+
+        filtered.sort((a, b) => {
+            if (manualSort === 'price-asc') {
+                return getMinPrice(a.loc) - getMinPrice(b.loc) || getMaxPrice(a.loc) - getMaxPrice(b.loc) || a.index - b.index;
+            }
+            if (manualSort === 'price-desc') {
+                return getMaxPrice(b.loc) - getMaxPrice(a.loc) || getMinPrice(b.loc) - getMinPrice(a.loc) || a.index - b.index;
+            }
+            return a.index - b.index;
         });
-    }, [allLocations, manualSearch]);
+
+        return filtered.map(({ loc }) => loc);
+    }, [cityLocations, manualSearch, manualSort]);
+
+    const manualSortLabel = useMemo(() => {
+        if (manualSort === 'price-asc') return 'Giá tăng dần';
+        if (manualSort === 'price-desc') return 'Giá giảm dần';
+        return 'Mặc định';
+    }, [manualSort]);
 
     if (loading) {
         return (
@@ -307,6 +309,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
         const isAcc = isAccommodation(loc.tags);
         const showNightsInput = isAcc && isSelected && planPayload.accommodation_type !== 'RELATIVE';
         const alreadyRecommended = manual && recommendationIds.has(loc.location_id);
+        const priceText = `${new Intl.NumberFormat('vi-VN').format(loc.min_price || 0)}đ - ${new Intl.NumberFormat('vi-VN').format(loc.max_price || 0)}đ${isAcc ? ' / đêm' : ''}`;
 
         return (
             <div
@@ -314,13 +317,20 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
                 className={`location-card ${manual ? 'manual-location-card' : ''} ${isSelected ? 'selected' : ''}`}
                 onClick={() => toggleSelection(loc.location_id, loc.tags)}
             >
+                <div className="loc-thumb" aria-hidden="true">
+                    {loc.image_url ? (
+                        <img src={loc.image_url} alt="" loading="lazy" />
+                    ) : (
+                        <span>{(loc.location_name || '?').trim().charAt(0).toUpperCase()}</span>
+                    )}
+                </div>
                 <div className="loc-info">
                     <div className="loc-title-row">
                         <h4>{loc.location_name}</h4>
                         {alreadyRecommended && <span className="manual-source-badge">Gợi ý</span>}
                     </div>
                     <p className="loc-tags">{(loc.tags || []).join(', ')}</p>
-                    <p className="loc-price">{new Intl.NumberFormat('vi-VN').format(loc.min_price)}đ - {new Intl.NumberFormat('vi-VN').format(loc.max_price)}đ {isAcc && ' / đêm'}</p>
+                    <p className="loc-price">{priceText}</p>
                     {loc.score && <div className="loc-score">Điểm phù hợp: {Number(loc.score).toFixed(1)}</div>}
 
                     {showNightsInput && (
@@ -387,30 +397,96 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
                 <h2>Gợi ý địa điểm</h2>
             </div>
 
-            <section className="manual-location-section">
-                <div className="manual-section-header">
-                    <div>
-                        <h3>Tất cả địa điểm trong thành phố</h3>
-                        <span>{filteredLocations.length} / {allLocations.length} địa điểm</span>
-                    </div>
+            <p className="recommend-subtitle">
+                Chúng tôi tìm thấy {recommendations.length} địa điểm phù hợp. Hãy chọn những nơi bạn thích!
+            </p>
+
+            <div className="location-browser">
+                <div className="location-tab-strip" role="tablist" aria-label="Danh sách địa điểm">
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeLocationTab === 'recommended'}
+                        className={`location-tab ${activeLocationTab === 'recommended' ? 'active' : ''}`}
+                        onClick={() => setActiveLocationTab('recommended')}
+                    >
+                        <Sparkles size={16} />
+                        <span>Gợi ý</span>
+                        <strong>{recommendations.length}</strong>
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeLocationTab === 'all'}
+                        className={`location-tab ${activeLocationTab === 'all' ? 'active' : ''}`}
+                        onClick={() => setActiveLocationTab('all')}
+                    >
+                        <MapPinned size={16} />
+                        <span>Tất cả địa điểm</span>
+                        <strong>{cityLocations.length}</strong>
+                    </button>
                 </div>
-                <label className="manual-search-box">
-                    <Search size={16} />
-                    <input
-                        type="search"
-                        value={manualSearch}
-                        onChange={(event) => setManualSearch(event.target.value)}
-                        placeholder="Tìm theo tên, tag hoặc giá"
-                    />
-                </label>
-                <div className="manual-locations-list">
-                    {filteredLocations.length === 0 ? (
-                        <div className="manual-empty">Không tìm thấy địa điểm phù hợp.</div>
+
+                <div className="location-tab-panel">
+                    {activeLocationTab === 'recommended' ? (
+                        <div className="locations-list">
+                            {recommendations.length === 0 ? (
+                                <div className="manual-empty">Chưa có địa điểm gợi ý phù hợp.</div>
+                            ) : (
+                                recommendations.map((loc) => renderLocationCard(loc))
+                            )}
+                        </div>
                     ) : (
-                        filteredLocations.map((loc) => renderLocationCard(loc, { manual: true }))
+                        <>
+                            <div className="manual-section-header">
+                                <span>{filteredCityLocations.length} / {cityLocations.length} địa điểm</span>
+                            </div>
+                            <label className="manual-search-box">
+                                <Search size={16} />
+                                <input
+                                    type="search"
+                                    value={manualSearch}
+                                    onChange={(event) => setManualSearch(event.target.value)}
+                                    placeholder="Tìm theo tên hoặc tag"
+                                />
+                            </label>
+                            <div className="manual-sort-row">
+                                <span>Sắp xếp: {manualSortLabel}</span>
+                                <div className="manual-sort-controls" role="group" aria-label="Sắp xếp địa điểm">
+                                    <button
+                                        type="button"
+                                        className={manualSort === 'default' ? 'active' : ''}
+                                        onClick={() => setManualSort('default')}
+                                    >
+                                        Mặc định
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={manualSort === 'price-asc' ? 'active' : ''}
+                                        onClick={() => setManualSort('price-asc')}
+                                    >
+                                        Giá tăng
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={manualSort === 'price-desc' ? 'active' : ''}
+                                        onClick={() => setManualSort('price-desc')}
+                                    >
+                                        Giá giảm
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="manual-locations-list">
+                                {filteredCityLocations.length === 0 ? (
+                                    <div className="manual-empty">Không tìm thấy địa điểm phù hợp.</div>
+                                ) : (
+                                    filteredCityLocations.map((loc) => renderLocationCard(loc, { manual: true }))
+                                )}
+                            </div>
+                        </>
                     )}
                 </div>
-            </section>
+            </div>
 
             <div className="recommend-footer">
                 <div className="budget-tracker">

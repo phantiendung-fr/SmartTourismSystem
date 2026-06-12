@@ -4,12 +4,20 @@ import { ArrowLeft, ArrowRight, Compass, Sparkles, Coins, MapPin } from 'lucide-
 import { showAlert } from '../../platform/dialog';
 import './TripInputForm.css';
 
-const BUDGET_PRESETS = [
+const BUDGET_SET_PRESETS = [
     { label: '350k', value: 350000 },
     { label: '500k', value: 500000 },
     { label: '1tr', value: 1000000 },
     { label: '2tr', value: 2000000 },
     { label: '5tr', value: 5000000 }
+];
+
+const BUDGET_ADD_PRESETS = [
+    { label: '+350k', value: 350000 },
+    { label: '+500k', value: 500000 },
+    { label: '+1tr', value: 1000000 },
+    { label: '+2tr', value: 2000000 },
+    { label: '+5tr', value: 5000000 }
 ];
 
 const formatDateInputValue = (value) => {
@@ -286,12 +294,24 @@ const TripInputForm = ({ onSubmitPlan, onCancel }) => {
                         <div className="budget-preset-group">
                             <span className="budget-preset-label">Gợi ý</span>
                             <div className="budget-preset-buttons">
-                                {BUDGET_PRESETS.map(preset => (
+                                {BUDGET_SET_PRESETS.map(preset => (
                                     <button
                                         key={`set-${preset.value}`}
                                         type="button"
                                         className={`budget-preset-btn set ${tripData.budget === preset.value ? 'selected' : ''}`}
                                         onClick={() => setBudget(preset.value)}
+                                    >
+                                        {preset.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="budget-preset-buttons budget-add-buttons" aria-label="Cộng thêm ngân sách">
+                                {BUDGET_ADD_PRESETS.map(preset => (
+                                    <button
+                                        key={`add-${preset.value}`}
+                                        type="button"
+                                        className="budget-preset-btn add"
+                                        onClick={() => addBudget(preset.value)}
                                     >
                                         {preset.label}
                                     </button>
