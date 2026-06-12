@@ -18,6 +18,7 @@ from models import (
     LocationReviews,
     Locations,
     LocationsImage,
+    UserLocationFavorites,
     UserProfiles,
     Users,
 )
@@ -27,6 +28,126 @@ from services.external_image_service import (
 )
 
 router = APIRouter()
+
+
+def _current_user_id(payload: dict) -> UUID:
+    return UUID(str(payload.get("user_id") or payload.get("sub")))
+
+
+def _favorite_locations_response(db: Session, user_id: UUID) -> dict:
+    image_subquery = (
+        select(LocationsImage.url)
+        .where(LocationsImage.location_id == Locations.location_id)
+        .order_by(LocationsImage.display_order.asc())
+        .limit(1)
+        .scalar_subquery()
+    )
+    rows = db.exec(
+        select(
+            UserLocationFavorites,
+            Locations,
+            Cities.city_name,
+            image_subquery.label("image_url"),
+        )
+        .join(Locations, UserLocationFavorites.location_id == Locations.location_id)
+        .join(Cities, Locations.city_id == Cities.city_id)
+        .where(
+            UserLocationFavorites.user_id == user_id,
+            Locations.is_active == True,
+            Locations.deleted_at.is_(None),
+        )
+        .order_by(UserLocationFavorites.created_at.desc())
+    ).all()
+
+    favorites = []
+    for favorite, location, city_name, image_url in rows:
+        item = location.model_dump()
+        item.update({
+            "city_name": city_name,
+            "image_url": image_url,
+            "favorite_at": favorite.created_at,
+        })
+        favorites.append(item)
+
+    return {"user_id": str(user_id), "favorites": favorites}
+
+
+def _add_favorite(db: Session, user_id: UUID, location_id: UUID, *, strict: bool = True) -> None:
+    location = db.get(Locations, location_id)
+    if location is None or not location.is_active or location.deleted_at is not None:
+        if strict:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
+        return
+
+    existing = db.get(UserLocationFavorites, (user_id, location_id))
+    if existing is None:
+        db.add(UserLocationFavorites(user_id=user_id, location_id=location_id))
+
+
+def _remove_favorite(db: Session, user_id: UUID, location_id: UUID) -> None:
+    existing = db.get(UserLocationFavorites, (user_id, location_id))
+    if existing is not None:
+        db.delete(existing)
+
+
+class FavoriteSyncRequest(BaseModel):
+    add_location_ids: list[UUID] = PydanticField(default_factory=list, max_length=500)
+    remove_location_ids: list[UUID] = PydanticField(default_factory=list, max_length=500)
+
+
+# ---------------------------------------------------------------------------
+# Location favorites - synchronized per authenticated account
+# ---------------------------------------------------------------------------
+
+@router.get("/locations/favorites", tags=["Locations"])
+def get_location_favorites(
+    payload: dict = Depends(verify_token),
+    db: Session = Depends(get_session),
+):
+    return _favorite_locations_response(db, _current_user_id(payload))
+
+
+@router.put("/locations/{location_id}/favorite", tags=["Locations"])
+def add_location_favorite(
+    location_id: UUID,
+    payload: dict = Depends(verify_token),
+    db: Session = Depends(get_session),
+):
+    user_id = _current_user_id(payload)
+    _add_favorite(db, user_id, location_id)
+    db.commit()
+    return _favorite_locations_response(db, user_id)
+
+
+@router.delete("/locations/{location_id}/favorite", tags=["Locations"])
+def remove_location_favorite(
+    location_id: UUID,
+    payload: dict = Depends(verify_token),
+    db: Session = Depends(get_session),
+):
+    user_id = _current_user_id(payload)
+    _remove_favorite(db, user_id, location_id)
+    db.commit()
+    return _favorite_locations_response(db, user_id)
+
+
+@router.post("/locations/favorites/sync", tags=["Locations"])
+def sync_location_favorites(
+    data: FavoriteSyncRequest,
+    payload: dict = Depends(verify_token),
+    db: Session = Depends(get_session),
+):
+    user_id = _current_user_id(payload)
+    remove_ids = set(data.remove_location_ids)
+
+    for location_id in remove_ids:
+        _remove_favorite(db, user_id, location_id)
+    for location_id in set(data.add_location_ids) - remove_ids:
+        _add_favorite(db, user_id, location_id, strict=False)
+
+    db.commit()
+    return _favorite_locations_response(db, user_id)
+
 
 # ---------------------------------------------------------------------------
 # POST /locations/register  –  Đăng ký địa điểm kinh doanh mới

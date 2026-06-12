@@ -21,10 +21,57 @@
 }
 
 .location-cover-image {
-    height: 220px;
-    background-size: cover;
-    background-position: center;
+    height: clamp(170px, 28vh, 220px);
+    background: #dbeafe;
     position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.location-cover-image--empty {
+    height: 150px;
+    background: linear-gradient(145deg, #dbeafe, #e0f7fa);
+}
+
+.location-cover-photo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.location-cover-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: calc(48px + env(safe-area-inset-top, 0px)) 70px 16px;
+    color: #52708f;
+    font-size: 12px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.location-cover-credit {
+    position: absolute;
+    z-index: 5;
+    right: 8px;
+    bottom: 24px;
+    max-width: calc(100% - 16px);
+    padding: 4px 7px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.62);
+    color: #fff;
+    font-size: 9px;
+    line-height: 1.3;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .status-badge {

@@ -363,6 +363,14 @@ class LocationsImage(SQLModel, table=True):
     update_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class UserLocationFavorites(SQLModel, table=True):
+    __tablename__ = "user_location_favorites"
+
+    user_id: UUID = Field(foreign_key="users.user_id", ondelete="CASCADE", primary_key=True, index=True)
+    location_id: UUID = Field(foreign_key="locations.location_id", ondelete="CASCADE", primary_key=True, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class LocationTags(SQLModel, table=True):
     __tablename__ = "location_tags"
 
