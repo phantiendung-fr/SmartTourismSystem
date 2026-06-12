@@ -32,6 +32,45 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onOpenPlan, onOpenHistory, 
     const [loadingTrips, setLoadingTrips] = useState(false);
     const [topPlayers, setTopPlayers] = useState([]);
     const [loadingPlayers, setLoadingPlayers] = useState(false);
+    const [adventureZones, setAdventureZones] = useState([
+        {
+            id: 1,
+            title: 'Vịnh Hạ Long',
+            difficultyTone: 'easy',
+            difficultyText: 'Dễ',
+            xp: '+500 EXP',
+            coins: '+200 Xu',
+            rating: '4.8',
+            image: 'https://images.unsplash.com/photo-1528127269322-539801943592?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+            latitude: 20.9101,
+            longitude: 107.1839
+        },
+        {
+            id: 2,
+            title: 'Ruộng Bậc Thang',
+            difficultyTone: 'medium',
+            difficultyText: 'Trung bình',
+            xp: '+750 EXP',
+            coins: '+350 Xu',
+            rating: '4.9',
+            image: 'https://images.unsplash.com/photo-1576485290814-1c72aa4bbb8e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+            latitude: 22.3333,
+            longitude: 103.8333
+        },
+        {
+            id: 3,
+            title: 'Phố Cổ Hội An',
+            difficultyTone: 'easy',
+            difficultyText: 'Dễ',
+            xp: '+400 EXP',
+            coins: '+150 Xu',
+            rating: '4.7',
+            image: 'https://images.unsplash.com/photo-1555921015-5532091f6026?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+            latitude: 15.8794,
+            longitude: 108.3282
+        }
+    ]);
+    const [loadingZones, setLoadingZones] = useState(false);
     const scrollerRef = useRef(null);
     const dragStateRef = useRef({ isDown: false, startX: 0, scrollLeft: 0 });
 
@@ -247,9 +286,27 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onOpenPlan, onOpenHistory, 
             }
         };
 
+        const fetchDailyExplore = async () => {
+            setLoadingZones(true);
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/locations/daily-explore`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.length > 0) {
+                        setAdventureZones(data);
+                    }
+                }
+            } catch (err) {
+                console.error('Lỗi lấy vùng đất thám hiểm:', err);
+            } finally {
+                setLoadingZones(false);
+            }
+        };
+
         fetchOngoingTrips();
         fetchTopPlayers();
         fetchDailyData();
+        fetchDailyExplore();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isGuest, user]);
 
@@ -292,39 +349,6 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onOpenPlan, onOpenHistory, 
     const stopScrollerDrag = () => {
         dragStateRef.current.isDown = false;
     };
-
-    const adventureZones = [
-        {
-            id: 1,
-            title: 'Vịnh Hạ Long',
-            difficultyTone: 'easy',
-            difficultyText: 'Dễ',
-            xp: '+500 EXP',
-            coins: '+200 Xu',
-            rating: '4.8',
-            image: 'https://images.unsplash.com/photo-1528127269322-539801943592?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'
-        },
-        {
-            id: 2,
-            title: 'Ruộng Bậc Thang',
-            difficultyTone: 'medium',
-            difficultyText: 'Trung bình',
-            xp: '+750 EXP',
-            coins: '+350 Xu',
-            rating: '4.9',
-            image: 'https://images.unsplash.com/photo-1576485290814-1c72aa4bbb8e?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'
-        },
-        {
-            id: 3,
-            title: 'Phố Cổ Hội An',
-            difficultyTone: 'easy',
-            difficultyText: 'Dễ',
-            xp: '+400 EXP',
-            coins: '+150 Xu',
-            rating: '4.7',
-            image: 'https://images.unsplash.com/photo-1555921015-5532091f6026?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'
-        }
-    ];
 
     const allQuestsDone = dailyQuests.length > 0 && dailyQuests.every(q => q.is_completed);
 
@@ -593,6 +617,9 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onOpenPlan, onOpenHistory, 
                 </div>
 
                 <div className="section-title">Vùng Đất Thám Hiểm</div>
+                {loadingZones ? (
+                    <div className="inline-loading">Đang tải các địa điểm hôm nay...</div>
+                ) : (
                 <div
                     ref={scrollerRef}
                     className="card-scroller"
@@ -612,11 +639,13 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onOpenPlan, onOpenHistory, 
                                     onRequireLogin();
                                 } else if (onOpenLocationDetail) {
                                     onOpenLocationDetail({
-                                        location_id: zone.location_id || null,
+                                        location_id: zone.id,
                                         location_name: zone.title,
                                         image_url: zone.image,
                                         address: zone.address || null,
                                         description: zone.description || null,
+                                        latitude: zone.latitude,
+                                        longitude: zone.longitude
                                     });
                                 }
                             }}
@@ -648,11 +677,13 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onOpenPlan, onOpenHistory, 
                                             onRequireLogin();
                                         } else if (onOpenLocationDetail) {
                                             onOpenLocationDetail({
-                                                location_id: zone.location_id || null,
+                                                location_id: zone.id,
                                                 location_name: zone.title,
                                                 image_url: zone.image,
                                                 address: zone.address || null,
                                                 description: zone.description || null,
+                                                latitude: zone.latitude,
+                                                longitude: zone.longitude
                                             });
                                         }
                                     }}
@@ -664,6 +695,7 @@ const HomeTravel = ({ isGuest, onRequireLogin, user, onOpenPlan, onOpenHistory, 
                         </div>
                     ))}
                 </div>
+                )}
             </div>
 
             {showMascot && <Mascot message={mascotMessage} />}

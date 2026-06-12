@@ -615,17 +615,6 @@ const LocationDetailScreen = ({ location, onBack }) => {
                                     longitude: lng,
                                 }}
                             />
-
-                            {/* Footer */}
-                            <div className="map-overlay-footer">
-                                <button
-                                    className="map-open-btn"
-                                    onClick={() => window.open(mapsLink, '_blank')}
-                                >
-                                    <i className="fas fa-external-link-alt"></i>
-                                    Mở OpenStreetMap
-                                </button>
-                            </div>
                         </div>
                     </div>
                 );

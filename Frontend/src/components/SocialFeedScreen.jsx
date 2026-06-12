@@ -49,6 +49,9 @@ const formatCommentDateTime = (value) => {
 export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }) {
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [offset, setOffset] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
     const [likedPosts, setLikedPosts] = useState(new Set());
     const [savedPosts, setSavedPosts] = useState(new Set());
     
@@ -167,15 +170,36 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
         total_points: user?.profile?.total_points || user?.total_points || 0
     };
 
-    const fetchPosts = async () => {
-        setLoading(true);
+    const fetchPosts = async (isLoadMore = false) => {
+        if (isLoadMore) {
+            setLoadingMore(true);
+        } else {
+            setLoading(true);
+            setOffset(0);
+            setHasMore(true);
+        }
+        
         try {
+            const currentOffset = isLoadMore ? offset + 20 : 0;
             const token = await storageGet('access_token');
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
-            const res = await fetch(`${API_BASE}/api/social/posts`, { headers });
+            const res = await fetch(`${API_BASE}/api/social/posts?limit=20&offset=${currentOffset}`, { headers });
             if (res.ok) {
                 const data = await res.json();
-                setPosts(data);
+                
+                if (data.length < 20) {
+                    setHasMore(false);
+                }
+                
+                if (isLoadMore) {
+                    setPosts(prev => {
+                        const newPosts = data.filter(d => !prev.some(p => p.post_id === d.post_id));
+                        return [...prev, ...newPosts];
+                    });
+                    setOffset(currentOffset);
+                } else {
+                    setPosts(data);
+                }
 
                 // Use inline user_liked / user_saved from API (optimized backend)
                 if (data.length > 0 && 'user_liked' in data[0]) {
@@ -197,6 +221,7 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
             console.error('Error fetching posts:', error);
         } finally {
             setLoading(false);
+            setLoadingMore(false);
         }
     };
 
@@ -774,6 +799,18 @@ export default function SocialFeedScreen({ user, onRequireLogin, onOpenProfile }
                             </div>
                         );
                     })}
+                    
+                    {hasMore && posts.length > 0 && (
+                        <div className="load-more-container" style={{ textAlign: 'center', margin: '20px 0' }}>
+                            <button 
+                                className="squishy-btn yellow" 
+                                onClick={() => fetchPosts(true)}
+                                disabled={loadingMore}
+                            >
+                                {loadingMore ? 'Đang tải...' : 'Tải thêm'}
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 

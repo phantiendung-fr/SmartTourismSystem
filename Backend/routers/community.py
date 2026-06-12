@@ -98,6 +98,8 @@ def get_public_profile(user_id: UUID, db: Session = Depends(get_session)):
 
 @router.get("/posts")
 def get_posts(
+    limit: int = 20,
+    offset: int = 0,
     current_user: Optional[dict] = Depends(get_optional_token),
     db: Session = Depends(get_session)
 ):
@@ -139,10 +141,9 @@ def get_posts(
             )
         )
     else:
-        # Chưa đăng nhập chỉ xem PUBLIC
         query_stmt = query_stmt.where(models.SocialPosts.privacy_status == "PUBLIC")
 
-    results = db.exec(query_stmt.order_by(models.SocialPosts.created_at.desc())).all()
+    results = db.exec(query_stmt.order_by(models.SocialPosts.created_at.desc()).limit(limit).offset(offset)).all()
 
     # Batch-load liked & saved status for the current user (2 queries total)
     liked_post_ids = set()
@@ -547,10 +548,16 @@ def get_companions(
 # ==============================================================================
 # 3. LEADERBOARD & REWARDS
 # ==============================================================================
+from cachetools import TTLCache
+leaderboard_cache = TTLCache(maxsize=1, ttl=300) # Cache 5 mins
 
 @router.get("/leaderboard")
 def get_leaderboard(db: Session = Depends(get_session)):
     """Lấy danh sách bảng xếp hạng người dùng có điểm cao nhất"""
+    cache_key = "global"
+    if cache_key in leaderboard_cache:
+        return leaderboard_cache[cache_key]
+
     top_profiles = db.exec(
         select(models.UserProfiles).order_by(models.UserProfiles.total_points.desc()).limit(10)
     ).all()
@@ -567,6 +574,8 @@ def get_leaderboard(db: Session = Depends(get_session)):
             "trend": "up" if i < 3 else "stable",
             "isMe": False
         })
+        
+    leaderboard_cache[cache_key] = leaderboard
     return leaderboard
 
 

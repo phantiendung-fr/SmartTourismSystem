@@ -12,8 +12,8 @@ from contextlib import asynccontextmanager
 from time import monotonic
 # pyrefly: ignore [missing-import]
 from fastapi import FastAPI, HTTPException
-# pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse, RedirectResponse
@@ -163,6 +163,7 @@ if settings.ENVIRONMENT.lower() == "production":
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(EnforceHTTPSMiddleware)
 app.add_middleware(RateLimitMiddleware)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # ============================================================
 # CORS Middleware
