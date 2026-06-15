@@ -12,6 +12,11 @@ const splitLines = (value) => (
         .filter(Boolean)
 );
 
+const formatTimeValue = (value) => {
+    if (!value) return '00:00';
+    return value.substring(0, 5);
+};
+
 const LocationRegister = ({ onBack, onSubmitted }) => {
     const [cities, setCities] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -50,6 +55,25 @@ const LocationRegister = ({ onBack, onSubmitted }) => {
     });
 
     const [loadingRefs, setLoadingRefs] = useState(true);
+    const [viewportHeight, setViewportHeight] = useState(null);
+
+    useEffect(() => {
+        const visualViewport = window.visualViewport;
+        if (!visualViewport) return undefined;
+
+        const handleResize = () => {
+            setViewportHeight(Math.round(visualViewport.height));
+        };
+
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        visualViewport.addEventListener('resize', handleResize);
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            visualViewport.removeEventListener('resize', handleResize);
+        };
+    }, []);
     const [loadingGps, setLoadingGps] = useState(false);
     const [gpsMessage, setGpsMessage] = useState('');
     const [loading, setLoading] = useState(false);
@@ -218,8 +242,17 @@ const LocationRegister = ({ onBack, onSubmitted }) => {
         }
     };
 
+    const containerStyle = viewportHeight ? {
+        height: `${viewportHeight}px`,
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 'auto'
+    } : undefined;
+
     return (
-        <div className="register-container">
+        <div className="register-container" style={containerStyle}>
             {onBack && (
                 <button type="button" onClick={onBack} className="register-back-btn">
                     <ArrowLeft size={16} /> Quay lại
@@ -283,11 +316,17 @@ const LocationRegister = ({ onBack, onSubmitted }) => {
                 <div className="grid-2-cols">
                     <div className="form-group">
                         <label className="form-label">Giờ mở cửa</label>
-                        <input type="time" name="open_time" required value={formData.open_time} onChange={handleChange} className="form-control" />
+                        <div className="register-compact-time">
+                            <span>{formatTimeValue(formData.open_time)}</span>
+                            <input type="time" name="open_time" required value={formData.open_time} onChange={handleChange} />
+                        </div>
                     </div>
                     <div className="form-group">
                         <label className="form-label">Giờ đóng cửa</label>
-                        <input type="time" name="close_time" required value={formData.close_time} onChange={handleChange} className="form-control" />
+                        <div className="register-compact-time">
+                            <span>{formatTimeValue(formData.close_time)}</span>
+                            <input type="time" name="close_time" required value={formData.close_time} onChange={handleChange} />
+                        </div>
                     </div>
                     <div className="form-group">
                         <label className="form-label">Giá thấp nhất</label>

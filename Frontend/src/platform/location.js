@@ -19,7 +19,7 @@ const toLocationError = (error) => {
         message = 'Định vị GPS trên iPhone chỉ hoạt động khi ứng dụng được mở bằng HTTPS.';
     } else if (Number(error?.code) === 1) {
         message = isIosWebApp()
-            ? 'iOS đang chặn quyền vị trí. Mở Cài đặt > Quyền riêng tư & Bảo mật > Dịch vụ định vị, chọn SmartTour hoặc Safari và cho phép khi dùng ứng dụng.'
+            ? 'iOS đang chặn quyền vị trí. Mở Cài đặt > Quyền riêng tư & Bảo mật > Dịch vụ định vị, chọn Smart Tourism hoặc Safari và cho phép khi dùng ứng dụng.'
             : 'Quyền vị trí đang bị chặn. Hãy cho phép ứng dụng truy cập vị trí trong cài đặt trình duyệt.';
     } else if (Number(error?.code) === 2) {
         message = 'Không xác định được vị trí. Hãy bật Dịch vụ định vị/GPS rồi thử lại.';

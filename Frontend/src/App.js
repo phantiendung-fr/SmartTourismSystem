@@ -13,6 +13,7 @@ import TripInputForm from './components/TripInput/TripInputForm';
 import LocationRegister from './components/LocationRegister/LocationRegister';
 import MainTabs from './components/MainTabs';
 import EnterpriseTabs from './components/EnterpriseTabs';
+import IosPwaPrompt from './components/IosPwaPrompt';
 
 import UserProfile from './screens/UserProfile';
 import HistoryScreen from './screens/Trip/HistoryScreen';
@@ -64,7 +65,7 @@ function App() {
     const [enterpriseNotice, setEnterpriseNotice] = useState('');
     const userRole = currentUser?.user?.role || currentUser?.role;
     const isAdminMode = currentScreen === 'admin_moderation';
-    const isWorkMode = isAdminMode || (currentScreen === 'main' && userRole === 'ENTERPRISE');
+    const isWorkMode = isAdminMode || userRole === 'ENTERPRISE' || currentScreen === 'register_location';
 
     const screenHistoryRef = useRef([]);
     const currentScreenRef = useRef(currentScreen);
@@ -383,6 +384,7 @@ function App() {
                     {!isWorkMode && <SocialQuestOverlay />}
                     {/* ❌ XÓA HOẶC COMMENT DÒNG NÀY ĐỂ ẨN BẢNG GIẢ LẬP: */}
                     <LocationSimulator />
+                    <IosPwaPrompt />
 
                     {currentScreen === 'splash' && (
                         <SplashScreen onFinish={() => navigateTo('welcome', { resetHistory: true })} />

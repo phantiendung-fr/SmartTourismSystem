@@ -1,6 +1,6 @@
 .audio-control-btn {
     position: absolute;
-    top: 20px;
+    top: calc(20px + env(safe-area-inset-top, 0px));
     left: 20px;
     width: 44px;
     height: 44px;

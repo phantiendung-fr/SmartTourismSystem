@@ -18,12 +18,14 @@ class SoundManager {
 
         // Khởi tạo Web Audio API Context
         const AudioContext = window.AudioContext || window.webkitAudioContext;
-        this.audioCtx = new AudioContext();
+        this.audioCtx = AudioContext ? new AudioContext() : null;
         
         // Gain Node cho BGM để chỉnh âm lượng
-        this.bgmGainNode = this.audioCtx.createGain();
-        this.bgmGainNode.gain.value = this.bgmVolume;
-        this.bgmGainNode.connect(this.audioCtx.destination);
+        this.bgmGainNode = this.audioCtx ? this.audioCtx.createGain() : null;
+        if (this.bgmGainNode && this.audioCtx) {
+            this.bgmGainNode.gain.value = this.bgmVolume;
+            this.bgmGainNode.connect(this.audioCtx.destination);
+        }
         
         this.bgmBuffer = null;
         this.bgmSource = null;
@@ -77,6 +79,7 @@ class SoundManager {
 
     // Tải trước file BGM và giải mã
     async loadBGM() {
+        if (!this.audioCtx) return;
         try {
             const response = await fetch('/assets/sounds/bgm.mp3'); 
             if (!response.ok) throw new Error('File bgm.mp3 không tồn tại');
@@ -129,7 +132,7 @@ class SoundManager {
     }
 
     playBGM() {
-        if (!this.bgmEnabled) return;
+        if (!this.audioCtx || !this.bgmEnabled) return;
         this.bgmStarted = true;
         
         // Đảm bảo AudioContext đang hoạt động (do trình duyệt thường block cho đến khi user click)
@@ -166,6 +169,7 @@ class SoundManager {
     }
 
     async loadSFX(soundFileName) {
+        if (!this.audioCtx) return null;
         if (this.sfxBuffers[soundFileName]) return this.sfxBuffers[soundFileName];
         try {
             const response = await fetch(`/assets/sounds/${soundFileName}`);
@@ -181,7 +185,7 @@ class SoundManager {
     }
 
     async playSound(soundFileName) {
-        if (!this.sfxEnabled) return;
+        if (!this.audioCtx || !this.sfxEnabled) return;
         
         if (this.audioCtx.state === 'suspended') {
             this.audioCtx.resume();

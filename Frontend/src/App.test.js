@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders TravelSafe heading', () => {
+test('renders loading text on splash screen', () => {
   render(<App />);
-  const headingElement = screen.getByText(/TravelSafe/i);
-  expect(headingElement).toBeInTheDocument();
+  const loadingElement = screen.getByText(/Đang tải dữ liệu/i);
+  expect(loadingElement).toBeInTheDocument();
 });

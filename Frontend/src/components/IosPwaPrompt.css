@@ -1,0 +1,221 @@
+.ios-pwa-prompt-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    padding: 16px;
+    animation: fadeInPromptOverlay 0.3s ease-out;
+}
+
+.ios-pwa-prompt-card {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 20px;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.22);
+    padding: 20px;
+    margin-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1e293b;
+    animation: slideUpPromptCard 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInPromptOverlay {
+    from { background: rgba(15, 23, 42, 0); backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px); }
+    to { background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+}
+
+@keyframes slideUpPromptCard {
+    from { transform: translateY(120%) scale(0.95); }
+    to { transform: translateY(0) scale(1); }
+}
+
+.ios-pwa-prompt-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: #f1f5f9;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.15s;
+}
+
+.ios-pwa-prompt-close:active {
+    transform: scale(0.9);
+    background: #e2e8f0;
+}
+
+.ios-pwa-prompt-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-right: 24px;
+}
+
+.ios-pwa-app-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
+    flex-shrink: 0;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ios-pwa-app-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ios-pwa-app-title h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.ios-pwa-app-title p {
+    margin: 3px 0 0;
+    font-size: 12px;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+.ios-pwa-divider {
+    border: 0;
+    height: 1px;
+    background: #e2e8f0;
+    margin: 16px 0;
+}
+
+.ios-pwa-instructions {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.ios-pwa-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.ios-pwa-step-number {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #2563eb;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ios-pwa-step-text {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #334155;
+}
+
+.ios-pwa-step-text strong {
+    color: #0f172a;
+}
+
+.ios-pwa-icon-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #eff6ff;
+    color: #2563eb;
+    border-radius: 6px;
+    padding: 3px;
+    margin: 0 2px;
+    vertical-align: middle;
+}
+
+.prompt-svg-icon {
+    display: block;
+}
+
+/* Arrow pointing down specifically to the center-bottom Safari share button */
+.ios-pwa-arrow-pointer {
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 10px solid rgba(255, 255, 255, 0.95);
+    filter: drop-shadow(0 4px 2px rgba(15, 23, 42, 0.05));
+    pointer-events: none;
+}
+
+/* Media query for wider screens/iPads */
+@media (min-width: 768px) {
+    .ios-pwa-prompt-overlay {
+        align-items: center;
+    }
+    
+    .ios-pwa-prompt-card {
+        margin-bottom: 0;
+    }
+    
+    .ios-pwa-arrow-pointer {
+        display: none;
+    }
+}
+
+.ios-pwa-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.ios-pwa-checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.ios-pwa-checkbox-container input {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    accent-color: #2563eb;
+    margin: 0;
+}
+
+.ios-pwa-checkbox-label-text {
+    line-height: 1;
+}
+
