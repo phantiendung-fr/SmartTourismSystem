@@ -55,25 +55,6 @@ const LocationRegister = ({ onBack, onSubmitted }) => {
     });
 
     const [loadingRefs, setLoadingRefs] = useState(true);
-    const [viewportHeight, setViewportHeight] = useState(null);
-
-    useEffect(() => {
-        const visualViewport = window.visualViewport;
-        if (!visualViewport) return undefined;
-
-        const handleResize = () => {
-            setViewportHeight(Math.round(visualViewport.height));
-        };
-
-        handleResize();
-        window.addEventListener('resize', handleResize);
-        visualViewport.addEventListener('resize', handleResize);
-
-        return () => {
-            window.removeEventListener('resize', handleResize);
-            visualViewport.removeEventListener('resize', handleResize);
-        };
-    }, []);
     const [loadingGps, setLoadingGps] = useState(false);
     const [gpsMessage, setGpsMessage] = useState('');
     const [loading, setLoading] = useState(false);
@@ -242,17 +223,8 @@ const LocationRegister = ({ onBack, onSubmitted }) => {
         }
     };
 
-    const containerStyle = viewportHeight ? {
-        height: `${viewportHeight}px`,
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 'auto'
-    } : undefined;
-
     return (
-        <div className="register-container" style={containerStyle}>
+        <div className="register-container">
             {onBack && (
                 <button type="button" onClick={onBack} className="register-back-btn">
                     <ArrowLeft size={16} /> Quay lại
