@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { CapacitorBarcodeScanner } from '@capacitor/barcode-scanner';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { API_BASE } from '../../config/api';
 import { capturePhotoFile, pickPhotoFile, releasePreviewUrl } from '../../platform/camera';
@@ -19,42 +19,48 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
   useEffect(() => {
     if (isNative) return undefined;
 
-    let scanner = null;
+    let html5QrCode = null;
     let isMounted = true;
 
-    try {
-      scanner = new Html5QrcodeScanner(
-        'qr-reader',
-        { qrbox: { width: 250, height: 250 }, fps: 10 },
-        false
-      );
+    const startScanner = async () => {
+      try {
+        // Small delay to ensure DOM element is ready
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        if (!isMounted) return;
 
-      scanner.render(
-        (decodedText) => {
-          if (!isMounted) return;
-          scanner.clear().catch(() => {});
-          onScanSuccess(decodedText);
-        },
-        (errorMessage) => {
-          if (!isMounted) return;
-          if (
-            typeof errorMessage === 'string' &&
-            (errorMessage.includes('NotAllowedError') ||
-              errorMessage.includes('Permission') ||
-              errorMessage.includes('NotFoundError'))
-          ) {
-            onScannerError('Không thể khởi động camera QR. Vui lòng cấp quyền camera hoặc nhập mã thủ công.');
+        html5QrCode = new Html5Qrcode('qr-reader');
+        await html5QrCode.start(
+          { facingMode: 'environment' },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+          },
+          (decodedText) => {
+            if (!isMounted) return;
+            html5QrCode.stop().then(() => {
+              onScanSuccess(decodedText);
+            }).catch(() => {
+              onScanSuccess(decodedText);
+            });
+          },
+          (errorMessage) => {
+            // Ignore frame decoding errors (like QR code not found) to prevent showing permission errors constantly
           }
+        );
+      } catch (error) {
+        if (isMounted) {
+          console.error("QR scanner start error:", error);
+          onScannerError('Không thể khởi động camera QR. Vui lòng cấp quyền camera hoặc nhập mã thủ công.');
         }
-      );
-    } catch (error) {
-      onScannerError('Khởi tạo QR scanner thất bại. Bạn vẫn có thể nhập mã thủ công.');
-    }
+      }
+    };
+
+    startScanner();
 
     return () => {
       isMounted = false;
-      if (scanner) {
-        scanner.clear().catch(() => {});
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch((err) => console.error("Error stopping scanner on unmount:", err));
       }
     };
   }, [isNative, onScanSuccess, onScannerError]);
@@ -126,6 +132,9 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState(null);
 
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
+
   useEffect(() => () => releasePreviewUrl(previewUrl), [previewUrl]);
 
   useEffect(() => {
@@ -173,26 +182,56 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
     setPreviewUrl(null);
   };
 
+  const handleCameraInputChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      updatePhotoSelection(file, URL.createObjectURL(file));
+    }
+    e.target.value = '';
+  };
+
+  const handleGalleryInputChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      updatePhotoSelection(file, URL.createObjectURL(file));
+    }
+    e.target.value = '';
+  };
+
   const handleCapturePhoto = async () => {
     setSubmitError(null);
     setPhotoHint('');
-    try {
-      const result = await capturePhotoFile({ quality: 85, useFrontCamera });
-      updatePhotoSelection(result.file, result.previewUrl);
-    } catch (err) {
-      setPhotoHint('Nếu camera bị từ chối, hãy cấp quyền Camera trong cài đặt ứng dụng và thử lại.');
-      setSubmitError(err.message || 'Không thể mở camera.');
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const result = await capturePhotoFile({ quality: 85, useFrontCamera });
+        updatePhotoSelection(result.file, result.previewUrl);
+      } catch (err) {
+        setPhotoHint('Nếu camera bị từ chối, hãy cấp quyền Camera trong cài đặt ứng dụng và thử lại.');
+        setSubmitError(err.message || 'Không thể mở camera.');
+      }
+    } else {
+      // WEB: Trigger the file input synchronously to satisfy iOS Safari user gesture requirements
+      if (cameraInputRef.current) {
+        cameraInputRef.current.click();
+      }
     }
   };
 
   const handlePickPhoto = async () => {
     setSubmitError(null);
     setPhotoHint('');
-    try {
-      const result = await pickPhotoFile();
-      updatePhotoSelection(result.file, result.previewUrl);
-    } catch (err) {
-      setSubmitError(err.message || 'Không thể chọn ảnh từ thư viện.');
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const result = await pickPhotoFile();
+        updatePhotoSelection(result.file, result.previewUrl);
+      } catch (err) {
+        setSubmitError(err.message || 'Không thể chọn ảnh từ thư viện.');
+      }
+    } else {
+      // WEB: Trigger the file input synchronously to satisfy iOS Safari user gesture requirements
+      if (galleryInputRef.current) {
+        galleryInputRef.current.click();
+      }
     }
   };
 
@@ -534,6 +573,21 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
           </div>
         </div>
       )}
+      <input
+        type="file"
+        ref={cameraInputRef}
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={handleCameraInputChange}
+      />
+      <input
+        type="file"
+        ref={galleryInputRef}
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleGalleryInputChange}
+      />
     </div>
   );
 };
