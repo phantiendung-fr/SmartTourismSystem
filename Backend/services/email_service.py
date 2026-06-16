@@ -1,8 +1,27 @@
 import smtplib
+import socket
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from core.config import settings
 from datetime import datetime
+
+
+class IPv4SMTP(smtplib.SMTP):
+    """SMTP client that avoids IPv6 addresses unsupported by some PaaS runtimes."""
+
+    def _get_socket(self, host, port, timeout):
+        for family, socktype, proto, _, sockaddr in socket.getaddrinfo(
+            host,
+            port,
+            socket.AF_INET,
+            socket.SOCK_STREAM,
+        ):
+            try:
+                return socket.create_connection(sockaddr, timeout, self.source_address)
+            except OSError:
+                continue
+        return super()._get_socket(host, port, timeout)
+
 
 def _send_email_smtp_base(to_email: str, subject: str, plain_body: str, html_body: str, otp_code: str) -> bool:
     """
@@ -28,7 +47,8 @@ def _send_email_smtp_base(to_email: str, subject: str, plain_body: str, html_bod
             msg.attach(MIMEText(html_body, "html", "utf-8"))
 
             # Kết nối SMTP có timeout
-            server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10)
+            smtp_client = IPv4SMTP if settings.ENVIRONMENT.lower() == "production" else smtplib.SMTP
+            server = smtp_client(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10)
             server.ehlo()
             server.starttls()
             server.ehlo()
@@ -53,6 +73,8 @@ def _send_email_smtp_base(to_email: str, subject: str, plain_body: str, html_bod
             except Exception:
                 pass
             # Fallback to console print
+            if settings.ENVIRONMENT.lower() not in {"development", "test"}:
+                return False
             
     # Fallback to console print
     print("\n" + "="*80)
@@ -258,4 +280,3 @@ def send_reset_password_email(to_email: str, otp_code: str, client_ip: str = "Kh
 </html>
 """
     return _send_email_smtp_base(to_email, subject, plain_body, html_body, otp_code)
-

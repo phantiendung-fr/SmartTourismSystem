@@ -75,6 +75,13 @@ def check_rate_limit(key: str, limit: int, window_seconds: int) -> None:
     if record["count"] > limit:
         raise HTTPException(status_code=429, detail="Bạn thao tác quá nhiều lần. Vui lòng thử lại sau.")
 
+
+def raise_email_delivery_failed() -> None:
+    raise HTTPException(
+        status_code=502,
+        detail="Không thể gửi email OTP lúc này. Vui lòng thử lại sau.",
+    )
+
 # ===========================================================================
 # 2. CÁC API XỬ LÝ AUTHENTICATION
 # ===========================================================================
@@ -225,7 +232,8 @@ def register(request: Request, user_data: schemas.UserCreate, db: Session = Depe
     # Gọi gửi mail OTP
     from services.email_service import send_otp_email
     client_ip = request.client.host if request.client else "Không xác định"
-    send_otp_email(user_data.email, otp_code, client_ip=client_ip)
+    if not send_otp_email(user_data.email, otp_code, client_ip=client_ip):
+        raise_email_delivery_failed()
 
     return {
         "status": "verification_pending",
@@ -335,7 +343,8 @@ def resend_register_otp(request: Request, req: ResendRegisterOtpReq, db: Session
     # Gửi email
     from services.email_service import send_otp_email
     client_ip = request.client.host if request.client else "Không xác định"
-    send_otp_email(user.email, otp_code, client_ip=client_ip)
+    if not send_otp_email(user.email, otp_code, client_ip=client_ip):
+        raise_email_delivery_failed()
 
     return {"message": "Mã OTP mới đã được gửi lại vào email của bạn."}
 
@@ -631,7 +640,8 @@ def forgot_password(request: Request, req: ForgotPasswordReq, db: Session = Depe
     # Gửi mã OTP khôi phục qua email
     from services.email_service import send_reset_password_email
     client_ip = request.client.host if request.client else "Không xác định"
-    send_reset_password_email(user.email, otp_code, client_ip=client_ip)
+    if not send_reset_password_email(user.email, otp_code, client_ip=client_ip):
+        raise_email_delivery_failed()
 
     return {"message": "Nếu email tồn tại, mã OTP sẽ được gửi qua kênh đã cấu hình."}
 
