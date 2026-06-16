@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { CapacitorBarcodeScanner } from '@capacitor/barcode-scanner';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import { Check, QrCode, Scan } from 'lucide-react';
 
 const getScanValue = (result) => (
@@ -29,39 +29,54 @@ const QuestQrScanner = ({
     useEffect(() => {
         if (isNative || !webScannerOpen) return undefined;
 
+        let html5QrCode = null;
         let mounted = true;
-        const scanner = new Html5QrcodeScanner(
-            scannerIdRef.current,
-            { qrbox: { width: 240, height: 240 }, fps: 10 },
-            false
-        );
-        scannerRef.current = scanner;
 
-        scanner.render(
-            (decodedText) => {
+        const startScanner = async () => {
+            try {
+                // Small delay to ensure the DOM element is ready
+                await new Promise((resolve) => setTimeout(resolve, 300));
                 if (!mounted) return;
-                const token = String(decodedText || '').trim();
-                setScannedValue(token);
-                setWebScannerOpen(false);
-                scanner.clear().catch(() => {});
-                if (token) onScan?.(token);
-            },
-            (scanError) => {
-                if (!mounted || !scanError) return;
-                const message = String(scanError);
-                if (
-                    message.includes('NotAllowedError')
-                    || message.includes('Permission')
-                    || message.includes('NotFoundError')
-                ) {
-                    setError('Không mở được camera. Vui lòng cấp quyền camera để quét QR.');
+
+                html5QrCode = new Html5Qrcode(scannerIdRef.current);
+                scannerRef.current = html5QrCode;
+
+                await html5QrCode.start(
+                    { facingMode: 'environment' },
+                    {
+                        fps: 10,
+                        qrbox: { width: 240, height: 240 },
+                    },
+                    (decodedText) => {
+                        if (!mounted) return;
+                        const token = String(decodedText || '').trim();
+                        setScannedValue(token);
+                        setWebScannerOpen(false);
+                        html5QrCode.stop().then(() => {
+                            if (token) onScan?.(token);
+                        }).catch(() => {
+                            if (token) onScan?.(token);
+                        });
+                    },
+                    (scanError) => {
+                        // Ignore frame-by-frame errors (like QR not found)
+                    }
+                );
+            } catch (err) {
+                if (mounted) {
+                    console.error("QR scanner start error:", err);
+                    setError('Không mở được camera. Vui lòng cấp quyền camera để quét QR và đảm bảo sử dụng HTTPS.');
                 }
             }
-        );
+        };
+
+        startScanner();
 
         return () => {
             mounted = false;
-            scanner.clear().catch(() => {});
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().catch((err) => console.error("Error stopping scanner on unmount:", err));
+            }
             scannerRef.current = null;
         };
     }, [isNative, onScan, webScannerOpen]);
