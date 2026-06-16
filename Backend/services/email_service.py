@@ -1,3 +1,5 @@
+import os
+import requests
 import smtplib
 import socket
 from email.mime.text import MIMEText
@@ -23,6 +25,45 @@ class IPv4SMTP(smtplib.SMTP):
         return super()._get_socket(host, port, timeout)
 
 
+def _send_email_resend(to_email: str, subject: str, plain_body: str, html_body: str) -> bool:
+    api_key = os.getenv("RESEND_API_KEY", "").strip()
+    if not api_key:
+        return False
+
+    from_email = os.getenv("RESEND_FROM", "Smart Tourism <onboarding@resend.dev>").strip()
+    payload = {
+        "from": from_email,
+        "to": [to_email],
+        "subject": subject,
+        "text": plain_body,
+        "html": html_body,
+    }
+
+    try:
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=20,
+        )
+        if 200 <= response.status_code < 300:
+            email_id = response.json().get("id", "unknown")
+            print(f"[Email Service] Email sent successfully to {to_email} via Resend: {email_id}")
+            return True
+
+        print(
+            "[Email Service] Resend failed for "
+            f"{to_email}: HTTP {response.status_code} {response.text[:500]}"
+        )
+        return False
+    except Exception as e:
+        print(f"[Email Service] Resend request failed for {to_email}: {e}")
+        return False
+
+
 def _send_email_smtp_base(to_email: str, subject: str, plain_body: str, html_body: str, otp_code: str) -> bool:
     """
     Base helper function to send email via SMTP, with a fallback to console print.
@@ -33,6 +74,12 @@ def _send_email_smtp_base(to_email: str, subject: str, plain_body: str, html_bod
             f.write(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [Email Service] Đang tiến hành gửi email đến {to_email}...")
     except Exception as debug_err:
         print(f"[Debug SMTP] Lỗi ghi file debug: {debug_err}")
+
+    if os.getenv("RESEND_API_KEY", "").strip():
+        if _send_email_resend(to_email, subject, plain_body, html_body):
+            return True
+        if settings.ENVIRONMENT.lower() not in {"development", "test"}:
+            return False
 
     # Check if SMTP configuration is provided
     if settings.SMTP_HOST:
