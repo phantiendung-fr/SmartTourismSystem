@@ -6,6 +6,25 @@ import reportWebVitals from './reportWebVitals';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import L from 'leaflet';
 
+// Suppress cross-origin / third-party script errors from crashing React's dev error overlay
+if (process.env.NODE_ENV === 'development') {
+  const scriptErrorRegex = /Script error/i;
+  const resizeObserverErrorRegex = /ResizeObserver loop completed with undelivered notifications/i;
+
+  window.addEventListener('error', (e) => {
+    if (scriptErrorRegex.test(e.message) || resizeObserverErrorRegex.test(e.message)) {
+      e.stopImmediatePropagation();
+    }
+  });
+
+  window.addEventListener('unhandledrejection', (e) => {
+    const msg = e.reason?.message || '';
+    if (scriptErrorRegex.test(msg) || resizeObserverErrorRegex.test(msg)) {
+      e.stopImmediatePropagation();
+    }
+  });
+}
+
 const syncAppViewportHeight = () => {
   const viewportHeight = Math.max(
     window.innerHeight || 0,

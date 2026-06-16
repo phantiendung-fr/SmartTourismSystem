@@ -12,6 +12,11 @@ const splitLines = (value) => (
         .filter(Boolean)
 );
 
+const formatTimeValue = (value) => {
+    if (!value) return '00:00';
+    return value.substring(0, 5);
+};
+
 const LocationRegister = ({ onBack, onSubmitted }) => {
     const [cities, setCities] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -283,11 +288,17 @@ const LocationRegister = ({ onBack, onSubmitted }) => {
                 <div className="grid-2-cols">
                     <div className="form-group">
                         <label className="form-label">Giờ mở cửa</label>
-                        <input type="time" name="open_time" required value={formData.open_time} onChange={handleChange} className="form-control" />
+                        <div className="register-compact-time">
+                            <span>{formatTimeValue(formData.open_time)}</span>
+                            <input type="time" name="open_time" required value={formData.open_time} onChange={handleChange} />
+                        </div>
                     </div>
                     <div className="form-group">
                         <label className="form-label">Giờ đóng cửa</label>
-                        <input type="time" name="close_time" required value={formData.close_time} onChange={handleChange} className="form-control" />
+                        <div className="register-compact-time">
+                            <span>{formatTimeValue(formData.close_time)}</span>
+                            <input type="time" name="close_time" required value={formData.close_time} onChange={handleChange} />
+                        </div>
                     </div>
                     <div className="form-group">
                         <label className="form-label">Giá thấp nhất</label>

@@ -102,6 +102,21 @@ const formatCoordinate = (value) => {
     return Number.isFinite(numberValue) ? numberValue.toFixed(6) : '-';
 };
 
+const formatDateInputValue = (value) => {
+    if (!value) return 'dd/mm/yyyy';
+    const [year, month, day] = value.split('-');
+    return year && month && day ? `${day}/${month}/${year}` : value;
+};
+
+const formatDateTimeInputValue = (value) => {
+    if (!value) return 'dd/mm/yyyy --:--';
+    const parts = value.split('T');
+    if (parts.length < 2) return value;
+    const [year, month, day] = parts[0].split('-');
+    const time = parts[1];
+    return year && month && day ? `${day}/${month}/${year} ${time}` : value;
+};
+
 const formatLocationCoordinates = (location) => (
     `${formatCoordinate(location?.latitude)}, ${formatCoordinate(location?.longitude)}`
 );
@@ -130,6 +145,48 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister, initialTab = '
     const [vouchers, setVouchers] = useState([]);
     const [showVoucherForm, setShowVoucherForm] = useState(false);
     const [voucherForm, setVoucherForm] = useState(defaultVoucherForm());
+    const [viewportState, setViewportState] = useState({
+        height: null,
+        offsetTop: 0,
+        keyboardVisible: false,
+    });
+
+    useEffect(() => {
+        const visualViewport = window.visualViewport;
+        if (!visualViewport) return undefined;
+
+        const initialHeight = Math.round(visualViewport.height || window.innerHeight);
+        let animationFrame;
+
+        const syncViewport = () => {
+            window.cancelAnimationFrame(animationFrame);
+            animationFrame = window.requestAnimationFrame(() => {
+                const height = Math.round(visualViewport.height || window.innerHeight);
+                const offsetTop = Math.round(visualViewport.offsetTop || 0);
+                const keyboardVisible = initialHeight - height > 120;
+
+                setViewportState((current) => (
+                    current.height === height
+                    && current.offsetTop === offsetTop
+                    && current.keyboardVisible === keyboardVisible
+                        ? current
+                        : { height, offsetTop, keyboardVisible }
+                ));
+            });
+        };
+
+        syncViewport();
+        window.addEventListener('resize', syncViewport);
+        visualViewport.addEventListener('resize', syncViewport);
+        visualViewport.addEventListener('scroll', syncViewport);
+
+        return () => {
+            window.cancelAnimationFrame(animationFrame);
+            window.removeEventListener('resize', syncViewport);
+            visualViewport.removeEventListener('resize', syncViewport);
+            visualViewport.removeEventListener('scroll', syncViewport);
+        };
+    }, []);
 
     useEffect(() => {
         if (initialTab && initialTab !== lastInitialTabRef.current) {
@@ -407,11 +464,17 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister, initialTab = '
                         </label>
                         <label>
                             Bắt đầu
-                            <input type="datetime-local" value={campaignForm.start_time} onChange={(e) => updateCampaignForm('start_time', e.target.value)} required />
+                            <div className="enterprise-compact-date">
+                                <span>{formatDateTimeInputValue(campaignForm.start_time)}</span>
+                                <input type="datetime-local" value={campaignForm.start_time} onChange={(e) => updateCampaignForm('start_time', e.target.value)} required />
+                            </div>
                         </label>
                         <label>
                             Kết thúc
-                            <input type="datetime-local" value={campaignForm.end_time} onChange={(e) => updateCampaignForm('end_time', e.target.value)} required />
+                            <div className="enterprise-compact-date">
+                                <span>{formatDateTimeInputValue(campaignForm.end_time)}</span>
+                                <input type="datetime-local" value={campaignForm.end_time} onChange={(e) => updateCampaignForm('end_time', e.target.value)} required />
+                            </div>
                         </label>
                         <label>
                             Tiêu đề bước ảnh
@@ -721,11 +784,17 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister, initialTab = '
                         )}
                         <label>
                             Ngày bắt đầu
-                            <input type="date" value={voucherForm.start_date} onChange={(e) => setVoucherForm({ ...voucherForm, start_date: e.target.value })} required />
+                            <div className="enterprise-compact-date">
+                                <span>{formatDateInputValue(voucherForm.start_date)}</span>
+                                <input type="date" value={voucherForm.start_date} onChange={(e) => setVoucherForm({ ...voucherForm, start_date: e.target.value })} required />
+                            </div>
                         </label>
                         <label>
                             Ngày kết thúc
-                            <input type="date" value={voucherForm.end_date} onChange={(e) => setVoucherForm({ ...voucherForm, end_date: e.target.value })} required />
+                            <div className="enterprise-compact-date">
+                                <span>{formatDateInputValue(voucherForm.end_date)}</span>
+                                <input type="date" value={voucherForm.end_date} onChange={(e) => setVoucherForm({ ...voucherForm, end_date: e.target.value })} required />
+                            </div>
                         </label>
                         <label>
                             Số lượng phát hành
@@ -851,8 +920,20 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister, initialTab = '
         return renderProfile();
     };
 
+    const keyboardViewportStyle = viewportState.keyboardVisible
+        ? {
+            height: `${viewportState.height}px`,
+            position: 'absolute',
+            top: `${viewportState.offsetTop}px`,
+            bottom: 'auto',
+        }
+        : undefined;
+
     return (
-        <div className="enterprise-layout">
+        <div 
+            className={`enterprise-layout ${viewportState.keyboardVisible ? 'keyboard-visible' : ''}`}
+            style={keyboardViewportStyle}
+        >
             <div className="enterprise-content" ref={contentRef}>
                 {(message || error) && (
                     <div className={`enterprise-message ${error ? 'error' : 'success'}`}>

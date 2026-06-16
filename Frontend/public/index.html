@@ -3,6 +3,47 @@
 
 <head>
   <meta charset="utf-8" />
+  <script>
+    // Safeguard development mode from generic Cross-Origin / Safari native browser errors
+    (function() {
+      var scriptErrorRegex = /Script error/i;
+      var resizeObserverErrorRegex = /ResizeObserver loop completed/i;
+      
+      // Capture phase listeners to intercept before other bubble/target event listeners
+      window.addEventListener('error', function(e) {
+        var msg = e.message || '';
+        if (scriptErrorRegex.test(msg) || resizeObserverErrorRegex.test(msg)) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+      }, true);
+
+      window.addEventListener('unhandledrejection', function(e) {
+        var msg = (e.reason && e.reason.message) || '';
+        if (scriptErrorRegex.test(msg) || resizeObserverErrorRegex.test(msg)) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+      }, true);
+      
+      // Proxy window.onerror assignment to block cross-origin script error popups
+      var originalOnError = null;
+      Object.defineProperty(window, 'onerror', {
+        set: function(fn) {
+          originalOnError = function(message, source, lineno, colno, error) {
+            if (/Script error/i.test(message) || /ResizeObserver/i.test(message)) {
+              return true; // prevent default (suppress browser warning)
+            }
+            return fn ? fn.apply(this, arguments) : false;
+          };
+        },
+        get: function() {
+          return originalOnError;
+        },
+        configurable: true
+      });
+    })();
+  </script>
   <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content, user-scalable=no, maximum-scale=1" />
   <meta name="theme-color" content="#0abde3" />

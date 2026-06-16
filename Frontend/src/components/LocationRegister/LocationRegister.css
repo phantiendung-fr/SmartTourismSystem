@@ -6,7 +6,7 @@
     min-height: 0;
     max-width: 48rem; /* ~768px */
     margin: 0 auto;
-    padding: 2rem;
+    padding: calc(2rem + env(safe-area-inset-top, 0px)) 2rem calc(2rem + env(safe-area-inset-bottom, 0px));
     background-color: #ffffff;
     border-radius: 0.5rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -15,7 +15,6 @@
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
 }
 
 .register-back-btn {
@@ -208,11 +207,10 @@ textarea.form-control {
 @media (max-width: 640px) {
     .register-container {
         margin: 0;
-        padding: 1rem;
+        padding: calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(2rem + env(safe-area-inset-bottom, 0px));
         border-radius: 0;
         border: none;
         box-shadow: none;
-        padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
     }
 
     .grid-2-cols {
@@ -227,3 +225,49 @@ textarea.form-control {
         width: 100%;
     }
 }
+
+/* Compact Time Input Wrapper Styles */
+.register-compact-time {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    height: 40px; /* matches .form-control height */
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    background-color: #ffffff;
+    color: #374151;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.register-compact-time span {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.register-compact-time input[type="time"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0 !important;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+}
+
+.register-compact-time:focus-within {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 1px #3b82f6;
+}
+
