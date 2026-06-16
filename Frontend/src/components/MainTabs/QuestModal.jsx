@@ -1,5 +1,5 @@
 // src/components/MainTabs/QuestModal.jsx
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Sparkles, MapPin, Award, Coins, Camera, HelpCircle, QrCode, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import QuestQrScanner from '../QuestQrScanner';
 import { verifyQuest } from '../../services/hiddenQuestService';
@@ -12,6 +12,23 @@ const QuestModal = ({ task, userLocation, onClose, onSuccess }) => {
     const [questLoading, setQuestLoading] = useState(false);
     const [questError, setQuestError] = useState('');
     const [questSuccess, setQuestSuccess] = useState(null);
+
+    const fileInputRef = useRef(null);
+
+    const handlePhotoClick = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setPhotoUrl(URL.createObjectURL(file));
+            setPhotoUploaded(true);
+        }
+        e.target.value = '';
+    };
 
     const isMultiStepEvent = (item) => item?.event_mode === 'HIDDEN_MULTI_STEP' || item?.quest_type === 'MULTI_STEP';
     const getEventStep = (item, stepType) => item?.steps?.find((step) => step.step_type === stepType) || {};
@@ -73,10 +90,7 @@ const QuestModal = ({ task, userLocation, onClose, onSuccess }) => {
                                             <button className="photo-reset" onClick={() => { setPhotoUploaded(false); setPhotoUrl(''); }}>✕ Xóa ảnh</button>
                                         </div>
                                     ) : (
-                                        <div className="photo-upload-placeholder" onClick={() => {
-                                            setPhotoUrl("/assets/island/map-dao.png");
-                                            setPhotoUploaded(true);
-                                        }}>
+                                        <div className="photo-upload-placeholder" onClick={handlePhotoClick}>
                                             <span className="photo-camera-icon" style={{ display: 'flex', justifyContent: 'center' }}><Camera size={28} /></span>
                                             <span>Chạm để tải lên / Chụp ảnh check-in</span>
                                         </div>
@@ -112,7 +126,7 @@ const QuestModal = ({ task, userLocation, onClose, onSuccess }) => {
                                         buttonLabel="Quét QR và hoàn thành sự kiện"
                                         onScan={(token) => {
                                             setQrTokenInput(token);
-                                            handleVerifyQuest({ image_url: photoUrl, answer: quizAnswer, qr_token: token });
+                                            handleVerifyQuest({ image_url: "captured-photo.jpg", answer: quizAnswer, qr_token: token });
                                         }}
                                     />
                                 </div>
@@ -192,18 +206,14 @@ const QuestModal = ({ task, userLocation, onClose, onSuccess }) => {
                                             <button className="photo-reset" onClick={() => { setPhotoUploaded(false); setPhotoUrl(''); }}>✕ Xóa ảnh</button>
                                         </div>
                                     ) : (
-                                        <div className="photo-upload-placeholder" onClick={() => {
-                                            setPhotoUrl("/assets/island/map-dao.png");
-                                            setPhotoUploaded(true);
-                                        }}>
+                                        <div className="photo-upload-placeholder" onClick={handlePhotoClick}>
                                             <span className="photo-camera-icon" style={{ display: 'flex', justifyContent: 'center' }}><Camera size={28} /></span>
                                             <span>Chạm để tải lên / Chụp ảnh check-in</span>
-                                            <small className="photo-helper-text">(Mô phỏng tự động chọn ảnh chất lượng cao)</small>
                                         </div>
                                     )}
 
                                     <button 
-                                        onClick={() => handleVerifyQuest({ image_url: photoUrl })}
+                                        onClick={() => handleVerifyQuest({ image_url: "captured-photo.jpg" })}
                                         disabled={questLoading || !photoUploaded}
                                         className="quest-action-btn with-top-margin"
                                     >
@@ -245,6 +255,13 @@ const QuestModal = ({ task, userLocation, onClose, onSuccess }) => {
                     )}
                 </div>
             </div>
+            <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                accept="image/*" 
+                style={{ display: 'none' }} 
+            />
         </div>
     );
 };
