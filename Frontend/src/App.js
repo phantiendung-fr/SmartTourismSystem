@@ -431,7 +431,7 @@ function App() {
 
                     {currentScreen === 'tutorial' && (
                         <TutorialScreen
-                            onFinish={() => navigateTo('main', { resetHistory: true })}
+                            onFinish={() => navigateTo('login', { resetHistory: true })}
                         />
                     )}
 

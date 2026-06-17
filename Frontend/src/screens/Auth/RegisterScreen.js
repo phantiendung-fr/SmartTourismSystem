@@ -264,6 +264,13 @@ const RegisterScreen = ({ onBack, onSwitchToLogin, onRegisterSuccess }) => {
         }
     };
 
+    const handleCloseNotice = () => {
+        setRegisterNotice(null);
+        if (onSwitchToLogin) {
+            onSwitchToLogin();
+        }
+    };
+
     if (isVerifyingOtp) {
         return (
             <div className="login-container">
@@ -327,7 +334,7 @@ const RegisterScreen = ({ onBack, onSwitchToLogin, onRegisterSuccess }) => {
                             <button
                                 type="button"
                                 className="auth-success-close"
-                                onClick={() => setRegisterNotice(null)}
+                                onClick={handleCloseNotice}
                                 aria-label="Đóng thông báo"
                             >
                                 <X size={18} />
@@ -343,7 +350,7 @@ const RegisterScreen = ({ onBack, onSwitchToLogin, onRegisterSuccess }) => {
                                         <CheckCircle size={16} /> Xem hướng dẫn sử dụng
                                     </button>
                                 ) : (
-                                    <button type="button" className="auth-success-primary enterprise" onClick={() => setRegisterNotice(null)}>
+                                    <button type="button" className="auth-success-primary enterprise" onClick={handleCloseNotice}>
                                         Đã hiểu
                                     </button>
                                 )}
@@ -536,7 +543,7 @@ const RegisterScreen = ({ onBack, onSwitchToLogin, onRegisterSuccess }) => {
                         <button
                             type="button"
                             className="auth-success-close"
-                            onClick={() => setRegisterNotice(null)}
+                            onClick={handleCloseNotice}
                             aria-label="Đóng thông báo"
                         >
                             <X size={18} />
@@ -552,7 +559,7 @@ const RegisterScreen = ({ onBack, onSwitchToLogin, onRegisterSuccess }) => {
                                     <CheckCircle size={16} /> Xem hướng dẫn sử dụng
                                 </button>
                             ) : (
-                                <button type="button" className="auth-success-primary enterprise" onClick={() => setRegisterNotice(null)}>
+                                <button type="button" className="auth-success-primary enterprise" onClick={handleCloseNotice}>
                                     Đã hiểu
                                 </button>
                             )}
