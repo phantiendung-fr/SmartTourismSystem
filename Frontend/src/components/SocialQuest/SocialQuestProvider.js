@@ -125,7 +125,7 @@ export const SocialQuestProvider = ({ children, user }) => {
             if (stopWatchingFn) stopWatchingFn();
             if (ws) ws.close();
         };
-    }, [userId]);
+    }, [userId, isEnterprise]);
 
     const resetQuest = () => {
         setQuestState('IDLE');

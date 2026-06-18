@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Capacitor, registerPlugin } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
+import { supabase } from './lib/supabase';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import './App.css';
 import SplashScreen from './screens/SplashScreen';
@@ -286,14 +289,7 @@ function App() {
                         const userData = await res.json();
                         setIsGuest(false);
                         setCurrentUser(userData);
-                        // Nếu đăng ký/đăng nhập bằng Google mà chưa có mật khẩu,
-                        // chuyển thẳng vào trang cá nhân để hiển thị tạo mật khẩu dễ dàng.
-                        const hasPassword = userData?.user?.has_password;
-                        if (hasPassword === false) {
-                            navigateTo('profile_edit', { resetHistory: true });
-                        } else {
-                            navigateTo('main', { resetHistory: true });
-                        }
+                        navigateTo('main', { resetHistory: true });
                     } else {
                         console.error('Lỗi khi lấy thông tin user sau Google OAuth:', res.status);
                     }
@@ -306,6 +302,67 @@ function App() {
         handleHashChange();
         window.addEventListener('hashchange', handleHashChange);
         return () => window.removeEventListener('hashchange', handleHashChange);
+    }, [navigateTo, setIsGuest, setCurrentUser]);
+
+    useEffect(() => {
+        if (!Capacitor.isNativePlatform()) return;
+
+        const handleDeepLink = async (event) => {
+            console.log('Received deep link URL:', event.url);
+            if (event.url.startsWith('smarttourism://callback')) {
+                // Parse hash params from the redirect URL
+                const parsedUrl = new URL(event.url.replace('smarttourism://', 'https://'));
+                const hash = parsedUrl.hash;
+                if (hash) {
+                    const params = parseHashParams(hash);
+                    const accessToken = params.access_token;
+                    const refreshToken = params.refresh_token;
+
+                    if (accessToken) {
+                        // Set session in Supabase Auth client directly
+                        const { error } = await supabase.auth.setSession({
+                            access_token: accessToken,
+                            refresh_token: refreshToken || '',
+                        });
+
+                        if (!error) {
+                            // Close standard in-app browser
+                            await Browser.close();
+
+                            // Save tokens to local storage (as App.js does for normal logins)
+                            await Promise.all([
+                                storageSet('access_token', accessToken),
+                                storageSet('refresh_token', refreshToken || ''),
+                            ]);
+
+                            // Get user details
+                            try {
+                                const res = await fetch(`${API_BASE}/api/auth/me`, {
+                                    headers: { Authorization: `Bearer ${accessToken}` },
+                                });
+                                if (res.ok) {
+                                    const userData = await res.json();
+                                    setIsGuest(false);
+                                    setCurrentUser(userData);
+                                    navigateTo('main', { resetHistory: true });
+                                } else {
+                                    console.error('Lỗi khi lấy thông tin user sau deep link:', res.status);
+                                }
+                            } catch (e) {
+                                console.error('Lỗi kết nối khi lấy thông tin user qua deep link:', e);
+                            }
+                        } else {
+                            console.error('Lỗi khi setSession trong Supabase:', error.message);
+                        }
+                    }
+                }
+            }
+        };
+
+        const listener = CapacitorApp.addListener('appUrlOpen', handleDeepLink);
+        return () => {
+            listener.then(l => l.remove());
+        };
     }, [navigateTo, setIsGuest, setCurrentUser]);
 
     useEffect(() => {

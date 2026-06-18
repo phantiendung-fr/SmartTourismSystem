@@ -259,7 +259,7 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister, initialTab = '
         return () => {
             mounted = false;
         };
-    }, [activeTab, loadEvents, loadLocations, loadProfile]);
+    }, [activeTab, loadEvents, loadLocations, loadProfile, loadVouchers]);
 
     const campaignStats = useMemo(() => ({
         active: events.filter((event) => event.is_active).length,

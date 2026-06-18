@@ -3,7 +3,7 @@ import { useSocialQuest } from './SocialQuestProvider';
 import { Radio, Send } from 'lucide-react';
 
 const LocationSimulator = () => {
-    const { sendLocation, questState } = useSocialQuest();
+    const { sendLocation } = useSocialQuest();
     
     // Trạng thái quản lý đóng/mở bảng điều khiển
     const [isOpen, setIsOpen] = useState(false);

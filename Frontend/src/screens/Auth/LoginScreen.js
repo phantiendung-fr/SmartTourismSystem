@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabase';
 import { ArrowLeft, LogIn, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE } from '../../config/api';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import './LoginScreen.css'; 
 
 // Thêm các hàm điều hướng vào tham số
@@ -107,11 +109,21 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onLoginSuccess, onForgotPassw
 
     const handleGoogleLogin = async () => {
         try {
-            const { error: oAuthError } = await supabase.auth.signInWithOAuth({
+            const isNative = Capacitor.isNativePlatform();
+            const redirectTo = isNative ? 'smarttourism://callback' : window.location.origin;
+
+            const { data, error: oAuthError } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
-                options: { redirectTo: window.location.origin }
+                options: { 
+                    redirectTo,
+                    skipBrowserRedirect: isNative
+                }
             });
             if (oAuthError) throw oAuthError;
+
+            if (isNative && data?.url) {
+                await Browser.open({ url: data.url });
+            }
         } catch (err) {
             setError(err.message || 'Đăng nhập Google thất bại');
         }

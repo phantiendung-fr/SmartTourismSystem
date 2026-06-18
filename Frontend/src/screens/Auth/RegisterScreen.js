@@ -4,6 +4,8 @@ import { API_BASE } from '../../config/api';
 import axios from 'axios';
 import { ArrowLeft, User, Building2, CheckCircle, Clock, X, Eye, EyeOff } from 'lucide-react';
 import { showAlert, showConfirm } from '../../platform/dialog';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import './LoginScreen.css';
 
 const RegisterScreen = ({ onBack, onSwitchToLogin, onRegisterSuccess }) => {
@@ -62,11 +64,21 @@ const RegisterScreen = ({ onBack, onSwitchToLogin, onRegisterSuccess }) => {
 
     const handleSocialRegister = async (provider) => {
         try {
-            const { error: oAuthError } = await supabase.auth.signInWithOAuth({
+            const isNative = Capacitor.isNativePlatform();
+            const redirectTo = isNative ? 'smarttourism://callback' : window.location.origin;
+
+            const { data, error: oAuthError } = await supabase.auth.signInWithOAuth({
                 provider,
-                options: { redirectTo: window.location.origin }
+                options: { 
+                    redirectTo,
+                    skipBrowserRedirect: isNative
+                }
             });
             if (oAuthError) throw oAuthError;
+
+            if (isNative && data?.url) {
+                await Browser.open({ url: data.url });
+            }
         } catch (err) {
             const errMsg = translateError(err.message || 'Lỗi đăng ký Google/Facebook');
             void showAlert(errMsg, { title: 'Lỗi đăng ký' });

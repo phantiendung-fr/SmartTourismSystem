@@ -591,10 +591,6 @@ const LocationDetailScreen = ({ location, onBack }) => {
             {showMap && (() => {
                 const lat = location.latitude || location.lat;
                 const lng = location.longitude || location.lng;
-                const name = encodeURIComponent(location.location_name || 'Địa điểm');
-                const mapsLink = (lat && lng)
-                    ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`
-                    : `https://www.openstreetmap.org/search?query=${name}`;
 
                 return (
                     <div className="map-overlay-backdrop" onClick={() => setShowMap(false)}>
