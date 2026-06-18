@@ -141,7 +141,7 @@ def claim_voucher(db: Session, user_id: UUID, voucher_id: UUID) -> schemas.Claim
             
         # Kiểm tra số dư (points_balance)
         if user_profile.points_balance < voucher.point_cost:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Bạn không đủ điểm EXP để đổi voucher này.")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Bạn không đủ xu để đổi voucher này.")
             
         # --- BẮT ĐẦU XỬ LÝ LƯU DATABASE ---
         
