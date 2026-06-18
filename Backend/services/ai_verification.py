@@ -203,7 +203,17 @@ async def verify_image_with_gemini(user_image_bytes: bytes, reference_image_url:
             "is_matched": False,
             "confidence_score": 0.0,
             "anti_cheat_passed": False,
-            "reason": f"Dịch vụ AI đang bận, vui lòng thử lại sau: {exc}",
+            "reason": "Dịch vụ AI đang tạm quá tải hoặc chưa có khóa hợp lệ. Vui lòng thử lại sau.",
+        }
+    except RuntimeError as exc:
+        logger.warning("[Verification] Gemini key manager unavailable: %s. Fallback sang CLIP.", exc)
+        if HAS_CLIP:
+            return await _run_clip_async(user_image_bytes, reference_image_url)
+        return {
+            "is_matched": False,
+            "confidence_score": 0.0,
+            "anti_cheat_passed": False,
+            "reason": "Dịch vụ AI đang tạm quá tải hoặc chưa có khóa hợp lệ. Vui lòng thử lại sau.",
         }
     except Exception as exc:
         logger.exception("[Verification] Lỗi không xác định: %s", exc)
