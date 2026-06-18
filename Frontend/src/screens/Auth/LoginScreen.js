@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { ArrowLeft, LogIn, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE } from '../../config/api';
+import { getAuthRedirectUrl } from '../../config/authRedirect';
 import './LoginScreen.css'; 
 
 // Thêm các hàm điều hướng vào tham số
@@ -109,7 +110,7 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onLoginSuccess, onForgotPassw
         try {
             const { error: oAuthError } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
-                options: { redirectTo: window.location.origin }
+                options: { redirectTo: getAuthRedirectUrl() }
             });
             if (oAuthError) throw oAuthError;
         } catch (err) {
@@ -278,4 +279,3 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onLoginSuccess, onForgotPassw
 };
 
 export default LoginScreen;
-

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { API_BASE } from '../../config/api';
+import { getAuthRedirectUrl } from '../../config/authRedirect';
 import axios from 'axios';
 import { ArrowLeft, User, Building2, CheckCircle, Clock, X, Eye, EyeOff } from 'lucide-react';
 import { showAlert, showConfirm } from '../../platform/dialog';
@@ -64,7 +65,7 @@ const RegisterScreen = ({ onBack, onSwitchToLogin, onRegisterSuccess }) => {
         try {
             const { error: oAuthError } = await supabase.auth.signInWithOAuth({
                 provider,
-                options: { redirectTo: window.location.origin }
+                options: { redirectTo: getAuthRedirectUrl() }
             });
             if (oAuthError) throw oAuthError;
         } catch (err) {
@@ -154,7 +155,7 @@ const RegisterScreen = ({ onBack, onSwitchToLogin, onRegisterSuccess }) => {
                 email: emailTrimmed,
                 password: passwordTrimmed,
                 options: {
-                    emailRedirectTo: window.location.origin,
+                    emailRedirectTo: getAuthRedirectUrl(),
                     data: {
                         full_name: fullNameTrimmed,
                         role: formData.role
