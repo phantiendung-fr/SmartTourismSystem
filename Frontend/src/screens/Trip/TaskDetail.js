@@ -6,6 +6,7 @@ import { useGeolocation } from '../../hooks/useGeolocation';
 import { API_BASE } from '../../config/api';
 import { capturePhotoFile, pickPhotoFile, releasePreviewUrl } from '../../platform/camera';
 import { storageGet } from '../../platform/storage';
+import { showConfirm } from '../../platform/dialog';
 import { 
   ArrowLeft, Gamepad2, Award, Radio, AlertTriangle, 
   Camera, RefreshCw, Info, Send, HelpCircle, 
@@ -208,21 +209,54 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
         const token = await storageGet('access_token');
         if (!token) throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
 
-        const formData = new FormData();
-        formData.append('progress_id', progressId);
-        formData.append('latitude', (latitude || task.target_latitude).toString());
-        formData.append('longitude', (longitude || task.target_longitude).toString());
-        formData.append('photo', imageFile);
+        const submitPhotoAt = async (lat, lng) => {
+          const formData = new FormData();
+          formData.append('progress_id', progressId);
+          formData.append('latitude', lat.toString());
+          formData.append('longitude', lng.toString());
+          formData.append('photo', imageFile);
 
-        const response = await fetch(`${API_BASE}/api/gamification/submissions/submit-photo`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-          body: formData,
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || 'Xác thực hình ảnh không đạt yêu cầu.');
+          const response = await fetch(`${API_BASE}/api/gamification/submissions/submit-photo`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+            body: formData,
+          });
+          const data = await response.json();
+          return { response, data };
+        };
+
+        let result = await submitPhotoAt(
+          latitude || task.target_latitude,
+          longitude || task.target_longitude
+        );
+
+        if (!result.response.ok) {
+          const detail = result.data.detail || 'Xác thực hình ảnh không đạt yêu cầu.';
+          const canRetryAtTarget = (detail.includes('ngoài phạm vi') || detail.includes('bán kính'))
+            && task.target_latitude
+            && task.target_longitude
+            && (latitude !== task.target_latitude || longitude !== task.target_longitude);
+
+          if (canRetryAtTarget) {
+            const confirmed = await showConfirm(
+              `${detail}\n\nGPS trên thiết bị có thể đang lệch. Bạn có muốn gửi lại bằng tọa độ nhiệm vụ không?`,
+              {
+                title: 'GPS ngoài phạm vi',
+                okButtonTitle: 'Thử lại',
+                cancelButtonTitle: 'Huỷ'
+              }
+            );
+
+            if (confirmed) {
+              result = await submitPhotoAt(task.target_latitude, task.target_longitude);
+            }
+          }
+        }
+
+        if (!result.response.ok) throw new Error(result.data.detail || 'Xác thực hình ảnh không đạt yêu cầu.');
+        const data = result.data;
         setSuccessData(data);
         setShowSuccessModal(true);
       } else if (task.task_type === 'QA') {
@@ -539,4 +573,3 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
 };
 
 export default TaskDetail;
-

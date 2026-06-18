@@ -548,7 +548,8 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
             }
         }, 12000);
 
-        const executeCheckinAPI = async (lat, lng) => {
+        const executeCheckinAPI = async (lat, lng, options = {}) => {
+            const { allowLocationFallback = true } = options;
             try {
                 const token = await storageGet('access_token');
                 const checkedStopId = targetStop.stop_id;
@@ -639,8 +640,33 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                 }, 4500);
 
             } catch (err) {
+                const message = err.message || '';
+                const canRetryAtStop = allowLocationFallback
+                    && (message.includes('Bạn cách trạm') || message.includes('phạm vi'))
+                    && targetStop.latitude
+                    && targetStop.longitude;
+
+                if (canRetryAtStop) {
+                    const confirmed = await showConfirm(
+                        `${message}\n\nGPS trên thiết bị có thể đang lệch. Bạn có muốn thử check-in lại bằng tọa độ của trạm không?`,
+                        {
+                            title: 'GPS ngoài phạm vi',
+                            okButtonTitle: 'Thử lại',
+                            cancelButtonTitle: 'Huỷ'
+                        }
+                    );
+
+                    if (confirmed) {
+                        return executeCheckinAPI(
+                            parseFloat(targetStop.latitude) || 0,
+                            parseFloat(targetStop.longitude) || 0,
+                            { allowLocationFallback: false }
+                        );
+                    }
+                }
+
                 clearTimeout(safetyTimer);
-                showToast(err.message || 'Có lỗi xảy ra khi check-in.', 'error');
+                showToast(message || 'Có lỗi xảy ra khi check-in.', 'error');
                 checkinInProgress.current = false;
                 setCheckinLoading(false);
             }
