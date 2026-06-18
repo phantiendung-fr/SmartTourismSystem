@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { API_BASE } from '../../config/api';
+import { getAuthRedirectUrl } from '../../config/authRedirect';
 import axios from 'axios';
 import { ArrowLeft, User, Building2, CheckCircle, Clock, X, Eye, EyeOff } from 'lucide-react';
 import { showAlert, showConfirm } from '../../platform/dialog';
@@ -65,7 +66,7 @@ const RegisterScreen = ({ onBack, onSwitchToLogin, onRegisterSuccess }) => {
     const handleSocialRegister = async (provider) => {
         try {
             const isNative = Capacitor.isNativePlatform();
-            const redirectTo = isNative ? 'smarttourism://callback' : window.location.origin;
+            const redirectTo = isNative ? 'smarttourism://callback' : getAuthRedirectUrl();
 
             const { data, error: oAuthError } = await supabase.auth.signInWithOAuth({
                 provider,
@@ -166,7 +167,7 @@ const RegisterScreen = ({ onBack, onSwitchToLogin, onRegisterSuccess }) => {
                 email: emailTrimmed,
                 password: passwordTrimmed,
                 options: {
-                    emailRedirectTo: window.location.origin,
+                    emailRedirectTo: getAuthRedirectUrl(),
                     data: {
                         full_name: fullNameTrimmed,
                         role: formData.role

@@ -6,6 +6,7 @@ import axios from 'axios';
 import { API_BASE } from '../../config/api';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+import { getAuthRedirectUrl } from '../../config/authRedirect';
 import './LoginScreen.css'; 
 
 // Thêm các hàm điều hướng vào tham số
@@ -110,7 +111,7 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onLoginSuccess, onForgotPassw
     const handleGoogleLogin = async () => {
         try {
             const isNative = Capacitor.isNativePlatform();
-            const redirectTo = isNative ? 'smarttourism://callback' : window.location.origin;
+            const redirectTo = isNative ? 'smarttourism://callback' : getAuthRedirectUrl();
 
             const { data, error: oAuthError } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
@@ -290,4 +291,3 @@ const LoginScreen = ({ onBack, onSwitchToRegister, onLoginSuccess, onForgotPassw
 };
 
 export default LoginScreen;
-

@@ -425,6 +425,13 @@ function App() {
         navigateTo('welcome', { resetHistory: true });
     };
 
+    const handleTutorialFinish = async () => {
+        await clearAuthSession();
+        setCurrentUser(null);
+        setIsGuest(false);
+        navigateTo('login', { resetHistory: true });
+    };
+
     const handleLocationSubmitted = useCallback((response) => {
         setEnterpriseInitialTab('locations');
         setEnterpriseNotice(response?.message || 'Đã gửi yêu cầu đăng ký địa điểm. Yêu cầu đang chờ admin duyệt.');
@@ -488,7 +495,7 @@ function App() {
 
                     {currentScreen === 'tutorial' && (
                         <TutorialScreen
-                            onFinish={() => navigateTo('login', { resetHistory: true })}
+                            onFinish={handleTutorialFinish}
                         />
                     )}
 

@@ -53,7 +53,7 @@ const TutorialScreen = ({ onFinish }) => {
 
                 <button className="tutorial-btn" onClick={nextStep}>
                     {currentStep === steps.length - 1 ? (
-                        <>Bắt đầu khám phá <CheckCircle size={18} /></>
+                        <>Quay lại đăng nhập <CheckCircle size={18} /></>
                     ) : (
                         <>Tiếp tục <ArrowRight size={18} /></>
                     )}
