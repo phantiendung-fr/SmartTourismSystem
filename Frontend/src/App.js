@@ -277,8 +277,8 @@ function App() {
                     storageSet('refresh_token', refreshToken),
                 ]);
 
-                // Xóa hash trên URL
-                window.location.hash = '';
+                // Xóa OAuth hash khỏi thanh địa chỉ mà không để lại "/#".
+                window.history.replaceState(null, document.title, window.location.pathname + window.location.search);
 
                 // Gọi API /me để lấy thông tin chi tiết user
                 try {
