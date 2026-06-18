@@ -42,7 +42,7 @@ const getApiBase = () => {
     
     // Nếu đang chạy trên web thật (không phải localhost), tự động gọi API từ Render
     if (!isLocalOrPrivateHost(hostname)) {
-        return 'https://smarttourismsystem-3lq6.onrender.com';
+        return 'https://smart-tourism-backend-z0a0.onrender.com';
     }
     
     assertSecureInternetApiUrl(inferredUrl);
