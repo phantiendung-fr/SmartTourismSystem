@@ -1,182 +1,128 @@
 # Smart Tourism System
 
-## Báo cáo rà soát changes: dọn routing và tracking theo tuyến
+**Smart Tourism System** là hệ thống hỗ trợ du lịch thông minh toàn diện, tích hợp nền tảng Web và ứng dụng di động Native (Android/iOS). Hệ thống cung cấp các giải pháp gợi ý địa điểm, lập kế hoạch hành trình du lịch, cơ chế tương tác trò chơi hóa (Gamification) thông qua các nhiệm vụ thực tế và check-in GPS nhằm nâng cao trải nghiệm của du khách.
 
-Ngày thực hiện: 2026-06-06
+---
 
-## Phạm vi rà soát
+## 🚀 Công Nghệ Sử Dụng (Tech Stack)
 
-- `42` file tracked thay đổi: `33` file chỉnh sửa và `9` file xóa hoàn toàn.
-- Diff tracked hiện có `117` dòng thêm và `2.563` dòng xóa.
-- `README.md` là file mới, hiện chưa được track.
+### 💻 Frontend & Mobile
+*   **Framework:** React SPA (React 19)
+*   **Mobile Wrapper:** Capacitor 8 (Đóng gói ứng dụng sang Android / iOS)
+*   **Bản đồ:** Leaflet & OpenStreetMap (Hiển thị bản đồ, tương tác vị trí)
+*   **Quản lý giao diện:** CSS Vanilla thiết kế hiện đại, responsive, hỗ trợ Dark Mode và âm thanh nền sinh động (BGM/SFX).
 
-## Kết luận rà soát
+### ⚙️ Backend & Database
+*   **API Framework:** FastAPI (Python 3.9+)
+*   **Database:** PostgreSQL (triển khai qua Supabase)
+*   **Cache & Realtime:** Redis & WebSockets
+*   **Xác thực (Auth):** Supabase Auth (Hỗ trợ xác thực Email OTP và đăng nhập mạng xã hội qua Google OAuth).
 
-- Hệ thống vẫn gợi ý **địa điểm** phù hợp qua `/api/suggestions/recommend`.
-- Người dùng tự chọn địa điểm và thứ tự lựa chọn được giữ nguyên khi tạo chuyến đi.
-- Changes đã xóa phần routing cũ gồm TSP, OSRM, route/polyline và cảnh báo lệch hướng.
-- GPS vẫn được giữ để xác thực bán kính check-in, hidden quest và các tính năng vị trí khác.
-- Đây là breaking change đối với client còn gọi endpoint tracking hoặc còn đọc `routes`/`total_distance`.
-- Chưa thấy reference runtime còn sót tới Google Maps, OSRM, TSP, `RouteMap`, route polyline hoặc deviation endpoint.
-- Một số tài liệu/comment vẫn dùng từ `tracking` theo nghĩa cũ và cần rà soát riêng.
+---
 
-## Những gì đã xóa
+## ✨ Tính Năng Nổi Bật
 
-### Danh sách 9 file bị xóa hoàn toàn
+1.  **Đa nền tảng (Web & Mobile APK):** Chạy mượt mà trên trình duyệt web và thiết bị di động. Đăng nhập Google OAuth tự động điều hướng trở lại Native App (Deep Linking) bằng cấu hình in-app browser.
+2.  **Lập kế hoạch hành trình du lịch:** Tự động đề xuất địa điểm dựa trên ngân sách và sở thích của người dùng, phân chia lịch trình chi tiết theo từng ngày.
+3.  **Tương tác Trò chơi hóa (Gamification - Social Quest):**
+    *   Tự động giả lập hoặc nhận dữ liệu vị trí GPS thực tế.
+    *   Thực hiện check-in địa điểm trong bán kính cho phép.
+    *   Tham gia các chiến dịch và nhiệm vụ ẩn để tích lũy điểm thưởng.
+4.  **Dashboard cho Doanh nghiệp (Enterprise):** Đăng ký địa điểm kinh doanh, cập nhật voucher khuyến mãi và theo dõi thống kê số liệu.
+5.  **Hệ thống Quản trị (Admin Moderation):** Duyệt các yêu cầu đăng ký địa điểm và kiểm soát hệ thống.
 
-- `Backend/core/google_maps.py`
-- `Frontend/src/components/RouteMap/RouteMap.js`
-- `Frontend/src/components/RouteMap/RouteMap.css`
-- `Frontend/src/screens/Trip/PlanningScreen.js`
-- `Frontend/src/screens/Trip/TrackingScreen.js`
-- `fix_routemap.py`
-- `resolve_tripdetail.py`
-- `scratch/update_trip_detail.py`
-- `huong_dan_test_mobile.md`
+---
 
-### Google Maps, OSRM và tối ưu tuyến đường
+## 🛠️ Hướng Dẫn Cài Đặt (Lần Đầu)
 
-- Xóa module `Backend/core/google_maps.py`.
-- Xóa cấu hình `OSRM_BASE_URL` và `AVG_CITY_SPEED_KMH`.
-- Xóa thuật toán TSP bitmask và nearest-neighbor.
-- Xóa distance matrix, route service, travel-time fallback và polyline decoder.
-- Xóa payload `start_lat`/`start_lon` và việc xin GPS khi tạo chuyến đi.
+### Yêu cầu hệ thống
+*   Node.js (v18.x trở lên)
+*   Python (v3.9 trở lên)
+*   Docker & Docker Desktop (Nếu muốn chạy DB và Redis qua Container)
 
-### Route segment và polyline
+### 1. Cấu hình Backend (FastAPI)
+1.  Di chuyển vào thư mục Backend:
+    ```bash
+    cd Backend
+    ```
+2.  Tạo môi trường ảo (Virtual Environment):
+    ```bash
+    python -m venv venv
+    ```
+3.  Kích hoạt môi trường ảo:
+    *   **Windows (PowerShell):** `.\venv\Scripts\activate`
+    *   **macOS/Linux:** `source venv/bin/activate`
+4.  Cài đặt các thư viện cần thiết:
+    ```bash
+    pip install -r requirements.txt
+    ```
+5.  Tạo file cấu hình môi trường `.env` trong thư mục `Backend` (sao chép từ `.env.example`) và điền các thông số kết nối Database (Supabase URL, Anon Key, Redis URL...).
 
-- Xóa model ORM `ItineraryRoutes`.
-- Xóa bảng `ITINERARY_ROUTES` khỏi `Backend/schema.sql`.
-- Xóa CRUD tạo route đơn lẻ và route hàng loạt.
-- Xóa `RouteResponse` và trường `routes` khỏi API chi tiết chuyến đi.
-- Xóa việc truy vấn route/polyline trong API.
-- Xóa component:
-  - `Frontend/src/components/RouteMap/RouteMap.js`
-  - `Frontend/src/components/RouteMap/RouteMap.css`
+### 2. Cấu hình Frontend (React)
+1.  Di chuyển vào thư mục Frontend:
+    ```bash
+    cd ../Frontend
+    ```
+2.  Cài đặt các thư viện phụ thuộc:
+    ```bash
+    npm install
+    ```
+3.  Thiết lập file `.env` nếu cần tinh chỉnh cấu hình API.
 
-### Tracking theo tuyến đường và cảnh báo lệch hướng
+---
 
-- Xóa endpoint:
-  - `POST /api/trips/tracking`
-  - `GET /api/trips/{itinerary_id}/deviation-status`
-- Xóa model ORM và schema SQL:
-  - `GpsTrackingLogs` / `GPS_TRACKING_LOGS`
-  - `DeviationLogs` / `DEVIATION_LOGS`
-- Xóa CRUD ghi GPS tracking và deviation log.
-- Xóa frontend service `sendTracking()` và `getDeviationStatus()`.
-- Xóa CSS badge cảnh báo lệch hướng.
+## 🖥️ Hướng Dẫn Chạy Ứng Dụng
 
-### Logic và UI không còn đúng với hệ thống
+### Cách 1: Chạy tự động bằng file Script (Khuyên dùng cho Windows)
+Từ thư mục gốc của dự án, mở PowerShell và chạy lệnh:
+```powershell
+.\run.ps1
+```
+*Script sẽ tự động kiểm tra giải phóng cổng 3000 & 8000, kích hoạt môi trường ảo, khởi động song song Backend và Frontend trên hai cửa sổ/tab riêng biệt và tự động mở trình duyệt.*
 
-- Xóa logic chấm điểm và thành tựu dựa trên quãng đường route luôn bằng `0`.
-- Xóa hiển thị `0 km` ở trang chủ, lịch sử và chi tiết lịch sử.
-- Xóa hai màn hình placeholder một dòng:
-  - `Frontend/src/screens/Trip/PlanningScreen.js`
-  - `Frontend/src/screens/Trip/TrackingScreen.js`
-- Xóa các script sửa route cũ:
-  - `fix_routemap.py`
-  - `resolve_tripdetail.py`
-  - `scratch/update_trip_detail.py`
-- Xóa tài liệu test mobile `huong_dan_test_mobile.md`.
+### Cách 2: Chạy thủ công từng bước
 
-## Những gì được thay thế hoặc đổi tên
+#### Bước 1: Khởi chạy API Backend
+Mở Terminal 1 và di chuyển vào thư mục `Backend`:
+```bash
+.\venv\Scripts\activate
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+*Tài liệu API tự động (Swagger UI) sẽ hoạt động tại: [http://localhost:8000/docs](http://localhost:8000/docs)*
 
-- Chi tiết địa điểm dùng `LocationDetailMap` với Leaflet/OpenStreetMap thay cho iframe và link Google Maps.
-- `LocationDetailMap` chỉ hiển thị vị trí địa điểm/người dùng, không vẽ đường nối ép theo tuyến.
-- `_geocode_address` được đổi thành `_resolve_coordinates` để phản ánh đúng bộ xác định tọa độ POC hiện tại.
-- Tài liệu và comment cũ được cập nhật để không còn hướng dẫn sử dụng Google Maps, OSRM hoặc TSP.
+#### Bước 2: Khởi chạy Frontend
+Mở Terminal 2 và di chuyển vào thư mục `Frontend`:
+```bash
+npm start
+```
+*Ứng dụng Web chạy tại: [http://localhost:3000](http://localhost:3000)*
 
-## Những gì được giữ lại
+---
 
-- Gợi ý **địa điểm** theo ngân sách và tag sở thích.
-- Planning session và dữ liệu đầu vào chuyến đi.
-- Danh sách địa điểm người dùng chọn.
-- Thứ tự địa điểm do người dùng chọn.
-- Chia danh sách đã chọn theo ngày.
-- Ngân sách dự kiến.
-- Check-in theo bán kính GPS.
-- Nhiệm vụ, chiến dịch và gameplay.
-- Leaflet/OpenStreetMap phục vụ hiển thị bản đồ.
+## 📱 Hướng Dẫn Đóng Gói Ứng Dụng Di Động (APK Android)
 
-## Hành vi tạo chuyến đi sau cleanup
+Hệ thống đã được thiết lập sẵn Custom Scheme Deep Linking (`smarttourism://callback`) phục vụ cho Google OAuth. Để build file APK:
 
-Backend chia danh sách người dùng chọn theo ngày nhưng không thay đổi thứ tự:
-
-```python
-for order, loc_id in enumerate(chunk_ids, start=1):
-    create_itinerary_stop(
-        db,
-        location_id=loc_id,
-        stop_order=order,
-        ...
-    )
+### 1. Build mã nguồn React
+Trong thư mục `Frontend`, chạy lệnh build sản phẩm web tĩnh:
+```powershell
+$env:CI="false"; npx react-scripts build
 ```
 
-Test API đã được bổ sung để xác nhận:
+### 2. Đồng bộ hóa với dự án Capacitor Android
+Đồng bộ các file tĩnh sang thư mục Android gốc:
+```powershell
+npx cap sync
+```
 
-- Danh sách stop trả về đúng thứ tự `location_ids` người dùng gửi.
-- Response chi tiết chuyến đi không còn trường `routes`.
+### 3. Cấu hình trên Supabase Dashboard
+Truy cập vào **Supabase Dashboard -> Project Settings -> Auth -> URL Configuration** và thêm vào ô **Redirect URLs**:
+```text
+smarttourism://callback
+```
 
-## Ảnh hưởng tới database thật
-
-Việc xóa model khỏi `models.py` chỉ khiến ORM không còn quản lý các bảng đó. Nó **không tự động xóa bảng hoặc dữ liệu trên database thật**.
-
-- `SQLModel.metadata.create_all()` chỉ tạo bảng còn thiếu, không chạy `DROP TABLE` hoặc `DROP COLUMN`.
-- Các bảng cũ đã tồn tại trên database thật vẫn còn nguyên.
-- Backend mới không còn đọc hoặc ghi các bảng cũ.
-- Chỉ migration có lệnh `DROP`, `SQLModel.metadata.drop_all()` hoặc SQL thủ công mới xóa dữ liệu.
-
-Trường `itineraries.total_distance` vẫn được giữ nội bộ và gán `0` vì database hiện tại khai báo `NOT NULL`. Trường này không còn:
-
-- Được trả trên API.
-- Được hiển thị trên UI.
-- Được dùng để tính điểm.
-
-Nếu nhóm muốn xóa vật lý các bảng/cột cũ trên database thật, cần viết và kiểm tra một migration riêng.
-
-## Điểm cần review trước khi commit
-
-### Thay đổi credential database
-
-`Backend/.env` đang đổi `DATABASE_URL` sang một credential database khác. Đây là thay đổi ngoài phạm vi cleanup và có nguy cơ làm lộ credential vì `.env` đang được Git theo dõi.
-
-- Xác nhận đúng database mục tiêu trước khi commit/deploy.
-- Không commit credential thật; chuyển sang secret của môi trường triển khai.
-- Rotate credential nếu chuỗi hiện tại đã từng được chia sẻ hoặc push.
-
-### Breaking changes của API
-
-- Xóa `POST /api/trips/tracking`.
-- Xóa `GET /api/trips/{itinerary_id}/deviation-status`.
-- Xóa `routes` khỏi response chi tiết chuyến đi.
-- Xóa `total_distance` khỏi response tạo chuyến đi, lịch sử và chi tiết.
-- Xóa `start_lat`/`start_lon` khỏi payload tạo chuyến đi.
-
-Client hoặc tài liệu API cũ dùng các endpoint/trường trên sẽ cần cập nhật.
-
-### File xóa cần xác nhận
-
-`huong_dan_test_mobile.md` là tài liệu hướng dẫn khởi chạy và kiểm thử mobile tổng quát, không chỉ liên quan tới routing/tracking. Cần xác nhận việc xóa file này là chủ ý trước khi commit.
-
-### Tài liệu/comment còn lệch
-
-Reference runtime đã sạch, nhưng vẫn còn mô tả tracking cũ tại một số nơi, tiêu biểu:
-
-- `SECURITY_HARDENING_REPORT.md` vẫn nói tracking GPS ghi log.
-- `cau_truc_thu_muc.txt` vẫn mô tả `trips.py` có tracking.
-- `Backend/crud/crud_itinerary.py` vẫn nhắc “Tracking screen”.
-- `Backend/readme.md` và `Backend/database_seeding/readme.md` vẫn mô tả tracking cũ.
-- Bảng tổng kết trong `Backend/crud/CRUD_README.md` chưa khớp số hàm tracking hiện tại.
-
-## Xác minh
-
-- Reference scan runtime: không còn Google Maps, OSRM, TSP, polyline route, `RouteMap`, deviation endpoint hoặc tracking endpoint theo route.
-- `git diff --check`: đạt.
-- `python -m py_compile` cho toàn bộ file Python đã sửa: đạt.
-- Import FastAPI `main` và tạo toàn bộ SQLModel metadata trên SQLite: đạt.
-- `npm run build`: đạt, còn `4` ESLint warning ở các component ngoài phạm vi cleanup.
-- Pytest mục tiêu đã được chạy thử nhưng bị chặn khi nạp `tests/conftest.py`: `database.py` truyền `max_overflow` cho SQLite và phát sinh `TypeError`.
-
-## Ghi chú ngoài phạm vi
-
-- Cleanup không tạo migration để xóa vật lý bảng/cột cũ trên database thật.
-- Các khái niệm `total_distance`, achievement/quest loại `DISTANCE` và leaderboard khoảng cách vẫn còn ở một số model/schema gamification, nhưng không còn được cập nhật từ route chuyến đi.
+### 4. Build APK qua Android Studio
+1.  Mở **Android Studio** và chọn **Open** thư mục `Frontend/android`.
+2.  Đợi Gradle chạy đồng bộ hoàn tất.
+3.  Chọn menu **Build -> Build Bundle(s) / APK(s) -> Build APK(s)**.
+4.  Khi build xong, nhấn **locate** ở bảng thông báo để lấy file `app-debug.apk` và cài đặt lên máy để trải nghiệm.
