@@ -17,6 +17,13 @@ const formatTimeValue = (value) => {
     return value.substring(0, 5);
 };
 
+const getErrorText = (error) => {
+    if (!error) return 'Không thể đăng ký địa điểm. Vui lòng thử lại.';
+    if (typeof error === 'string') return error;
+    if (typeof error.message === 'string' && error.message !== '[object Object]') return error.message;
+    return JSON.stringify(error);
+};
+
 const LocationRegister = ({ onBack, onSubmitted }) => {
     const [cities, setCities] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -217,7 +224,7 @@ const LocationRegister = ({ onBack, onSubmitted }) => {
                 onSubmitted({ ...response, message: successText });
             }
         } catch (error) {
-            setMessage({ type: 'error', text: error.message });
+            setMessage({ type: 'error', text: getErrorText(error) });
         } finally {
             setLoading(false);
         }
