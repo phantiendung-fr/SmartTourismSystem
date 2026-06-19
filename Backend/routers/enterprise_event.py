@@ -167,7 +167,7 @@ async def create_enterprise_event(
 
     location = db.get(Locations, location_id) if location_id else None
     if location_id:
-        if not location or not location.is_active:
+        if not location or not location.is_active or location.deleted_at is not None:
             raise HTTPException(status_code=404, detail="Địa điểm doanh nghiệp không tồn tại hoặc chưa active.")
 
         owns_location = db.exec(

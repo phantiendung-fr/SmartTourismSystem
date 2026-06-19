@@ -200,7 +200,7 @@ async def get_external_location_images(
     Enterprise locations must keep using images supplied by their owners.
     """
     location = db.get(Locations, location_id)
-    if location is None:
+    if location is None or not location.is_active or location.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
 
     has_database_image = db.exec(
@@ -395,7 +395,7 @@ async def get_external_location_images(
     Enterprise locations must keep using images supplied by their owners.
     """
     location = db.get(Locations, location_id)
-    if location is None:
+    if location is None or not location.is_active or location.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
 
     has_database_image = db.exec(

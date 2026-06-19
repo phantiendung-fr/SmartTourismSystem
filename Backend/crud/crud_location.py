@@ -77,6 +77,8 @@ def get_locations_by_city_and_categories(
         .where(
             Cities.city_name == city_name,
             LocationCategories.category_id.in_(category_ids),
+            Locations.is_active == True,
+            Locations.deleted_at.is_(None),
         )
         .distinct()
     )
@@ -116,7 +118,11 @@ def get_location_by_ids(db: Session, location_ids: list[UUID]) -> list[Locations
     """
     statement = (
         select(Locations)
-        .where(Locations.location_id.in_(location_ids))
+        .where(
+            Locations.location_id.in_(location_ids),
+            Locations.is_active == True,
+            Locations.deleted_at.is_(None),
+        )
     )
     return db.exec(statement).all()
 
@@ -222,7 +228,15 @@ def get_locations_by_city(db: Session, city_id: int) -> list[Locations]:
     """
     Lấy toàn bộ địa điểm của một thành phố theo city_id (dùng cho Suggestion).
     """
-    statement = select(Locations).join(Cities, Locations.city_id == Cities.city_id).where(Locations.city_id == city_id)
+    statement = (
+        select(Locations)
+        .join(Cities, Locations.city_id == Cities.city_id)
+        .where(
+            Locations.city_id == city_id,
+            Locations.is_active == True,
+            Locations.deleted_at.is_(None),
+        )
+    )
     return db.exec(statement).all()
 
 # ---------------------------------------------------------------------------
@@ -244,6 +258,8 @@ def check_location_exists(
     statement = select(Locations).where(
         Locations.location_name == location_name,
         Locations.city_id == city_id,
+        Locations.is_active == True,
+        Locations.deleted_at.is_(None),
     )
     return db.exec(statement).first()
 

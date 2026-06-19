@@ -105,7 +105,11 @@ def recommend_locations(request: SuggestionRequest, db: Session = Depends(get_se
     statement = (
         db.query(Locations, image_subquery.label("image_url"))
         .join(Cities, Locations.city_id == Cities.city_id)
-        .filter(Locations.city_id == request.city_id)
+        .filter(
+            Locations.city_id == request.city_id,
+            Locations.is_active == True,
+            Locations.deleted_at.is_(None),
+        )
     )
     locations_with_images = statement.all()
 

@@ -7,6 +7,8 @@ import { storageGet } from '../../platform/storage';
 import { ArrowLeft, ArrowRight, CheckCircle, Circle, AlertCircle, Search, Sparkles, MapPinned } from 'lucide-react';
 import './PlanRecommendScreen.css';
 
+const PLAN_RECOMMEND_CACHE_VERSION = 2;
+
 const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocationDetail, onSessionExpired, planCache, onCacheUpdate }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -36,6 +38,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
         // Nếu đã có cache từ lần gọi trước → dùng lại, không gọi API
         if (
             planCache &&
+            planCache.cacheVersion === PLAN_RECOMMEND_CACHE_VERSION &&
             JSON.stringify(planCache.planPayload) === JSON.stringify(planPayload) &&
             planCache.recommendations?.length > 0 &&
             Array.isArray(planCache.cityLocations)
@@ -105,6 +108,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
                 // Lưu cache để lần sau không cần gọi lại
                 if (onCacheUpdate) {
                     onCacheUpdate({
+                        cacheVersion: PLAN_RECOMMEND_CACHE_VERSION,
                         planPayload,
                         sessionData: sessionRes,
                         recommendations: locs,
@@ -133,6 +137,7 @@ const PlanRecommendScreen = ({ planPayload, onBack, onTripCreated, onOpenLocatio
             // Cập nhật cache selection
             if (onCacheUpdate && sessionData) {
                 onCacheUpdate({
+                    cacheVersion: PLAN_RECOMMEND_CACHE_VERSION,
                     planPayload,
                     sessionData,
                     recommendations,

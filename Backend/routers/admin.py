@@ -23,7 +23,9 @@ def check_duplicate_locations(db: Session, name: str, lat: float, lon: float, ad
     # 1. Kiểm tra trùng tên (case-insensitive)
     same_name = db.exec(
         select(models.Locations).where(
-            func.lower(models.Locations.location_name) == name.strip().lower()
+            func.lower(models.Locations.location_name) == name.strip().lower(),
+            models.Locations.is_active == True,
+            models.Locations.deleted_at.is_(None),
         )
     ).first()
     if same_name:
@@ -37,7 +39,9 @@ def check_duplicate_locations(db: Session, name: str, lat: float, lon: float, ad
     nearby = db.exec(
         select(models.Locations).where(
             func.abs(models.Locations.latitude - lat) < 0.0005,
-            func.abs(models.Locations.longitude - lon) < 0.0005
+            func.abs(models.Locations.longitude - lon) < 0.0005,
+            models.Locations.is_active == True,
+            models.Locations.deleted_at.is_(None),
         )
     ).first()
     if nearby and (same_name is None or nearby.location_id != same_name.location_id):
@@ -145,7 +149,9 @@ def _create_location_from_submission(
         existing = db.exec(
             select(models.Locations).where(
                 models.Locations.latitude == lat,
-                models.Locations.longitude == lon
+                models.Locations.longitude == lon,
+                models.Locations.is_active == True,
+                models.Locations.deleted_at.is_(None),
             )
         ).first()
         if not existing:
@@ -829,7 +835,9 @@ def approve_location_submission(
                         select(models.Locations).where(
                             models.Locations.latitude == lat,
                             models.Locations.longitude == lon,
-                            models.Locations.location_id != loc.location_id
+                            models.Locations.location_id != loc.location_id,
+                            models.Locations.is_active == True,
+                            models.Locations.deleted_at.is_(None),
                         )
                     ).first()
                     if not existing:
@@ -932,7 +940,12 @@ def get_all_locations(
 ):
     """Lấy danh sách toàn bộ địa điểm đã duyệt (active)"""
     locs = db.exec(
-        select(models.Locations).order_by(models.Locations.create_at.desc())
+        select(models.Locations)
+        .where(
+            models.Locations.is_active == True,
+            models.Locations.deleted_at.is_(None),
+        )
+        .order_by(models.Locations.create_at.desc())
     ).all()
     
     return [

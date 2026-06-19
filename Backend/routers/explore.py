@@ -31,7 +31,10 @@ def search_geocode(q: str, lat: float = None, lon: float = None, db: Session = D
     # 1. Tìm kiếm trong cơ sở dữ liệu local
     try:
         # A. Tìm kiếm Thành phố
-        cities_stmt = select(Cities).where(Cities.city_name.ilike(f"%{q}%")).limit(3)
+        cities_stmt = select(Cities).where(
+            Cities.city_name.ilike(f"%{q}%"),
+            Cities.is_active == True,
+        ).limit(3)
         db_cities = db.exec(cities_stmt).all()
         for city in db_cities:
             db_results.append({
@@ -51,7 +54,11 @@ def search_geocode(q: str, lat: float = None, lon: float = None, db: Session = D
             })
             
         # B. Tìm kiếm Địa điểm
-        locs_stmt = select(Locations).where(Locations.location_name.ilike(f"%{q}%")).limit(5)
+        locs_stmt = select(Locations).where(
+            Locations.location_name.ilike(f"%{q}%"),
+            Locations.is_active == True,
+            Locations.deleted_at.is_(None),
+        ).limit(5)
         db_locs = db.exec(locs_stmt).all()
         for loc in db_locs:
             db_results.append({

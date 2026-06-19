@@ -132,7 +132,7 @@ class CRUDTask:
 
         # 3. Anti-cheat vị trí GPS: Check xem vị trí quét có cách địa điểm < 100m không
         location = db.get(Locations, qr_task.location_id)
-        if not location:
+        if not location or not location.is_active or location.deleted_at is not None:
             raise HTTPException(status_code=404, detail="Không tìm thấy địa điểm gắn liền với QR này.")
         
         distance = calculate_haversine_distance(
