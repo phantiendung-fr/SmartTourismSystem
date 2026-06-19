@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import EnterpriseDashboard from './EnterpriseDashboard';
 import { enterpriseService } from '../services/enterpriseService';
+import { showConfirm } from '../platform/dialog';
 import './EnterpriseTabs.css';
 
 const defaultCampaignForm = () => {
@@ -271,6 +272,12 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister, initialTab = '
         return locations.find((location) => location.location_id === selectedLocationId) || null;
     }, [campaignForm.location_id, locations]);
 
+    const pendingDeleteLocationIds = useMemo(() => new Set(
+        submissions
+            .filter((submission) => submission.type === 'DELETE_REQUEST' && submission.status === 'PENDING' && submission.location_id)
+            .map((submission) => submission.location_id)
+    ), [submissions]);
+
     const updateCampaignForm = (field, value) => {
         setCampaignForm((prev) => ({ ...prev, [field]: value }));
     };
@@ -371,7 +378,15 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister, initialTab = '
 
 
     const handleDeleteVoucher = async (voucherId) => {
-        if (!window.confirm("Bạn có chắc chắn muốn xóa voucher này không? Những người dùng đã đổi vẫn có thể sử dụng.")) return;
+        const confirmed = await showConfirm(
+            'Bạn có chắc chắn muốn xóa voucher này không? Những người dùng đã đổi vẫn có thể sử dụng.',
+            {
+                title: 'Xóa voucher',
+                okButtonTitle: 'Xóa',
+                cancelButtonTitle: 'Hủy'
+            }
+        );
+        if (!confirmed) return;
         setActionLoading(true);
         setError('');
         setMessage('');
@@ -387,7 +402,15 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister, initialTab = '
     };
 
     const handleRequestDeleteLocation = async (location) => {
-        if (!window.confirm(`Gửi yêu cầu xóa địa điểm "${location.location_name}"? Địa điểm sẽ bị ẩn sau khi admin duyệt.`)) return;
+        const confirmed = await showConfirm(
+            `Gửi yêu cầu xóa địa điểm "${location.location_name}"? Địa điểm sẽ bị ẩn sau khi admin duyệt.`,
+            {
+                title: 'Yêu cầu xóa địa điểm',
+                okButtonTitle: 'Gửi yêu cầu',
+                cancelButtonTitle: 'Hủy'
+            }
+        );
+        if (!confirmed) return;
         setActionLoading(true);
         setError('');
         setMessage('');
@@ -645,7 +668,12 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister, initialTab = '
                         <div className="enterprise-card-list">
                             {locations.map((location) => (
                                 <article className="enterprise-location-card" key={location.location_id}>
-                                    <h3>{location.location_name}</h3>
+                                    <div className="enterprise-location-title-row">
+                                        <h3>{location.location_name}</h3>
+                                        {pendingDeleteLocationIds.has(location.location_id) && (
+                                            <span className="enterprise-badge pending">Chờ xóa</span>
+                                        )}
+                                    </div>
                                     <p>{location.address || 'Chưa có địa chỉ'}</p>
                                     <div className="enterprise-location-meta">
                                         <span><MapPin size={14} /> GPS {formatLocationCoordinates(location)}</span>
@@ -684,10 +712,11 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister, initialTab = '
                                     <button
                                         type="button"
                                         className="enterprise-danger-btn"
-                                        disabled={actionLoading}
+                                        disabled={actionLoading || pendingDeleteLocationIds.has(location.location_id)}
                                         onClick={() => handleRequestDeleteLocation(location)}
                                     >
-                                        <Trash2 size={16} /> Yêu cầu xóa
+                                        <Trash2 size={16} />
+                                        {pendingDeleteLocationIds.has(location.location_id) ? 'Đang chờ admin duyệt' : 'Yêu cầu xóa'}
                                     </button>
                                 </article>
                             ))}

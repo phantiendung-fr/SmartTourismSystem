@@ -302,6 +302,17 @@
     overflow-wrap: anywhere;
 }
 
+.enterprise-location-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.enterprise-location-title-row h3 {
+    min-width: 0;
+}
+
 .enterprise-card-main p,
 .enterprise-location-card p,
 .enterprise-submission-card p {
@@ -650,5 +661,4 @@
     border-color: #0ea5e9;
     box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.16);
 }
-
 

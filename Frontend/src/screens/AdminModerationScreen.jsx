@@ -444,12 +444,13 @@ export default function AdminModerationScreen({ onBack }) {
     const renderLocation = () => {
         if (selectedSubmission && submissionDetail) {
             const pending = submissionDetail.pending_data || {};
+            const isDeleteRequest = submissionDetail.type === 'DELETE_REQUEST';
             return (
                 <section className="admin-panel">
                     <div className="admin-panel-header">
                         <div>
                             <p>{submissionDetail.type} · {submissionDetail.status}</p>
-                            <h2>{pending.location_name || 'Đề xuất địa điểm'}</h2>
+                            <h2>{pending.location_name || (isDeleteRequest ? 'Yêu cầu xóa địa điểm' : 'Đề xuất địa điểm')}</h2>
                         </div>
                         <button
                             type="button"
@@ -506,13 +507,15 @@ export default function AdminModerationScreen({ onBack }) {
                             className="admin-primary-btn"
                             disabled={actionLoading}
                             onClick={() => setConfirmModal({
-                                title: 'Duyệt địa điểm',
-                                message: `Tạo/cập nhật location thật cho "${pending.location_name}"?`,
+                                title: isDeleteRequest ? 'Duyệt xóa địa điểm' : 'Duyệt địa điểm',
+                                message: isDeleteRequest
+                                    ? `Ẩn địa điểm "${pending.location_name}" khỏi hệ thống?`
+                                    : `Tạo/cập nhật location thật cho "${pending.location_name}"?`,
                                 action: () => adminService.approveLocationSubmission(submissionDetail.submission_id),
-                                success: 'Đã phê duyệt địa điểm.',
+                                success: isDeleteRequest ? 'Đã duyệt yêu cầu xóa địa điểm.' : 'Đã phê duyệt địa điểm.',
                             })}
                         >
-                            <Check size={16} /> Phê duyệt
+                            <Check size={16} /> {isDeleteRequest ? 'Duyệt xóa' : 'Phê duyệt'}
                         </button>
                     </div>
                 </section>
@@ -535,7 +538,7 @@ export default function AdminModerationScreen({ onBack }) {
                         <span className="admin-item-icon"><MapPin size={18} /></span>
                         <span className="admin-list-copy">
                             <strong>{submission.location_name || 'Địa điểm chưa đặt tên'}</strong>
-                            <small>{submission.enterprise_name} · {submission.type}</small>
+                            <small>{submission.enterprise_name} · {submission.type === 'DELETE_REQUEST' ? 'Yêu cầu xóa' : submission.type}</small>
                         </span>
                         <span className="admin-status-pill">Pending</span>
                     </button>
