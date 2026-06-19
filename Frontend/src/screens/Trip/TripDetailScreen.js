@@ -345,42 +345,6 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
     const lastFetchedTimeRef = useRef(0);
     useEffect(() => { userLocationRef.current = userLocation; }, [userLocation]);
 
-    // Lắng nghe sự kiện Mock GPS thủ công
-    useEffect(() => {
-        const handleMockLocationUpdate = (e) => {
-            const loc = e.detail;
-            setUserLocation(loc);
-            sendLocation(loc.lat, loc.lng);
-            fetchActiveCampaigns(loc, true);
-        };
-
-        const handleMockLocationDisabled = () => {
-            getCurrentPosition({
-                enableHighAccuracy: false,
-                timeout: 5000,
-                maximumAge: 10000
-            })
-                .then((position) => {
-                    const loc = {
-                        lat: position.latitude,
-                        lng: position.longitude
-                    };
-                    setUserLocation(loc);
-                    sendLocation(loc.lat, loc.lng);
-                    fetchActiveCampaigns(loc, true);
-                })
-                .catch((err) => console.warn("Lỗi khôi phục định vị thật:", err));
-        };
-
-        window.addEventListener('mock_location_update', handleMockLocationUpdate);
-        window.addEventListener('mock_location_disabled', handleMockLocationDisabled);
-        return () => {
-            window.removeEventListener('mock_location_update', handleMockLocationUpdate);
-            window.removeEventListener('mock_location_disabled', handleMockLocationDisabled);
-        };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
     useEffect(() => {
         // Reset trạng thái check-in khi chuyển trip (tránh khóa nút từ trip cũ)
         checkinInProgress.current = false;
@@ -404,8 +368,6 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
         // Theo dõi vị trí hiện tại của người dùng
         const stopWatching = startWatchingPosition({
             onSuccess: (position) => {
-                if (window.isMockGpsActive) return; // Skip updating if mock GPS is active
-
                 const loc = {
                     lat: position.latitude,
                     lng: position.longitude
@@ -678,20 +640,15 @@ const TripDetailScreen = ({ itineraryId, onBack, refreshUser, onPointsUpdate, us
                 let checkinLat = null;
                 let checkinLng = null;
 
-                if (window.isMockGpsActive && userLocation) {
-                    checkinLat = userLocation.lat;
-                    checkinLng = userLocation.lng;
-                } else {
-                    const position = await getCurrentPosition({
-                        enableHighAccuracy: false,
-                        timeout: 8000,
-                        maximumAge: 10000
-                    });
-                    checkinLat = position.latitude;
-                    checkinLng = position.longitude;
-                    setUserLocation({ lat: checkinLat, lng: checkinLng });
-                    sendLocation(checkinLat, checkinLng);
-                }
+                const position = await getCurrentPosition({
+                    enableHighAccuracy: false,
+                    timeout: 8000,
+                    maximumAge: 10000
+                });
+                checkinLat = position.latitude;
+                checkinLng = position.longitude;
+                setUserLocation({ lat: checkinLat, lng: checkinLng });
+                sendLocation(checkinLat, checkinLng);
 
                 executeCheckinAPI(checkinLat, checkinLng);
             } catch (error) {

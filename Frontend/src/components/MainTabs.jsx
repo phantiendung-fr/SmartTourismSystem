@@ -32,7 +32,7 @@ import SupportChatbot from './SupportChatbot/SupportChatbot';
 import { API_BASE } from '../config/api';
 import { storageGet } from '../platform/storage';
 import { showAlert, showConfirm } from '../platform/dialog';
-import { getCurrentPosition, requestLocationPermission, startWatchingPosition } from '../platform/location';
+import { requestLocationPermission, startWatchingPosition } from '../platform/location';
 import { getSafeAvatarSrc, createInitialAvatarDataUrl } from '../utils/avatar';
 
 const getTierMeta = (level) => {
@@ -249,42 +249,6 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
         }
     };
 
-    // Lắng nghe sự kiện Mock GPS thủ công
-    useEffect(() => {
-        const handleMockLocationUpdate = (e) => {
-            const loc = e.detail;
-            setUserLocation(loc);
-            sendLocation(loc.lat, loc.lng);
-            fetchActiveCampaigns(loc, true);
-        };
-
-        const handleMockLocationDisabled = () => {
-            getCurrentPosition({
-                enableHighAccuracy: false,
-                timeout: 5000,
-                maximumAge: 10000
-            })
-                .then((position) => {
-                    const loc = {
-                        lat: position.latitude,
-                        lng: position.longitude
-                    };
-                    setUserLocation(loc);
-                    sendLocation(loc.lat, loc.lng);
-                    fetchActiveCampaigns(loc, true);
-                })
-                .catch((err) => console.warn("Lỗi khôi phục định vị thật:", err));
-        };
-
-        window.addEventListener('mock_location_update', handleMockLocationUpdate);
-        window.addEventListener('mock_location_disabled', handleMockLocationDisabled);
-        return () => {
-            window.removeEventListener('mock_location_update', handleMockLocationUpdate);
-            window.removeEventListener('mock_location_disabled', handleMockLocationDisabled);
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
     // Lắng nghe chiến dịch mới toàn cục
     useEffect(() => {
         if (isGuest) return;
@@ -312,7 +276,6 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
 
         const stopWatching = startWatchingPosition({
             onSuccess: (position) => {
-                if (window.isMockGpsActive) return; // Skip updating if mock GPS is active
                 const loc = {
                     lat: position.latitude,
                     lng: position.longitude
@@ -353,22 +316,6 @@ const MainTabs = ({ user, isGuest, onLogout, onRequireLogin, onOpenPlan, onOpenL
     const handleTabChange = async (tab) => {
         if (tab !== 'location') {
             setActiveTab(tab);
-            return;
-        }
-
-        if (window.isMockGpsActive && userLocation) {
-            setActiveTab(tab);
-            if (!isGuest) {
-                fetchActiveCampaigns(userLocation, true);
-                pingLocation(userLocation.lat, userLocation.lng)
-                    .then((res) => {
-                        if (res.spawned) {
-                            void showAlert(`[Nhiệm vụ ẩn] Phát hiện nhiệm vụ ẩn mới: "${res.item.title}" (${res.item.rarity}) vừa xuất hiện!`);
-                        }
-                        fetchActiveTasks();
-                    })
-                    .catch((err) => console.error(err));
-            }
             return;
         }
 

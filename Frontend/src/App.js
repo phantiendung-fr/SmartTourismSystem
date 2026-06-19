@@ -32,8 +32,6 @@ import { SocialQuestProvider } from './components/SocialQuest/SocialQuestProvide
 import SocialQuestOverlay from './components/SocialQuest/SocialQuestOverlay';
 import AudioControl from './components/AudioControl/AudioControl';
 import { playBGM, pauseBGM, playSound } from './utils/soundUtils';
-// Bỏ comment nếu muốn test giả lập tương tác
-import LocationSimulator from './components/SocialQuest/LocationSimulator';
 
 const NativeApp = registerPlugin('App');
 const EXIT_GUARD_SCREENS = new Set([
@@ -446,8 +444,6 @@ function App() {
                         <AudioControl />
                     )}
                     {!isWorkMode && <SocialQuestOverlay />}
-                    {/* ❌ XÓA HOẶC COMMENT DÒNG NÀY ĐỂ ẨN BẢNG GIẢ LẬP: */}
-                    <LocationSimulator />
                     <IosPwaPrompt />
 
                     {currentScreen === 'splash' && (
