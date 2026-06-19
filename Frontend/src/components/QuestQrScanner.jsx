@@ -21,90 +21,65 @@ const QuestQrScanner = ({
 }) => {
     const scannerIdRef = useRef(`quest-qr-reader-${Math.random().toString(36).slice(2)}`);
     const scannerRef = useRef(null);
-    const scanLockedRef = useRef(false);
-    const onScanRef = useRef(onScan);
     const [webScannerOpen, setWebScannerOpen] = useState(false);
     const [error, setError] = useState('');
     const [scannedValue, setScannedValue] = useState('');
     const isNative = Capacitor.isNativePlatform();
 
     useEffect(() => {
-        onScanRef.current = onScan;
-    }, [onScan]);
-
-    useEffect(() => {
         if (isNative || !webScannerOpen) return undefined;
 
+        let html5QrCode = null;
         let mounted = true;
-        scanLockedRef.current = false;
-        const scanner = new Html5Qrcode(scannerIdRef.current, { verbose: false });
-        scannerRef.current = scanner;
 
-        const stopScanner = async () => {
+        const startScanner = async () => {
             try {
-                if (scanner.isScanning) {
-                    await scanner.stop();
+                // Small delay to ensure the DOM element is ready
+                await new Promise((resolve) => setTimeout(resolve, 300));
+                if (!mounted) return;
+
+                html5QrCode = new Html5Qrcode(scannerIdRef.current);
+                scannerRef.current = html5QrCode;
+
+                await html5QrCode.start(
+                    { facingMode: 'environment' },
+                    {
+                        fps: 10,
+                        qrbox: { width: 240, height: 240 },
+                    },
+                    (decodedText) => {
+                        if (!mounted) return;
+                        const token = String(decodedText || '').trim();
+                        setScannedValue(token);
+                        setWebScannerOpen(false);
+                        html5QrCode.stop().then(() => {
+                            if (token) onScan?.(token);
+                        }).catch(() => {
+                            if (token) onScan?.(token);
+                        });
+                    },
+                    (scanError) => {
+                        // Ignore frame-by-frame errors (like QR not found)
+                    }
+                );
+            } catch (err) {
+                if (mounted) {
+                    console.error("QR scanner start error:", err);
+                    setError('Không mở được camera. Vui lòng cấp quyền camera để quét QR và đảm bảo sử dụng HTTPS.');
                 }
-            } catch (_) {
-                // Camera may already be stopped.
-            }
-
-            try {
-                scanner.clear();
-            } catch (_) {
-                // Ignore cleanup errors from html5-qrcode internals.
             }
         };
 
-        scanner.start(
-            { facingMode: { ideal: 'environment' } },
-            {
-                fps: 10,
-                qrbox: (viewfinderWidth, viewfinderHeight) => {
-                    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                    const size = Math.floor(Math.max(170, Math.min(minEdge * 0.74, 240)));
-                    return { width: size, height: size };
-                },
-                disableFlip: false,
-            },
-            async (decodedText) => {
-                if (!mounted || scanLockedRef.current) return;
-                const token = String(decodedText || '').trim();
-                if (!token) return;
-
-                scanLockedRef.current = true;
-                setScannedValue(token);
-                setWebScannerOpen(false);
-                await stopScanner();
-                onScanRef.current?.(token);
-            },
-            (scanError) => {
-                if (!mounted || !scanError) return;
-                const message = String(scanError);
-                if (
-                    message.includes('NotAllowedError')
-                    || message.includes('Permission')
-                    || message.includes('NotFoundError')
-                ) {
-                    setError('Không mở được camera. Vui lòng cấp quyền camera để quét QR.');
-                }
-            }
-        ).then(() => {
-            if (!mounted) {
-                stopScanner();
-            }
-        }).catch(() => {
-            if (mounted) {
-                setError('Không mở được camera. Vui lòng cấp quyền camera để quét QR.');
-            }
-        });
+        startScanner();
 
         return () => {
             mounted = false;
-            stopScanner();
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().catch((err) => console.error("Error stopping scanner on unmount:", err));
+            }
             scannerRef.current = null;
         };
-    }, [isNative, webScannerOpen]);
+    }, [isNative, onScan, webScannerOpen]);
 
     const handleScanClick = async () => {
         if (disabled || loading) return;
@@ -151,15 +126,7 @@ const QuestQrScanner = ({
             {webScannerOpen && (
                 <div className="quest-qr-reader-wrap">
                     <QrCode size={16} />
-                    <div className="quest-qr-camera-shell">
-                        <div id={scannerIdRef.current} className="quest-qr-reader">
-                            <div className="quest-qr-reader-placeholder">Đang mở camera...</div>
-                        </div>
-                        <div className="quest-qr-scan-frame" aria-hidden="true">
-                            <span />
-                            <small>Đưa mã QR vào khung quét</small>
-                        </div>
-                    </div>
+                    <div id={scannerIdRef.current} className="quest-qr-reader" />
                 </div>
             )}
             {error && <div className="quest-qr-error">{error}</div>}
