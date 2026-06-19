@@ -16,10 +16,12 @@ import './TaskDetail.css';
 const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
   const isNative = Capacitor.isNativePlatform();
   const scannerIdRef = useRef(`qr-reader-${Math.random().toString(36).slice(2)}`);
+  const scannerRef = useRef(null);
   const scanLockedRef = useRef(false);
   const onScanSuccessRef = useRef(onScanSuccess);
   const onScannerErrorRef = useRef(onScannerError);
   const [webScannerStarted, setWebScannerStarted] = useState(false);
+  const [webScannerStarting, setWebScannerStarting] = useState(false);
 
   useEffect(() => {
     onScanSuccessRef.current = onScanSuccess;
@@ -32,6 +34,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     let isMounted = true;
     scanLockedRef.current = false;
     const html5QrCode = new Html5Qrcode(scannerIdRef.current, { verbose: false });
+    scannerRef.current = html5QrCode;
 
     const stopScanner = async () => {
       try {
@@ -46,6 +49,9 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
         html5QrCode.clear();
       } catch (_) {
         // Ignore cleanup errors from html5-qrcode internals.
+      }
+      if (scannerRef.current === html5QrCode) {
+        scannerRef.current = null;
       }
     };
 
@@ -73,6 +79,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
         // Ignore ordinary "QR not found" frame errors while the camera is open.
       }
     ).then(() => {
+      setWebScannerStarting(false);
       if (!isMounted) {
         stopScanner();
       }
@@ -80,6 +87,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
       if (!isMounted) return;
       console.error('QR scanner start error:', error);
       setWebScannerStarted(false);
+      setWebScannerStarting(false);
       onScannerErrorRef.current('Không thể mở camera QR. Nếu trình duyệt không hiện hộp cấp quyền, hãy cấp quyền Camera trong cài đặt trang hoặc nhập mã thủ công.');
     });
 
@@ -88,6 +96,70 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
       stopScanner();
     };
   }, [isNative, webScannerStarted]);
+
+  useEffect(() => () => {
+    const scanner = scannerRef.current;
+    if (!scanner) return;
+
+    try {
+      if (scanner.isScanning) {
+        scanner.stop().catch(() => {});
+      }
+    } catch (_) {
+      // Ignore cleanup errors when leaving the screen.
+    }
+
+    try {
+      scanner.clear();
+    } catch (_) {
+      // Ignore cleanup errors from html5-qrcode internals.
+    }
+  }, []);
+
+  const getCameraErrorMessage = (error) => {
+    const name = error?.name || '';
+    if (name === 'NotAllowedError' || name === 'SecurityError') {
+      return 'Trình duyệt đã chặn quyền Camera cho trang này. Hãy mở quyền Camera của trang rồi bấm lại.';
+    }
+    if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+      return 'Không tìm thấy camera phù hợp trên thiết bị này.';
+    }
+    if (name === 'NotReadableError' || name === 'AbortError') {
+      return 'Camera đang bị ứng dụng khác sử dụng hoặc trình duyệt không truy cập được.';
+    }
+    return 'Không thể mở camera QR. Vui lòng thử lại hoặc nhập mã thủ công.';
+  };
+
+  const requestWebCameraPermission = async () => {
+    if (webScannerStarting || webScannerStarted) return;
+
+    onScannerErrorRef.current('');
+
+    if (!window.isSecureContext) {
+      onScannerErrorRef.current('Camera chỉ hoạt động trên HTTPS. Vui lòng mở bằng https://smart-tourism-vietnam.xyz.');
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      onScannerErrorRef.current('Trình duyệt này không hỗ trợ mở camera từ web.');
+      return;
+    }
+
+    try {
+      setWebScannerStarting(true);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      });
+      stream.getTracks().forEach((track) => track.stop());
+      setWebScannerStarted(true);
+    } catch (error) {
+      console.error('Camera permission request error:', error);
+      setWebScannerStarted(false);
+      setWebScannerStarting(false);
+      onScannerErrorRef.current(getCameraErrorMessage(error));
+    }
+  };
 
   const startNativeScan = async () => {
     try {
@@ -122,14 +194,12 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
         <button
           type="button"
           className="btn-submit-verification qr-camera-start-btn"
-          onClick={() => {
-            onScannerErrorRef.current('');
-            setWebScannerStarted(true);
-          }}
+          onClick={requestWebCameraPermission}
+          disabled={webScannerStarting}
         >
-          <Scan size={18} /> Mở camera quét QR
+          <Scan size={18} /> {webScannerStarting ? 'Đang xin quyền camera...' : 'Mở camera quét QR'}
         </button>
-        <p>Trình duyệt sẽ hỏi quyền camera sau khi bạn bấm nút này.</p>
+        <p>Bấm nút này để trình duyệt hiện hộp cấp quyền Camera.</p>
       </div>
     );
   }
@@ -151,7 +221,10 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
       <button
         type="button"
         className="qr-camera-stop-btn"
-        onClick={() => setWebScannerStarted(false)}
+        onClick={() => {
+          setWebScannerStarted(false);
+          setWebScannerStarting(false);
+        }}
       >
         Tắt camera
       </button>
