@@ -19,6 +19,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
   const scanLockedRef = useRef(false);
   const onScanSuccessRef = useRef(onScanSuccess);
   const onScannerErrorRef = useRef(onScannerError);
+  const [webScannerStarted, setWebScannerStarted] = useState(false);
 
   useEffect(() => {
     onScanSuccessRef.current = onScanSuccess;
@@ -26,7 +27,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
   }, [onScanSuccess, onScannerError]);
 
   useEffect(() => {
-    if (isNative) return undefined;
+    if (isNative || !webScannerStarted) return undefined;
 
     let isMounted = true;
     scanLockedRef.current = false;
@@ -78,14 +79,15 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     }).catch((error) => {
       if (!isMounted) return;
       console.error('QR scanner start error:', error);
-      onScannerErrorRef.current('Không thể mở camera QR. Vui lòng cấp quyền camera hoặc nhập mã thủ công.');
+      setWebScannerStarted(false);
+      onScannerErrorRef.current('Không thể mở camera QR. Nếu trình duyệt không hiện hộp cấp quyền, hãy cấp quyền Camera trong cài đặt trang hoặc nhập mã thủ công.');
     });
 
     return () => {
       isMounted = false;
       stopScanner();
     };
-  }, [isNative]);
+  }, [isNative, webScannerStarted]);
 
   const startNativeScan = async () => {
     try {
@@ -114,6 +116,24 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     );
   }
 
+  if (!webScannerStarted) {
+    return (
+      <div className="qr-camera-start-panel">
+        <button
+          type="button"
+          className="btn-submit-verification qr-camera-start-btn"
+          onClick={() => {
+            onScannerErrorRef.current('');
+            setWebScannerStarted(true);
+          }}
+        >
+          <Scan size={18} /> Mở camera quét QR
+        </button>
+        <p>Trình duyệt sẽ hỏi quyền camera sau khi bạn bấm nút này.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="qr-camera-wrapper" style={{ width: '100%', marginTop: '10px' }}>
       <div
@@ -128,6 +148,13 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
         <span />
         <small>Đưa mã QR vào khung quét</small>
       </div>
+      <button
+        type="button"
+        className="qr-camera-stop-btn"
+        onClick={() => setWebScannerStarted(false)}
+      >
+        Tắt camera
+      </button>
     </div>
   );
 };
