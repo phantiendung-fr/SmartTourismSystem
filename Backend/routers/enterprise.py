@@ -201,7 +201,11 @@ def get_my_enterprise_locations(
     rows = db.exec(
         select(Locations)
         .join(BusinessLocation, Locations.location_id == BusinessLocation.location_id)
-        .where(BusinessLocation.business_id == enterprise_id)
+        .where(
+            BusinessLocation.business_id == enterprise_id,
+            Locations.is_active == True,
+            Locations.deleted_at.is_(None),
+        )
         .order_by(Locations.create_at.desc())
     ).all()
     result = []
@@ -231,6 +235,62 @@ def get_my_enterprise_locations(
         })
     db.commit()
     return result
+
+
+@router.post("/locations/{location_id}/delete-request")
+def request_delete_enterprise_location(
+    location_id: UUID,
+    payload: dict = Depends(require_enterprise_active),
+    db: Session = Depends(get_session),
+):
+    enterprise_id = UUID(str(payload["enterprise_id"]))
+    location = db.exec(
+        select(Locations)
+        .join(BusinessLocation, Locations.location_id == BusinessLocation.location_id)
+        .where(
+            BusinessLocation.business_id == enterprise_id,
+            Locations.location_id == location_id,
+            Locations.is_active == True,
+            Locations.deleted_at.is_(None),
+        )
+    ).first()
+    if location is None:
+        raise HTTPException(status_code=404, detail="Không tìm thấy địa điểm đang quản lý.")
+
+    existing = db.exec(
+        select(LocationSubmissions).where(
+            LocationSubmissions.enterprise_id == enterprise_id,
+            LocationSubmissions.location_id == location_id,
+            LocationSubmissions.type == "DELETE_REQUEST",
+            LocationSubmissions.status == "PENDING",
+        )
+    ).first()
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="Địa điểm này đã có yêu cầu xóa đang chờ admin duyệt.")
+
+    data = {
+        "location_name": location.location_name,
+        "address": location.address,
+        "latitude": float(location.latitude),
+        "longitude": float(location.longitude),
+        "city_id": location.city_id,
+        "delete_reason": "Doanh nghiệp yêu cầu xóa địa điểm.",
+    }
+    submission = LocationSubmissions(
+        location_id=location.location_id,
+        enterprise_id=enterprise_id,
+        type="DELETE_REQUEST",
+        status="PENDING",
+        data_json=json.dumps(data, ensure_ascii=False),
+    )
+    db.add(submission)
+    db.commit()
+    db.refresh(submission)
+    return {
+        "submission_id": str(submission.submission_id),
+        "status": submission.status,
+        "message": "Đã gửi yêu cầu xóa địa điểm. Admin sẽ kiểm duyệt trước khi ẩn địa điểm.",
+    }
 
 
 @router.put("/{enterprise_id}/verify", response_model=schemas.EnterpriseProfileResponse)

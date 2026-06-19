@@ -57,6 +57,9 @@ export const enterpriseService = {
     getEnterpriseDailyFlow: () => request('/api/enterprise/stats/daily-flow'),
     getEnterpriseLocationSubmissions: () => request('/api/enterprise/location-submissions'),
     getEnterpriseLocations: () => request('/api/enterprise/locations'),
+    requestDeleteEnterpriseLocation: (locationId) => request(`/api/enterprise/locations/${locationId}/delete-request`, {
+        method: 'POST',
+    }),
 
     // --- VOUCHER MANAGEMENT ---
     getEnterpriseVouchers: async () => {

@@ -853,6 +853,17 @@ def approve_location_submission(
                 db.add(loc)
             else:
                 raise HTTPException(status_code=404, detail="Không tìm thấy địa điểm cần cập nhật.")
+        elif sub.type == "DELETE_REQUEST" and sub.location_id:
+            loc = db.exec(
+                select(models.Locations).where(models.Locations.location_id == sub.location_id)
+            ).first()
+            if not loc:
+                raise HTTPException(status_code=404, detail="Không tìm thấy địa điểm cần xóa.")
+
+            loc.is_active = False
+            loc.deleted_at = datetime.utcnow()
+            loc.update_at = datetime.utcnow()
+            db.add(loc)
         else:
             raise HTTPException(status_code=400, detail="Loại yêu cầu địa điểm không được hỗ trợ.")
 

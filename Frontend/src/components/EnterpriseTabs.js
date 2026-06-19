@@ -386,6 +386,22 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister, initialTab = '
         }
     };
 
+    const handleRequestDeleteLocation = async (location) => {
+        if (!window.confirm(`Gửi yêu cầu xóa địa điểm "${location.location_name}"? Địa điểm sẽ bị ẩn sau khi admin duyệt.`)) return;
+        setActionLoading(true);
+        setError('');
+        setMessage('');
+        try {
+            const response = await enterpriseService.requestDeleteEnterpriseLocation(location.location_id);
+            setMessage(response.message || 'Đã gửi yêu cầu xóa địa điểm.');
+            await loadLocations();
+        } catch (err) {
+            setError(err.message || 'Không thể gửi yêu cầu xóa địa điểm.');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
 
     const handleProfileSave = async (event) => {
         event.preventDefault();
@@ -665,6 +681,14 @@ const EnterpriseTabs = ({ user, onLogout, onOpenLocationRegister, initialTab = '
                                             </button>
                                         </div>
                                     )}
+                                    <button
+                                        type="button"
+                                        className="enterprise-danger-btn"
+                                        disabled={actionLoading}
+                                        onClick={() => handleRequestDeleteLocation(location)}
+                                    >
+                                        <Trash2 size={16} /> Yêu cầu xóa
+                                    </button>
                                 </article>
                             ))}
                         </div>
