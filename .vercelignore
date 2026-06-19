@@ -1,0 +1,12 @@
+Backend
+Frontend/node_modules
+Frontend/android
+Frontend/build
+Frontend/.gradle
+node_modules
+build
+dist
+*.apk
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
