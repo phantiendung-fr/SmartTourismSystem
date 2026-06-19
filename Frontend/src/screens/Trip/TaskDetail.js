@@ -15,55 +15,77 @@ import './TaskDetail.css';
 
 const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
   const isNative = Capacitor.isNativePlatform();
+  const scannerIdRef = useRef(`qr-reader-${Math.random().toString(36).slice(2)}`);
+  const scanLockedRef = useRef(false);
+  const onScanSuccessRef = useRef(onScanSuccess);
+  const onScannerErrorRef = useRef(onScannerError);
+
+  useEffect(() => {
+    onScanSuccessRef.current = onScanSuccess;
+    onScannerErrorRef.current = onScannerError;
+  }, [onScanSuccess, onScannerError]);
 
   useEffect(() => {
     if (isNative) return undefined;
 
-    let html5QrCode = null;
     let isMounted = true;
+    scanLockedRef.current = false;
+    const html5QrCode = new Html5Qrcode(scannerIdRef.current, { verbose: false });
 
-    const startScanner = async () => {
+    const stopScanner = async () => {
       try {
-        // Small delay to ensure DOM element is ready
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        if (!isMounted) return;
-
-        html5QrCode = new Html5Qrcode('qr-reader');
-        await html5QrCode.start(
-          { facingMode: 'environment' },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-          },
-          (decodedText) => {
-            if (!isMounted) return;
-            html5QrCode.stop().then(() => {
-              onScanSuccess(decodedText);
-            }).catch(() => {
-              onScanSuccess(decodedText);
-            });
-          },
-          (errorMessage) => {
-            // Ignore frame decoding errors (like QR code not found) to prevent showing permission errors constantly
-          }
-        );
-      } catch (error) {
-        if (isMounted) {
-          console.error("QR scanner start error:", error);
-          onScannerError('Không thể khởi động camera QR. Vui lòng cấp quyền camera hoặc nhập mã thủ công.');
+        if (html5QrCode.isScanning) {
+          await html5QrCode.stop();
         }
+      } catch (_) {
+        // Camera may already be stopped by a successful scan or browser cleanup.
+      }
+
+      try {
+        html5QrCode.clear();
+      } catch (_) {
+        // Ignore cleanup errors from html5-qrcode internals.
       }
     };
 
-    startScanner();
+    html5QrCode.start(
+      { facingMode: { ideal: 'environment' } },
+      {
+        fps: 10,
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+          const size = Math.floor(Math.max(180, Math.min(minEdge * 0.74, 260)));
+          return { width: size, height: size };
+        },
+        disableFlip: false,
+      },
+      async (decodedText) => {
+        if (!isMounted || scanLockedRef.current) return;
+        const token = String(decodedText || '').trim();
+        if (!token) return;
+
+        scanLockedRef.current = true;
+        await stopScanner();
+        onScanSuccessRef.current(token);
+      },
+      () => {
+        // Ignore ordinary "QR not found" frame errors while the camera is open.
+      }
+    ).then(() => {
+      if (!isMounted) {
+        stopScanner();
+      }
+    }).catch((error) => {
+      if (!isMounted) return;
+      console.error('QR scanner start error:', error);
+      onScannerErrorRef.current('Không thể mở camera QR. Vui lòng cấp quyền camera hoặc nhập mã thủ công.');
+    });
 
     return () => {
       isMounted = false;
-      if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch((err) => console.error("Error stopping scanner on unmount:", err));
-      }
+      stopScanner();
     };
-  }, [isNative, onScanSuccess, onScannerError]);
+  }, [isNative]);
 
   const startNativeScan = async () => {
     try {
@@ -73,9 +95,8 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
         cameraDirection: 1, // BACK
       });
       
-      if (result && result.ScanResult) {
-        onScanSuccess(result.ScanResult);
-      }
+      const token = String(result?.ScanResult || result?.scanResult || result?.content || result?.text || '').trim();
+      if (token) onScanSuccess(token);
     } catch (error) {
       if (error && error.message && !error.message.includes('canceled')) {
         onScannerError('Lỗi khởi động Native Scanner: ' + error.message);
@@ -96,15 +117,17 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
   return (
     <div className="qr-camera-wrapper" style={{ width: '100%', marginTop: '10px' }}>
       <div
-        id="qr-reader"
-        style={{
-          width: '100%',
-          borderRadius: '16px',
-          overflow: 'hidden',
-          background: '#1e293b',
-          border: '1px solid rgba(255,255,255,0.1)',
-        }}
-      />
+        id={scannerIdRef.current}
+        className="qr-reader"
+      >
+        <div className="qr-reader-placeholder">
+          Đang mở camera...
+        </div>
+      </div>
+      <div className="qr-scan-frame" aria-hidden="true">
+        <span />
+        <small>Đưa mã QR vào khung quét</small>
+      </div>
     </div>
   );
 };
@@ -593,4 +616,3 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
 };
 
 export default TaskDetail;
-
