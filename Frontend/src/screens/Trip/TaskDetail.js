@@ -6,7 +6,6 @@ import { useGeolocation } from '../../hooks/useGeolocation';
 import { API_BASE } from '../../config/api';
 import { capturePhotoFile, pickPhotoFile, releasePreviewUrl } from '../../platform/camera';
 import { storageGet } from '../../platform/storage';
-import { showConfirm } from '../../platform/dialog';
 import { 
   ArrowLeft, Gamepad2, Award, Radio, AlertTriangle, 
   Camera, RefreshCw, Info, Send, HelpCircle, 
@@ -16,87 +15,55 @@ import './TaskDetail.css';
 
 const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
   const isNative = Capacitor.isNativePlatform();
-  const scannerIdRef = useRef(`qr-reader-${Math.random().toString(36).slice(2)}`);
-  const scannerRef = useRef(null);
-  const scanLockedRef = useRef(false);
-  const onScanSuccessRef = useRef(onScanSuccess);
-  const onScannerErrorRef = useRef(onScannerError);
-
-  useEffect(() => {
-    onScanSuccessRef.current = onScanSuccess;
-    onScannerErrorRef.current = onScannerError;
-  }, [onScanSuccess, onScannerError]);
 
   useEffect(() => {
     if (isNative) return undefined;
 
+    let html5QrCode = null;
     let isMounted = true;
-    const scanner = new Html5Qrcode(scannerIdRef.current, { verbose: false });
-    scannerRef.current = scanner;
 
-    const stopScanner = async () => {
+    const startScanner = async () => {
       try {
-        if (scanner.isScanning) {
-          await scanner.stop();
+        // Small delay to ensure DOM element is ready
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        if (!isMounted) return;
+
+        html5QrCode = new Html5Qrcode('qr-reader');
+        await html5QrCode.start(
+          { facingMode: 'environment' },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+          },
+          (decodedText) => {
+            if (!isMounted) return;
+            html5QrCode.stop().then(() => {
+              onScanSuccess(decodedText);
+            }).catch(() => {
+              onScanSuccess(decodedText);
+            });
+          },
+          (errorMessage) => {
+            // Ignore frame decoding errors (like QR code not found) to prevent showing permission errors constantly
+          }
+        );
+      } catch (error) {
+        if (isMounted) {
+          console.error("QR scanner start error:", error);
+          onScannerError('Không thể khởi động camera QR. Vui lòng cấp quyền camera hoặc nhập mã thủ công.');
         }
-      } catch (_) {
-        // Camera may already be stopped by the browser or by a successful scan.
-      }
-
-      try {
-        scanner.clear();
-      } catch (_) {
-        // Ignore cleanup errors from html5-qrcode internals.
       }
     };
 
-    scanner.start(
-      { facingMode: { ideal: 'environment' } },
-      {
-        fps: 10,
-        qrbox: (viewfinderWidth, viewfinderHeight) => {
-          const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-          const size = Math.floor(Math.max(180, Math.min(minEdge * 0.74, 260)));
-          return { width: size, height: size };
-        },
-        disableFlip: false,
-      },
-      async (decodedText) => {
-        if (!isMounted || scanLockedRef.current) return;
-        const token = String(decodedText || '').trim();
-        if (!token) return;
-
-        scanLockedRef.current = true;
-        await stopScanner();
-        onScanSuccessRef.current(token);
-      },
-      (errorMessage) => {
-        if (!isMounted || !errorMessage) return;
-        const message = String(errorMessage);
-        if (
-          message.includes('NotAllowedError') ||
-          message.includes('Permission') ||
-          message.includes('NotFoundError')
-        ) {
-          onScannerErrorRef.current('Không thể khởi động camera QR. Vui lòng cấp quyền camera hoặc nhập mã thủ công.');
-        }
-      }
-    ).then(() => {
-      if (!isMounted) {
-        stopScanner();
-      }
-    }).catch(() => {
-      if (isMounted) {
-        onScannerErrorRef.current('Không thể mở camera QR. Vui lòng cấp quyền camera hoặc nhập mã thủ công.');
-      }
-    });
+    startScanner();
 
     return () => {
       isMounted = false;
-      stopScanner();
-      scannerRef.current = null;
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch((err) => console.error("Error stopping scanner on unmount:", err));
+      }
     };
-  }, [isNative]);
+  }, [isNative, onScanSuccess, onScannerError]);
 
   const startNativeScan = async () => {
     try {
@@ -106,8 +73,9 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
         cameraDirection: 1, // BACK
       });
       
-      const token = String(result?.ScanResult || result?.scanResult || result?.content || result?.text || '').trim();
-      if (token) onScanSuccess(token);
+      if (result && result.ScanResult) {
+        onScanSuccess(result.ScanResult);
+      }
     } catch (error) {
       if (error && error.message && !error.message.includes('canceled')) {
         onScannerError('Lỗi khởi động Native Scanner: ' + error.message);
@@ -128,17 +96,15 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
   return (
     <div className="qr-camera-wrapper" style={{ width: '100%', marginTop: '10px' }}>
       <div
-        id={scannerIdRef.current}
-        className="qr-reader"
-      >
-        <div className="qr-reader-placeholder">
-          Đang mở camera...
-        </div>
-      </div>
-      <div className="qr-scan-frame" aria-hidden="true">
-        <span />
-        <small>Đưa mã QR vào khung quét</small>
-      </div>
+        id="qr-reader"
+        style={{
+          width: '100%',
+          borderRadius: '16px',
+          overflow: 'hidden',
+          background: '#1e293b',
+          border: '1px solid rgba(255,255,255,0.1)',
+        }}
+      />
     </div>
   );
 };
@@ -165,6 +131,9 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
   const [submitError, setSubmitError] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState(null);
+
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
 
   useEffect(() => () => releasePreviewUrl(previewUrl), [previewUrl]);
 
@@ -213,26 +182,56 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
     setPreviewUrl(null);
   };
 
+  const handleCameraInputChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      updatePhotoSelection(file, URL.createObjectURL(file));
+    }
+    e.target.value = '';
+  };
+
+  const handleGalleryInputChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      updatePhotoSelection(file, URL.createObjectURL(file));
+    }
+    e.target.value = '';
+  };
+
   const handleCapturePhoto = async () => {
     setSubmitError(null);
     setPhotoHint('');
-    try {
-      const result = await capturePhotoFile({ quality: 85, useFrontCamera });
-      updatePhotoSelection(result.file, result.previewUrl);
-    } catch (err) {
-      setPhotoHint('Nếu camera bị từ chối, hãy cấp quyền Camera trong cài đặt ứng dụng và thử lại.');
-      setSubmitError(err.message || 'Không thể mở camera.');
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const result = await capturePhotoFile({ quality: 85, useFrontCamera });
+        updatePhotoSelection(result.file, result.previewUrl);
+      } catch (err) {
+        setPhotoHint('Nếu camera bị từ chối, hãy cấp quyền Camera trong cài đặt ứng dụng và thử lại.');
+        setSubmitError(err.message || 'Không thể mở camera.');
+      }
+    } else {
+      // WEB: Trigger the file input synchronously to satisfy iOS Safari user gesture requirements
+      if (cameraInputRef.current) {
+        cameraInputRef.current.click();
+      }
     }
   };
 
   const handlePickPhoto = async () => {
     setSubmitError(null);
     setPhotoHint('');
-    try {
-      const result = await pickPhotoFile();
-      updatePhotoSelection(result.file, result.previewUrl);
-    } catch (err) {
-      setSubmitError(err.message || 'Không thể chọn ảnh từ thư viện.');
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const result = await pickPhotoFile();
+        updatePhotoSelection(result.file, result.previewUrl);
+      } catch (err) {
+        setSubmitError(err.message || 'Không thể chọn ảnh từ thư viện.');
+      }
+    } else {
+      // WEB: Trigger the file input synchronously to satisfy iOS Safari user gesture requirements
+      if (galleryInputRef.current) {
+        galleryInputRef.current.click();
+      }
     }
   };
 
@@ -248,54 +247,21 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
         const token = await storageGet('access_token');
         if (!token) throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
 
-        const submitPhotoAt = async (lat, lng) => {
-          const formData = new FormData();
-          formData.append('progress_id', progressId);
-          formData.append('latitude', lat.toString());
-          formData.append('longitude', lng.toString());
-          formData.append('photo', imageFile);
+        const formData = new FormData();
+        formData.append('progress_id', progressId);
+        formData.append('latitude', (latitude || task.target_latitude).toString());
+        formData.append('longitude', (longitude || task.target_longitude).toString());
+        formData.append('photo', imageFile);
 
-          const response = await fetch(`${API_BASE}/api/gamification/submissions/submit-photo`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-            body: formData,
-          });
-          const data = await response.json();
-          return { response, data };
-        };
-
-        let result = await submitPhotoAt(
-          latitude || task.target_latitude,
-          longitude || task.target_longitude
-        );
-
-        if (!result.response.ok) {
-          const detail = result.data.detail || 'Xác thực hình ảnh không đạt yêu cầu.';
-          const canRetryAtTarget = (detail.includes('ngoài phạm vi') || detail.includes('bán kính'))
-            && task.target_latitude
-            && task.target_longitude
-            && (latitude !== task.target_latitude || longitude !== task.target_longitude);
-
-          if (canRetryAtTarget) {
-            const confirmed = await showConfirm(
-              `${detail}\n\nGPS trên thiết bị có thể đang lệch. Bạn có muốn gửi lại bằng tọa độ nhiệm vụ không?`,
-              {
-                title: 'GPS ngoài phạm vi',
-                okButtonTitle: 'Thử lại',
-                cancelButtonTitle: 'Huỷ'
-              }
-            );
-
-            if (confirmed) {
-              result = await submitPhotoAt(task.target_latitude, task.target_longitude);
-            }
-          }
-        }
-
-        if (!result.response.ok) throw new Error(result.data.detail || 'Xác thực hình ảnh không đạt yêu cầu.');
-        const data = result.data;
+        const response = await fetch(`${API_BASE}/api/gamification/submissions/submit-photo`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Xác thực hình ảnh không đạt yêu cầu.');
         setSuccessData(data);
         setShowSuccessModal(true);
       } else if (task.task_type === 'QA') {
@@ -607,8 +573,24 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
           </div>
         </div>
       )}
+      <input
+        type="file"
+        ref={cameraInputRef}
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={handleCameraInputChange}
+      />
+      <input
+        type="file"
+        ref={galleryInputRef}
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleGalleryInputChange}
+      />
     </div>
   );
 };
 
 export default TaskDetail;
+
