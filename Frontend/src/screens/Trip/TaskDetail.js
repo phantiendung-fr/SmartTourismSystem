@@ -291,6 +291,28 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
   );
 };
 
+const getReadableError = (value, fallback = 'Đã có lỗi xảy ra. Vui lòng thử lại.') => {
+  if (!value) return fallback;
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => getReadableError(item, ''))
+      .filter(Boolean)
+      .join('. ') || fallback;
+  }
+  if (typeof value === 'object') {
+    if (typeof value.message === 'string') return value.message;
+    if (typeof value.msg === 'string') return value.msg;
+    if (typeof value.detail === 'string') return value.detail;
+    if (value.detail) return getReadableError(value.detail, fallback);
+    if (Array.isArray(value.loc) && value.msg) {
+      return `${value.loc.join(' > ')}: ${getReadableError(value.msg, '')}`;
+    }
+    return fallback;
+  }
+  return String(value);
+};
+
 export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSuccess }) => {
   const { latitude, longitude, distance, error, loading } = useGeolocation(
     task.target_latitude,
@@ -443,7 +465,7 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
           body: formData,
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || 'Xác thực hình ảnh không đạt yêu cầu.');
+        if (!response.ok) throw new Error(getReadableError(data.detail || data, 'Xác thực hình ảnh không đạt yêu cầu.'));
         setSuccessData(data);
         setShowSuccessModal(true);
       } else if (task.task_type === 'QA') {
@@ -462,8 +484,8 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
           }),
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || 'Gửi đáp án thất bại.');
-        if (!data.success) throw new Error(data.message || 'Đáp án chưa chính xác, thử lại nhé!');
+        if (!response.ok) throw new Error(getReadableError(data.detail || data, 'Gửi đáp án thất bại.'));
+        if (!data.success) throw new Error(getReadableError(data.message || data, 'Đáp án chưa chính xác, thử lại nhé!'));
 
         setSuccessData({
           message: data.message,
@@ -477,6 +499,9 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
       } else if (task.task_type === 'QR') {
         const tokenToSubmit = (qrScannedToken || qrTokenInput || '').trim();
         if (!tokenToSubmit) throw new Error('Vui lòng nhập hoặc quét mã QR.');
+        if (!latitude || !longitude) {
+          throw new Error('Chưa lấy được GPS hiện tại. Vui lòng bật định vị, chờ vài giây rồi quét lại.');
+        }
 
         const token = await storageGet('access_token');
         if (!token) throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
@@ -488,12 +513,12 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
           },
           body: JSON.stringify({
             qr_token: tokenToSubmit,
-            latitude: latitude || 10.762622,
-            longitude: longitude || 106.660172,
+            latitude,
+            longitude,
           }),
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || 'Mã QR không trùng khớp hoặc ngoài phạm vi.');
+        if (!response.ok) throw new Error(getReadableError(data.detail || data, 'Mã QR không trùng khớp hoặc ngoài phạm vi.'));
 
         setSuccessData({
           message: data.message,
@@ -506,7 +531,7 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
         setShowSuccessModal(true);
       }
     } catch (err) {
-      setSubmitError(err.message);
+      setSubmitError(getReadableError(err?.message || err));
     } finally {
       setSubmitting(false);
     }
