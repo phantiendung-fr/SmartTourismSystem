@@ -313,6 +313,12 @@ const getReadableError = (value, fallback = 'Đã có lỗi xảy ra. Vui lòng 
   return String(value);
 };
 
+const normalizeCoordinate = (value) => {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return null;
+  return Number(numberValue.toFixed(6));
+};
+
 export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSuccess }) => {
   const { latitude, longitude, distance, error, loading } = useGeolocation(
     task.target_latitude,
@@ -445,7 +451,9 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
 
     try {
       if (task.task_type === 'PHOTO') {
-        if (!imageFile || (!latitude && !task.target_latitude) || !progressId) {
+        const photoLatitude = normalizeCoordinate(latitude || task.target_latitude);
+        const photoLongitude = normalizeCoordinate(longitude || task.target_longitude);
+        if (!imageFile || photoLatitude === null || photoLongitude === null || !progressId) {
           throw new Error('Vui lòng chụp ảnh và đợi GPS ổn định trước khi gửi.');
         }
         const token = await storageGet('access_token');
@@ -453,8 +461,8 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
 
         const formData = new FormData();
         formData.append('progress_id', progressId);
-        formData.append('latitude', (latitude || task.target_latitude).toString());
-        formData.append('longitude', (longitude || task.target_longitude).toString());
+        formData.append('latitude', photoLatitude.toString());
+        formData.append('longitude', photoLongitude.toString());
         formData.append('photo', imageFile);
 
         const response = await fetch(`${API_BASE}/api/gamification/submissions/submit-photo`, {
@@ -499,7 +507,9 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
       } else if (task.task_type === 'QR') {
         const tokenToSubmit = (qrScannedToken || qrTokenInput || '').trim();
         if (!tokenToSubmit) throw new Error('Vui lòng nhập hoặc quét mã QR.');
-        if (!latitude || !longitude) {
+        const qrLatitude = normalizeCoordinate(latitude);
+        const qrLongitude = normalizeCoordinate(longitude);
+        if (qrLatitude === null || qrLongitude === null) {
           throw new Error('Chưa lấy được GPS hiện tại. Vui lòng bật định vị, chờ vài giây rồi quét lại.');
         }
 
@@ -513,8 +523,8 @@ export const TaskDetail = ({ task, userId, itineraryId, onBack, onCompleteSucces
           },
           body: JSON.stringify({
             qr_token: tokenToSubmit,
-            latitude,
-            longitude,
+            latitude: qrLatitude,
+            longitude: qrLongitude,
           }),
         });
         const data = await response.json();
