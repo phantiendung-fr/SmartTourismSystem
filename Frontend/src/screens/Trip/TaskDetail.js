@@ -24,6 +24,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
   const onScannerErrorRef = useRef(onScannerError);
   const [webScannerStarted, setWebScannerStarted] = useState(false);
   const [webScannerStarting, setWebScannerStarting] = useState(false);
+  const [preferredCameraFacing, setPreferredCameraFacing] = useState('environment');
 
   useEffect(() => {
     onScanSuccessRef.current = onScanSuccess;
@@ -71,7 +72,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
       scanLockedRef.current = false;
       await stopWebScanner();
 
-      await startBrowserQrScanner();
+      await startBrowserQrScanner(preferredCameraFacing);
     } catch (error) {
       console.error('QR scanner start error:', error);
       await stopWebScanner();
@@ -81,16 +82,40 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     }
   };
 
-  const startBrowserQrScanner = async () => {
+  const getCameraStream = async (facingMode) => {
+    const attempts = [
+      {
+        video: { facingMode: { exact: facingMode } },
+        audio: false,
+      },
+      {
+        video: { facingMode: { ideal: facingMode } },
+        audio: false,
+      },
+      {
+        video: true,
+        audio: false,
+      },
+    ];
+
+    let lastError = null;
+    for (const constraints of attempts) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError || new Error('Không thể mở camera.');
+  };
+
+  const startBrowserQrScanner = async (facingMode = 'environment') => {
     const video = videoRef.current;
     if (!video) {
       throw new Error('QR video element is not ready.');
     }
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: false,
-    });
+    const stream = await getCameraStream(facingMode);
 
     streamRef.current = stream;
     video.srcObject = stream;
@@ -157,6 +182,27 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     }
 
     scanLockedRef.current = false;
+  };
+
+  const switchWebCamera = async () => {
+    if (webScannerStarting) return;
+    const nextFacing = preferredCameraFacing === 'environment' ? 'user' : 'environment';
+    setPreferredCameraFacing(nextFacing);
+
+    if (!webScannerStarted) return;
+
+    try {
+      setWebScannerStarting(true);
+      await stopWebScanner();
+      scanLockedRef.current = false;
+      await startBrowserQrScanner(nextFacing);
+    } catch (error) {
+      console.error('QR camera switch error:', error);
+      await stopWebScanner();
+      setWebScannerStarted(false);
+      setWebScannerStarting(false);
+      onScannerErrorRef.current(getCameraErrorMessage(error));
+    }
   };
 
   const startNativeScan = async () => {
@@ -230,6 +276,14 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
             }}
           >
             Tắt camera
+          </button>
+          <button
+            type="button"
+            className="qr-camera-switch-btn"
+            onClick={switchWebCamera}
+            disabled={webScannerStarting}
+          >
+            Đổi camera
           </button>
         </>
       )}
