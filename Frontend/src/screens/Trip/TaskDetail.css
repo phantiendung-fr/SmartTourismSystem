@@ -388,6 +388,7 @@
 }
 
 .qr-video-preview {
+  display: none;
   position: absolute;
   inset: 0;
   width: 100%;
@@ -395,6 +396,10 @@
   object-fit: cover;
   background: #0f172a;
   z-index: 1;
+}
+
+.qr-video-preview.active {
+  display: block;
 }
 
 .qr-reader video,

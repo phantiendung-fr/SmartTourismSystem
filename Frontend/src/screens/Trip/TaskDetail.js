@@ -15,6 +15,7 @@ import './TaskDetail.css';
 
 const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
   const isNative = Capacitor.isNativePlatform();
+  const canUseWebCamera = typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia);
   const scannerIdRef = useRef(`qr-reader-${Math.random().toString(36).slice(2)}`);
   const scannerRef = useRef(null);
   const videoRef = useRef(null);
@@ -25,6 +26,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
   const onScannerErrorRef = useRef(onScannerError);
   const [webScannerStarted, setWebScannerStarted] = useState(false);
   const [webScannerStarting, setWebScannerStarting] = useState(false);
+  const [webScannerMode, setWebScannerMode] = useState(null);
 
   useEffect(() => {
     onScanSuccessRef.current = onScanSuccess;
@@ -104,6 +106,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     video.setAttribute('playsinline', 'true');
     video.muted = true;
 
+    setWebScannerMode('browser');
     setWebScannerStarted(true);
     setWebScannerStarting(false);
 
@@ -141,6 +144,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     try {
       const html5QrCode = new Html5Qrcode(scannerIdRef.current, { verbose: false });
       scannerRef.current = html5QrCode;
+      setWebScannerMode('html5');
 
       await html5QrCode.start(
         { facingMode: { ideal: 'environment' } },
@@ -215,6 +219,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     }
 
     scanLockedRef.current = false;
+    setWebScannerMode(null);
   };
 
   const startNativeScan = async () => {
@@ -234,7 +239,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     }
   };
 
-  if (isNative) {
+  if (isNative && !canUseWebCamera) {
     return (
       <div className="native-qr-wrapper" style={{ width: '100%', marginTop: '10px' }}>
         <button className="btn-submit-verification" onClick={startNativeScan} style={{ width: '100%', padding: '12px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
@@ -248,7 +253,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     <div className="qr-camera-wrapper" style={{ width: '100%', marginTop: '10px' }}>
       <video
         ref={videoRef}
-        className="qr-video-preview"
+        className={`qr-video-preview ${webScannerMode === 'browser' ? 'active' : ''}`}
         muted
         playsInline
       />
