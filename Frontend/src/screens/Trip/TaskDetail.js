@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { CapacitorBarcodeScanner } from '@capacitor/barcode-scanner';
-import { Html5Qrcode } from 'html5-qrcode';
+import jsQR from 'jsqr';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { API_BASE } from '../../config/api';
 import { capturePhotoFile, pickPhotoFile, releasePreviewUrl } from '../../platform/camera';
@@ -16,8 +16,6 @@ import './TaskDetail.css';
 const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
   const isNative = Capacitor.isNativePlatform();
   const canUseWebCamera = typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia);
-  const scannerIdRef = useRef(`qr-reader-${Math.random().toString(36).slice(2)}`);
-  const scannerRef = useRef(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const animationFrameRef = useRef(null);
@@ -26,7 +24,6 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
   const onScannerErrorRef = useRef(onScannerError);
   const [webScannerStarted, setWebScannerStarted] = useState(false);
   const [webScannerStarting, setWebScannerStarting] = useState(false);
-  const [webScannerMode, setWebScannerMode] = useState(null);
 
   useEffect(() => {
     onScanSuccessRef.current = onScanSuccess;
@@ -48,7 +45,10 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     if (name === 'NotReadableError' || name === 'AbortError') {
       return 'Camera đang bị ứng dụng khác sử dụng hoặc trình duyệt không truy cập được.';
     }
-    return 'Không thể mở camera QR. Vui lòng thử lại hoặc nhập mã thủ công.';
+    const detail = [name, error?.message].filter(Boolean).join(': ');
+    return detail
+      ? `Không thể mở camera QR (${detail}).`
+      : 'Không thể mở camera QR. Vui lòng thử lại hoặc nhập mã thủ công.';
   };
 
   const startWebScanner = async () => {
@@ -71,12 +71,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
       scanLockedRef.current = false;
       await stopWebScanner();
 
-      if ('BarcodeDetector' in window) {
-        await startBrowserBarcodeScanner();
-        return;
-      }
-
-      await startHtml5QrScanner();
+      await startBrowserQrScanner();
     } catch (error) {
       console.error('QR scanner start error:', error);
       await stopWebScanner();
@@ -86,18 +81,14 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     }
   };
 
-  const startBrowserBarcodeScanner = async () => {
+  const startBrowserQrScanner = async () => {
     const video = videoRef.current;
     if (!video) {
       throw new Error('QR video element is not ready.');
     }
 
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: 'environment' },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-      },
+      video: true,
       audio: false,
     });
 
@@ -106,24 +97,33 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     video.setAttribute('playsinline', 'true');
     video.muted = true;
 
-    setWebScannerMode('browser');
     setWebScannerStarted(true);
     setWebScannerStarting(false);
 
     await video.play();
 
-    const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) {
+      throw new Error('Không thể tạo bộ đọc hình ảnh QR.');
+    }
 
-    const scanFrame = async () => {
+    const scanFrame = () => {
       if (scanLockedRef.current || !streamRef.current) return;
 
       try {
-        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-          const codes = await detector.detect(video);
-          const token = String(codes?.[0]?.rawValue || '').trim();
+        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth && video.videoHeight) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'attemptBoth',
+          });
+          const token = String(code?.data || '').trim();
           if (token) {
             scanLockedRef.current = true;
-            await stopWebScanner();
+            stopWebScanner();
             setWebScannerStarted(false);
             setWebScannerStarting(false);
             onScanSuccessRef.current(token);
@@ -138,47 +138,6 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     };
 
     animationFrameRef.current = window.requestAnimationFrame(scanFrame);
-  };
-
-  const startHtml5QrScanner = async () => {
-    try {
-      const html5QrCode = new Html5Qrcode(scannerIdRef.current, { verbose: false });
-      scannerRef.current = html5QrCode;
-      setWebScannerMode('html5');
-
-      await html5QrCode.start(
-        { facingMode: { ideal: 'environment' } },
-        {
-          fps: 10,
-          qrbox: (viewfinderWidth, viewfinderHeight) => {
-            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            const size = Math.floor(Math.max(180, Math.min(minEdge * 0.74, 260)));
-            return { width: size, height: size };
-          },
-          disableFlip: false,
-        },
-        async (decodedText) => {
-          if (scanLockedRef.current) return;
-          const token = String(decodedText || '').trim();
-          if (!token) return;
-
-          scanLockedRef.current = true;
-          await stopWebScanner();
-          setWebScannerStarted(false);
-          setWebScannerStarting(false);
-          onScanSuccessRef.current(token);
-        },
-        () => {
-          // Ignore ordinary "QR not found" frame errors while the camera is open.
-        }
-      );
-
-      setWebScannerStarted(true);
-      setWebScannerStarting(false);
-    } catch (error) {
-      await stopWebScanner();
-      throw error;
-    }
   };
 
   const stopWebScanner = async () => {
@@ -197,29 +156,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
       videoRef.current.srcObject = null;
     }
 
-    const scanner = scannerRef.current;
-    if (scanner) {
-      try {
-        if (scanner.isScanning) {
-          await scanner.stop();
-        }
-      } catch (_) {
-        // Camera may already be stopped by browser cleanup.
-      }
-
-      try {
-        scanner.clear();
-      } catch (_) {
-        // Ignore cleanup errors from html5-qrcode internals.
-      }
-    }
-
-    if (scannerRef.current === scanner) {
-      scannerRef.current = null;
-    }
-
     scanLockedRef.current = false;
-    setWebScannerMode(null);
   };
 
   const startNativeScan = async () => {
@@ -227,6 +164,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
       const result = await CapacitorBarcodeScanner.scanBarcode({
         hint: 17, // CapacitorBarcodeScannerTypeHintALLOption.ALL
         scanInstructions: 'Hướng camera về phía mã QR để quét',
+        scanButton: false,
         cameraDirection: 1, // BACK
       });
       
@@ -234,7 +172,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
       if (token) onScanSuccess(token);
     } catch (error) {
       if (error && error.message && !error.message.includes('canceled')) {
-        onScannerError('Lỗi khởi động Native Scanner: ' + error.message);
+        onScannerError(getCameraErrorMessage(error));
       }
     }
   };
@@ -243,7 +181,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     return (
       <div className="native-qr-wrapper" style={{ width: '100%', marginTop: '10px' }}>
         <button className="btn-submit-verification" onClick={startNativeScan} style={{ width: '100%', padding: '12px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-          <Scan size={18} /> Mở Camera Quét Mã (Native)
+          <Scan size={18} /> Mở camera quét QR
         </button>
       </div>
     );
@@ -253,17 +191,12 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     <div className="qr-camera-wrapper" style={{ width: '100%', marginTop: '10px' }}>
       <video
         ref={videoRef}
-        className={`qr-video-preview ${webScannerMode === 'browser' ? 'active' : ''}`}
+        className={`qr-video-preview ${webScannerStarted ? 'active' : ''}`}
         muted
         playsInline
       />
-      <div
-        id={scannerIdRef.current}
-        className="qr-reader"
-      >
-        <div className="qr-reader-placeholder">
-          {webScannerStarting ? 'Đang mở camera...' : 'Camera QR'}
-        </div>
+      <div className="qr-reader">
+        <div className="qr-reader-placeholder">{webScannerStarting ? 'Đang mở camera...' : 'Camera QR'}</div>
       </div>
 
       {!webScannerStarted && (
