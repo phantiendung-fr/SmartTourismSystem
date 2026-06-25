@@ -17,6 +17,9 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
   const isNative = Capacitor.isNativePlatform();
   const scannerIdRef = useRef(`qr-reader-${Math.random().toString(36).slice(2)}`);
   const scannerRef = useRef(null);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const animationFrameRef = useRef(null);
   const scanLockedRef = useRef(false);
   const onScanSuccessRef = useRef(onScanSuccess);
   const onScannerErrorRef = useRef(onScannerError);
@@ -29,22 +32,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
   }, [onScanSuccess, onScannerError]);
 
   useEffect(() => () => {
-    const scanner = scannerRef.current;
-    if (!scanner) return;
-
-    try {
-      if (scanner.isScanning) {
-        scanner.stop().catch(() => {});
-      }
-    } catch (_) {
-      // Ignore cleanup errors when leaving the screen.
-    }
-
-    try {
-      scanner.clear();
-    } catch (_) {
-      // Ignore cleanup errors from html5-qrcode internals.
-    }
+    stopWebScanner();
   }, []);
 
   const getCameraErrorMessage = (error) => {
@@ -81,6 +69,76 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
       scanLockedRef.current = false;
       await stopWebScanner();
 
+      if ('BarcodeDetector' in window) {
+        await startBrowserBarcodeScanner();
+        return;
+      }
+
+      await startHtml5QrScanner();
+    } catch (error) {
+      console.error('QR scanner start error:', error);
+      await stopWebScanner();
+      setWebScannerStarted(false);
+      setWebScannerStarting(false);
+      onScannerErrorRef.current(getCameraErrorMessage(error));
+    }
+  };
+
+  const startBrowserBarcodeScanner = async () => {
+    const video = videoRef.current;
+    if (!video) {
+      throw new Error('QR video element is not ready.');
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+      audio: false,
+    });
+
+    streamRef.current = stream;
+    video.srcObject = stream;
+    video.setAttribute('playsinline', 'true');
+    video.muted = true;
+
+    setWebScannerStarted(true);
+    setWebScannerStarting(false);
+
+    await video.play();
+
+    const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+
+    const scanFrame = async () => {
+      if (scanLockedRef.current || !streamRef.current) return;
+
+      try {
+        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+          const codes = await detector.detect(video);
+          const token = String(codes?.[0]?.rawValue || '').trim();
+          if (token) {
+            scanLockedRef.current = true;
+            await stopWebScanner();
+            setWebScannerStarted(false);
+            setWebScannerStarting(false);
+            onScanSuccessRef.current(token);
+            return;
+          }
+        }
+      } catch (error) {
+        console.warn('QR frame detection error:', error);
+      }
+
+      animationFrameRef.current = window.requestAnimationFrame(scanFrame);
+    };
+
+    animationFrameRef.current = window.requestAnimationFrame(scanFrame);
+  };
+
+  const startHtml5QrScanner = async () => {
+    try {
       const html5QrCode = new Html5Qrcode(scannerIdRef.current, { verbose: false });
       scannerRef.current = html5QrCode;
 
@@ -102,6 +160,8 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
 
           scanLockedRef.current = true;
           await stopWebScanner();
+          setWebScannerStarted(false);
+          setWebScannerStarting(false);
           onScanSuccessRef.current(token);
         },
         () => {
@@ -112,35 +172,49 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
       setWebScannerStarted(true);
       setWebScannerStarting(false);
     } catch (error) {
-      console.error('QR scanner start error:', error);
       await stopWebScanner();
-      setWebScannerStarted(false);
-      setWebScannerStarting(false);
-      onScannerErrorRef.current(getCameraErrorMessage(error));
+      throw error;
     }
   };
 
   const stopWebScanner = async () => {
-    const scanner = scannerRef.current;
-    if (!scanner) return;
-
-    try {
-      if (scanner.isScanning) {
-        await scanner.stop();
-      }
-    } catch (_) {
-      // Camera may already be stopped by browser cleanup.
+    if (animationFrameRef.current) {
+      window.cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
     }
 
-    try {
-      scanner.clear();
-    } catch (_) {
-      // Ignore cleanup errors from html5-qrcode internals.
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.srcObject = null;
+    }
+
+    const scanner = scannerRef.current;
+    if (scanner) {
+      try {
+        if (scanner.isScanning) {
+          await scanner.stop();
+        }
+      } catch (_) {
+        // Camera may already be stopped by browser cleanup.
+      }
+
+      try {
+        scanner.clear();
+      } catch (_) {
+        // Ignore cleanup errors from html5-qrcode internals.
+      }
     }
 
     if (scannerRef.current === scanner) {
       scannerRef.current = null;
     }
+
+    scanLockedRef.current = false;
   };
 
   const startNativeScan = async () => {
@@ -172,6 +246,12 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
 
   return (
     <div className="qr-camera-wrapper" style={{ width: '100%', marginTop: '10px' }}>
+      <video
+        ref={videoRef}
+        className="qr-video-preview"
+        muted
+        playsInline
+      />
       <div
         id={scannerIdRef.current}
         className="qr-reader"
