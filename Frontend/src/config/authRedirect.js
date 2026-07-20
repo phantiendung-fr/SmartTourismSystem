@@ -1,4 +1,4 @@
-const PRODUCTION_AUTH_REDIRECT_URL = 'https://smart-tourism-vietnam.xyz';
+const PRODUCTION_AUTH_REDIRECT_URL = 'https://smart-tourism-vietnam.vercel.app';
 
 const isLocalHost = (hostname) => (
     hostname === 'localhost' ||
