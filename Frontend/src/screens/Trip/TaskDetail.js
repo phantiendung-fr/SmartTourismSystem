@@ -58,7 +58,7 @@ const QRCameraScanner = ({ onScanSuccess, onScannerError }) => {
     onScannerErrorRef.current('');
 
     if (!window.isSecureContext) {
-      onScannerErrorRef.current('Camera chỉ hoạt động trên HTTPS. Vui lòng mở bằng https://smart-tourism-vietnam.xyz.');
+      onScannerErrorRef.current('Camera chỉ hoạt động trên HTTPS. Vui lòng mở bằng https://smart-tourism-vietnam.vercel.app.');
       return;
     }
 
