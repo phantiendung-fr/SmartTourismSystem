@@ -36,9 +36,11 @@ class Settings(BaseSettings):
         "http://localhost:3001,"
         "http://127.0.0.1:3000,"
         "http://localhost,"
-        "capacitor://localhost"
+        "capacitor://localhost,"
+        "https://smart-tourism-vietnam.vercel.app,"
+        "https://smart-tourism-frontend.vercel.app"
     )
-    TRUSTED_HOSTS: str = "localhost,127.0.0.1,0.0.0.0"
+    TRUSTED_HOSTS: str = "localhost,127.0.0.1,0.0.0.0,smart-tourism-backend-z0a0.onrender.com,.vercel.app"
 
     # --- Auth / JWT ---------------------------------------------------------
     SECRET_KEY: str = "YOUR_SUPER_SECRET_KEY_HERE"
